@@ -1,0 +1,6917 @@
+{
+  "geometry": {
+    "schema": 2,
+    "waysWithoutGeometry": [],
+    "waysWithPartialGeometry": [],
+    "waysWithConflicts": [],
+    "waysWithUnknownProvenance": [
+      4709603,
+      4709665,
+      25757514,
+      28808408,
+      44878154,
+      45303229,
+      45303490,
+      45303581,
+      45303582,
+      45305151,
+      45305152,
+      45305153,
+      45305154,
+      103231335,
+      135952931,
+      166638221,
+      207300916,
+      207300917,
+      207300918,
+      207300920,
+      208676427,
+      212960536,
+      213093167,
+      214497854,
+      215189602,
+      215557235,
+      215558990,
+      215723056,
+      215723960,
+      216920784,
+      217383837,
+      217383859,
+      217383864,
+      217383866,
+      217406730,
+      217499721,
+      217600858,
+      217600859,
+      217600864,
+      217600867,
+      217604073,
+      217620051,
+      217833973,
+      217839344,
+      217910698,
+      217911113,
+      218187033,
+      218204485,
+      218204877,
+      218438860,
+      218454989,
+      232580830,
+      241580571,
+      247012853,
+      256630182,
+      260472203,
+      268211318,
+      289992988,
+      308994525,
+      308994526,
+      308994638,
+      333651442,
+      390557463,
+      391360138,
+      391360139,
+      392940601,
+      392940602,
+      393558707,
+      400184204,
+      412913531,
+      424478458,
+      447129070,
+      455680177,
+      455680178,
+      694838059,
+      989048746,
+      1080183150,
+      1096192749,
+      1096192750,
+      1096192751,
+      1096192752,
+      1096192753,
+      1096192754,
+      1096192755,
+      1096192756,
+      1096192757,
+      1125532210,
+      1125532211,
+      1125532212,
+      1125532213,
+      1125532214,
+      1125532215,
+      1146037835,
+      1216665479,
+      1216665480,
+      1216665481,
+      1216665485,
+      1216665486,
+      1216665487,
+      1216665488,
+      1216665489,
+      1216665490,
+      1223358359,
+      1223358360,
+      1223358361,
+      1411359826,
+      1411692208,
+      1411692210,
+      1411692214,
+      1416429986,
+      1418880903,
+      1418880904,
+      1418880905,
+      1418880908,
+      1435815520,
+      1435815521,
+      1435815524,
+      1456901004,
+      1474029758,
+      1474029759,
+      1474029760,
+      1507370655,
+      1507370656,
+      1507370657,
+      1580014470,
+      1580732677,
+      1580732678,
+      1580732679,
+      1580732680,
+      1582205969,
+      1582205970,
+      1582205972,
+      1583113302,
+      1583113304,
+      1583113306,
+      1583113307,
+      1583113308,
+      1583113309,
+      1583113310,
+      1583113311,
+      1583113312,
+      1583113313,
+      1583113314,
+      1583113315
+    ],
+    "waysWithPendingEvidence": [],
+    "routeRelationsWithoutGeometry": [
+      331250,
+      331251,
+      331252,
+      377470,
+      1722440,
+      1722441,
+      1783279,
+      1849754,
+      2230605,
+      2453918,
+      2453919,
+      2561864,
+      2581270,
+      2581271,
+      2703073,
+      2815040,
+      2954026,
+      3068672,
+      3517270,
+      3555581,
+      3555582,
+      3788350,
+      6504062,
+      6616903,
+      6730491,
+      6800211,
+      7409680,
+      7409686,
+      7409709,
+      7702519,
+      7702520,
+      7898732,
+      8032733,
+      8312413,
+      8312414,
+      8312415,
+      8312416,
+      8312417,
+      8764536,
+      8764537,
+      9181537,
+      9204860,
+      9206064,
+      9283743,
+      9357512,
+      9600511,
+      9600551,
+      9600552,
+      9736634,
+      10003054,
+      10003055,
+      11294195,
+      11368834,
+      11379809,
+      11929616,
+      12271401,
+      12316476,
+      12322082,
+      12322083,
+      12824257,
+      12828618,
+      12888045,
+      12940681,
+      12940682,
+      13064486,
+      13587912,
+      14103507,
+      14623682,
+      15775740,
+      15951675,
+      16244036,
+      16244037,
+      16347690,
+      16358740,
+      16358830,
+      16644113,
+      17001642,
+      17075185,
+      17486839,
+      17504372,
+      17581553,
+      17739982,
+      17739983,
+      17787820,
+      17787821,
+      17885132,
+      18054722,
+      18058146,
+      18251231,
+      18251232,
+      18621862,
+      18622253,
+      18624687,
+      18624725,
+      18649601,
+      18649602,
+      18651301,
+      18651302,
+      18663751,
+      18663752,
+      18737250,
+      18740721,
+      18788174,
+      18846885,
+      18846886,
+      18846887,
+      18846888,
+      18850076,
+      19053681,
+      19064976,
+      19131817,
+      19206257,
+      19233909,
+      19427410,
+      19427411,
+      19659733,
+      19905908,
+      19905909,
+      19925415,
+      19984887,
+      20007415,
+      20007508,
+      20040971,
+      20042681,
+      20085036,
+      20140335,
+      21038854,
+      21045624,
+      21104772,
+      21208926,
+      21208991,
+      21234053,
+      21234870,
+      21239293,
+      21239294,
+      21454852,
+      21609019,
+      21650667,
+      21824713,
+      21824785,
+      21922137,
+      21943687
+    ],
+    "routeRelationsWithPartialGeometry": [],
+    "details": [
+      {
+        "way": 4709603,
+        "relations": [
+          19391683,
+          19402820,
+          20180085,
+          20349887,
+          20600657,
+          20709379
+        ],
+        "status": "unknown",
+        "drawable": true,
+        "snapshot": null,
+        "version": null,
+        "expected": 58,
+        "missing": [],
+        "reasons": [
+          "unverified_source"
+        ],
+        "missingCount": 0,
+        "sources": [
+          {
+            "observation": "878dbc3c2aebfe2cf353377d1ede792c9124e413f5f6e8868121ff8dddb5f154",
+            "dataset": "openstreetmap",
+            "endpoint": "osm-extract",
+            "acquired": "20261126T161713Z-45852008906",
+            "stage": "extract",
+            "pass": "20261126T161713Z-45852008906"
+          }
+        ]
+      },
+      {
+        "way": 4709665,
+        "relations": [
+          19391683,
+          19402820,
+          20180085,
+          20349887,
+          20600657,
+          20709379
+        ],
+        "status": "unknown",
+        "drawable": true,
+        "snapshot": null,
+        "version": null,
+        "expected": 13,
+        "missing": [],
+        "reasons": [
+          "unverified_source"
+        ],
+        "missingCount": 0,
+        "sources": [
+          {
+            "observation": "4f1e015fd01a4573c0da41806ff10c81ecd346745acaddd43c98f3085fe3a7b3",
+            "dataset": "openstreetmap",
+            "endpoint": "osm-extract",
+            "acquired": "20261126T161713Z-45852008906",
+            "stage": "extract",
+            "pass": "20261126T161713Z-45852008906"
+          }
+        ]
+      },
+      {
+        "way": 25757514,
+        "relations": [
+          19391683,
+          19402820,
+          20180085,
+          20349887,
+          20600657,
+          20709379
+        ],
+        "status": "unknown",
+        "drawable": true,
+        "snapshot": null,
+        "version": null,
+        "expected": 2,
+        "missing": [],
+        "reasons": [
+          "unverified_source"
+        ],
+        "missingCount": 0,
+        "sources": [
+          {
+            "observation": "203636d9471acab9c65738e6fd65d1cc52a02248c44cb79d99fe74fca3eafdc1",
+            "dataset": "openstreetmap",
+            "endpoint": "osm-extract",
+            "acquired": "20261126T161713Z-45852008906",
+            "stage": "extract",
+            "pass": "20261126T161713Z-45852008906"
+          }
+        ]
+      },
+      {
+        "way": 28808408,
+        "relations": [
+          19391683,
+          19402820,
+          20180085,
+          20349887,
+          20600657,
+          20709379
+        ],
+        "status": "unknown",
+        "drawable": true,
+        "snapshot": null,
+        "version": null,
+        "expected": 2,
+        "missing": [],
+        "reasons": [
+          "unverified_source"
+        ],
+        "missingCount": 0,
+        "sources": [
+          {
+            "observation": "7d65d2e1bf701f0c3df8af783934a06de6eeebb678bde448c8c0a166312457ce",
+            "dataset": "openstreetmap",
+            "endpoint": "osm-extract",
+            "acquired": "20261126T161713Z-45852008906",
+            "stage": "extract",
+            "pass": "20261126T161713Z-45852008906"
+          }
+        ]
+      },
+      {
+        "way": 44878154,
+        "relations": [
+          2680124,
+          16264431
+        ],
+        "status": "unknown",
+        "drawable": true,
+        "snapshot": null,
+        "version": null,
+        "expected": 16,
+        "missing": [],
+        "reasons": [
+          "unverified_source"
+        ],
+        "missingCount": 0,
+        "sources": [
+          {
+            "observation": "b86aba3c9929459b386952bfae148f406f73f514e5cc31cd5ddc9ef269b97677",
+            "dataset": "openstreetmap",
+            "endpoint": "osm-extract",
+            "acquired": "20261126T161713Z-45852008906",
+            "stage": "extract",
+            "pass": "20261126T161713Z-45852008906"
+          }
+        ]
+      },
+      {
+        "way": 45303229,
+        "relations": [
+          19402819,
+          20170820,
+          20180086,
+          20609085,
+          20709380
+        ],
+        "status": "unknown",
+        "drawable": true,
+        "snapshot": null,
+        "version": null,
+        "expected": 2,
+        "missing": [],
+        "reasons": [
+          "unverified_source"
+        ],
+        "missingCount": 0,
+        "sources": [
+          {
+            "observation": "53305a8d92ec22785aafc15666977a057533636494cd879da671fe017c74afce",
+            "dataset": "openstreetmap",
+            "endpoint": "osm-extract",
+            "acquired": "20261126T161713Z-45852008906",
+            "stage": "extract",
+            "pass": "20261126T161713Z-45852008906"
+          }
+        ]
+      },
+      {
+        "way": 45303490,
+        "relations": [
+          20188867
+        ],
+        "status": "unknown",
+        "drawable": true,
+        "snapshot": null,
+        "version": null,
+        "expected": 4,
+        "missing": [],
+        "reasons": [
+          "unverified_source"
+        ],
+        "missingCount": 0,
+        "sources": [
+          {
+            "observation": "73ffaad8154f348e3b2fc956996cf64b92fc5501ce6369726a6cf9457cc7f140",
+            "dataset": "openstreetmap",
+            "endpoint": "osm-extract",
+            "acquired": "20261126T161713Z-45852008906",
+            "stage": "extract",
+            "pass": "20261126T161713Z-45852008906"
+          }
+        ]
+      },
+      {
+        "way": 45303581,
+        "relations": [
+          20188867,
+          20188868,
+          20609083,
+          20609084
+        ],
+        "status": "unknown",
+        "drawable": true,
+        "snapshot": null,
+        "version": null,
+        "expected": 2,
+        "missing": [],
+        "reasons": [
+          "unverified_source"
+        ],
+        "missingCount": 0,
+        "sources": [
+          {
+            "observation": "d92b69500b3980519ae6144274ad511b4fdf80226129ba71f51732cf8bb33b28",
+            "dataset": "openstreetmap",
+            "endpoint": "osm-extract",
+            "acquired": "20261126T161713Z-45852008906",
+            "stage": "extract",
+            "pass": "20261126T161713Z-45852008906"
+          }
+        ]
+      },
+      {
+        "way": 45303582,
+        "relations": [
+          20188867,
+          20188868,
+          20609083,
+          20609084
+        ],
+        "status": "unknown",
+        "drawable": true,
+        "snapshot": null,
+        "version": null,
+        "expected": 43,
+        "missing": [],
+        "reasons": [
+          "unverified_source"
+        ],
+        "missingCount": 0,
+        "sources": [
+          {
+            "observation": "bc75255cdd8c1b484fccfabee84f02e1291f569986575fde3ba570c80c52dd69",
+            "dataset": "openstreetmap",
+            "endpoint": "osm-extract",
+            "acquired": "20261126T161713Z-45852008906",
+            "stage": "extract",
+            "pass": "20261126T161713Z-45852008906"
+          }
+        ]
+      },
+      {
+        "way": 45305151,
+        "relations": [
+          19402819,
+          20170820,
+          20180086,
+          20609085,
+          20709380
+        ],
+        "status": "unknown",
+        "drawable": true,
+        "snapshot": null,
+        "version": null,
+        "expected": 2,
+        "missing": [],
+        "reasons": [
+          "unverified_source"
+        ],
+        "missingCount": 0,
+        "sources": [
+          {
+            "observation": "774feeb640adc2ad5749d7a453cd68ea7c98cd4f3b37bb7ea47067928d74cc5d",
+            "dataset": "openstreetmap",
+            "endpoint": "osm-extract",
+            "acquired": "20261126T161713Z-45852008906",
+            "stage": "extract",
+            "pass": "20261126T161713Z-45852008906"
+          }
+        ]
+      },
+      {
+        "way": 45305152,
+        "relations": [
+          20188867,
+          20188868,
+          20609083,
+          20609084
+        ],
+        "status": "unknown",
+        "drawable": true,
+        "snapshot": null,
+        "version": null,
+        "expected": 2,
+        "missing": [],
+        "reasons": [
+          "unverified_source"
+        ],
+        "missingCount": 0,
+        "sources": [
+          {
+            "observation": "db9e64d6baa875653add6df588f4ee42f20c72cb27ea1bbe4d891f180d88d077",
+            "dataset": "openstreetmap",
+            "endpoint": "osm-extract",
+            "acquired": "20261126T161713Z-45852008906",
+            "stage": "extract",
+            "pass": "20261126T161713Z-45852008906"
+          }
+        ]
+      },
+      {
+        "way": 45305153,
+        "relations": [
+          19402819,
+          20170820,
+          20180086,
+          20609085,
+          20709380
+        ],
+        "status": "unknown",
+        "drawable": true,
+        "snapshot": null,
+        "version": null,
+        "expected": 10,
+        "missing": [],
+        "reasons": [
+          "unverified_source"
+        ],
+        "missingCount": 0,
+        "sources": [
+          {
+            "observation": "64023b9c79abc467a028c3b72c26a513044dd72ae8d0f5bc3e1f5a6ae8e2fc3d",
+            "dataset": "openstreetmap",
+            "endpoint": "osm-extract",
+            "acquired": "20261126T161713Z-45852008906",
+            "stage": "extract",
+            "pass": "20261126T161713Z-45852008906"
+          }
+        ]
+      },
+      {
+        "way": 45305154,
+        "relations": [
+          20188867,
+          20188868,
+          20609083,
+          20609084
+        ],
+        "status": "unknown",
+        "drawable": true,
+        "snapshot": null,
+        "version": null,
+        "expected": 11,
+        "missing": [],
+        "reasons": [
+          "unverified_source"
+        ],
+        "missingCount": 0,
+        "sources": [
+          {
+            "observation": "2a2090aad25d4e06453352a5a746ac270674b771129a1ea87ca77216b56c7594",
+            "dataset": "openstreetmap",
+            "endpoint": "osm-extract",
+            "acquired": "20261126T161713Z-45852008906",
+            "stage": "extract",
+            "pass": "20261126T161713Z-45852008906"
+          }
+        ]
+      },
+      {
+        "way": 103231335,
+        "relations": [
+          1603490,
+          5460824
+        ],
+        "status": "unknown",
+        "drawable": true,
+        "snapshot": null,
+        "version": null,
+        "expected": 77,
+        "missing": [],
+        "reasons": [
+          "unverified_source"
+        ],
+        "missingCount": 0,
+        "sources": [
+          {
+            "observation": "aad269af6b0601809a4475f68d122e63b875cac080d97f2168acb40de7efbd2d",
+            "dataset": "openstreetmap",
+            "endpoint": "osm-extract",
+            "acquired": "20261126T161713Z-45852008906",
+            "stage": "extract",
+            "pass": "20261126T161713Z-45852008906"
+          }
+        ]
+      },
+      {
+        "way": 135952931,
+        "relations": [
+          5846086,
+          5863287
+        ],
+        "status": "unknown",
+        "drawable": true,
+        "snapshot": null,
+        "version": null,
+        "expected": 85,
+        "missing": [],
+        "reasons": [
+          "unverified_source"
+        ],
+        "missingCount": 0,
+        "sources": [
+          {
+            "observation": "13b1da9ace77831abd76568f6c735476e07df9bed2b75f1d0b1cde70bc003fec",
+            "dataset": "openstreetmap",
+            "endpoint": "osm-extract",
+            "acquired": "20261126T161713Z-45852008906",
+            "stage": "extract",
+            "pass": "20261126T161713Z-45852008906"
+          }
+        ]
+      },
+      {
+        "way": 166638221,
+        "relations": [
+          1889579
+        ],
+        "status": "unknown",
+        "drawable": true,
+        "snapshot": null,
+        "version": null,
+        "expected": 75,
+        "missing": [],
+        "reasons": [
+          "unverified_source"
+        ],
+        "missingCount": 0,
+        "sources": [
+          {
+            "observation": "2e06700ecae6ac0c49f70af601c5742be085a0cf1cda479b345360ca10a8daba",
+            "dataset": "openstreetmap",
+            "endpoint": "osm-extract",
+            "acquired": "20261126T161713Z-45852008906",
+            "stage": "extract",
+            "pass": "20261126T161713Z-45852008906"
+          }
+        ]
+      },
+      {
+        "way": 207300916,
+        "relations": [
+          5861625,
+          6386783
+        ],
+        "status": "unknown",
+        "drawable": true,
+        "snapshot": null,
+        "version": null,
+        "expected": 13,
+        "missing": [],
+        "reasons": [
+          "unverified_source"
+        ],
+        "missingCount": 0,
+        "sources": [
+          {
+            "observation": "1d8cab7c481264e2188f51a64b393558d83de38895c9af3b71a6b56236de7982",
+            "dataset": "openstreetmap",
+            "endpoint": "osm-extract",
+            "acquired": "20261126T161713Z-45852008906",
+            "stage": "extract",
+            "pass": "20261126T161713Z-45852008906"
+          }
+        ]
+      },
+      {
+        "way": 207300917,
+        "relations": [
+          6386785,
+          6400449
+        ],
+        "status": "unknown",
+        "drawable": true,
+        "snapshot": null,
+        "version": null,
+        "expected": 10,
+        "missing": [],
+        "reasons": [
+          "unverified_source"
+        ],
+        "missingCount": 0,
+        "sources": [
+          {
+            "observation": "60bf16d17ca46e6ee40cbbc61710e368517b9cc9a92f8067c98cf0bc7421b0ce",
+            "dataset": "openstreetmap",
+            "endpoint": "osm-extract",
+            "acquired": "20261126T161713Z-45852008906",
+            "stage": "extract",
+            "pass": "20261126T161713Z-45852008906"
+          }
+        ]
+      },
+      {
+        "way": 207300918,
+        "relations": [
+          6386786
+        ],
+        "status": "unknown",
+        "drawable": true,
+        "snapshot": null,
+        "version": null,
+        "expected": 12,
+        "missing": [],
+        "reasons": [
+          "unverified_source"
+        ],
+        "missingCount": 0,
+        "sources": [
+          {
+            "observation": "994fe444aaebef47f345c60c818db6f50e76783e73853d49423d8f19a5af0f5e",
+            "dataset": "openstreetmap",
+            "endpoint": "osm-extract",
+            "acquired": "20261126T161713Z-45852008906",
+            "stage": "extract",
+            "pass": "20261126T161713Z-45852008906"
+          }
+        ]
+      },
+      {
+        "way": 207300920,
+        "relations": [
+          5861626,
+          6386784,
+          6430224
+        ],
+        "status": "unknown",
+        "drawable": true,
+        "snapshot": null,
+        "version": null,
+        "expected": 9,
+        "missing": [],
+        "reasons": [
+          "unverified_source"
+        ],
+        "missingCount": 0,
+        "sources": [
+          {
+            "observation": "3dc3c4004285653ef4327c5ebeb97723364c50b97f3c9c095d0989d90cd53618",
+            "dataset": "openstreetmap",
+            "endpoint": "osm-extract",
+            "acquired": "20261126T161713Z-45852008906",
+            "stage": "extract",
+            "pass": "20261126T161713Z-45852008906"
+          }
+        ]
+      },
+      {
+        "way": 208676427,
+        "relations": [
+          5861626,
+          6386784,
+          6386786,
+          6430224
+        ],
+        "status": "unknown",
+        "drawable": true,
+        "snapshot": null,
+        "version": null,
+        "expected": 16,
+        "missing": [],
+        "reasons": [
+          "unverified_source"
+        ],
+        "missingCount": 0,
+        "sources": [
+          {
+            "observation": "70da054f1208e4bf5fb46f781ea17f0752f12f1f7e0854863722a556ea3b6ee6",
+            "dataset": "openstreetmap",
+            "endpoint": "osm-extract",
+            "acquired": "20261126T161713Z-45852008906",
+            "stage": "extract",
+            "pass": "20261126T161713Z-45852008906"
+          }
+        ]
+      },
+      {
+        "way": 212960536,
+        "relations": [
+          6655792,
+          19476980
+        ],
+        "status": "unknown",
+        "drawable": true,
+        "snapshot": null,
+        "version": null,
+        "expected": 63,
+        "missing": [],
+        "reasons": [
+          "unverified_source"
+        ],
+        "missingCount": 0,
+        "sources": [
+          {
+            "observation": "e646f624820508fca643f450c1f1da9c4e3dbc91ebe891160d895823a9006758",
+            "dataset": "openstreetmap",
+            "endpoint": "osm-extract",
+            "acquired": "20261126T161713Z-45852008906",
+            "stage": "extract",
+            "pass": "20261126T161713Z-45852008906"
+          }
+        ]
+      },
+      {
+        "way": 213093167,
+        "relations": [
+          6655793,
+          6663099
+        ],
+        "status": "unknown",
+        "drawable": true,
+        "snapshot": null,
+        "version": null,
+        "expected": 64,
+        "missing": [],
+        "reasons": [
+          "unverified_source"
+        ],
+        "missingCount": 0,
+        "sources": [
+          {
+            "observation": "ef46bed8f3baceccb72535738d22828784f199fb085b023f8497c35c42cdd300",
+            "dataset": "openstreetmap",
+            "endpoint": "osm-extract",
+            "acquired": "20261126T161713Z-45852008906",
+            "stage": "extract",
+            "pass": "20261126T161713Z-45852008906"
+          }
+        ]
+      },
+      {
+        "way": 214497854,
+        "relations": [
+          5904523,
+          5904525,
+          5904527,
+          5904529,
+          5951426
+        ],
+        "status": "unknown",
+        "drawable": true,
+        "snapshot": null,
+        "version": null,
+        "expected": 18,
+        "missing": [],
+        "reasons": [
+          "unverified_source"
+        ],
+        "missingCount": 0,
+        "sources": [
+          {
+            "observation": "3e38fe0a14bc7731b221fa876fa1f7c9ef728e54d58dac1411412fb33e67787b",
+            "dataset": "openstreetmap",
+            "endpoint": "osm-extract",
+            "acquired": "20261126T161713Z-45852008906",
+            "stage": "extract",
+            "pass": "20261126T161713Z-45852008906"
+          }
+        ]
+      },
+      {
+        "way": 215189602,
+        "relations": [
+          6386774,
+          6392118
+        ],
+        "status": "unknown",
+        "drawable": true,
+        "snapshot": null,
+        "version": null,
+        "expected": 137,
+        "missing": [],
+        "reasons": [
+          "unverified_source"
+        ],
+        "missingCount": 0,
+        "sources": [
+          {
+            "observation": "ee0fea25ed84b0041e3fc8d781d83726df8791f5f2a23cc878ad481700f39a8d",
+            "dataset": "openstreetmap",
+            "endpoint": "osm-extract",
+            "acquired": "20261126T161713Z-45852008906",
+            "stage": "extract",
+            "pass": "20261126T161713Z-45852008906"
+          }
+        ]
+      },
+      {
+        "way": 215557235,
+        "relations": [
+          6170461
+        ],
+        "status": "unknown",
+        "drawable": true,
+        "snapshot": null,
+        "version": null,
+        "expected": 40,
+        "missing": [],
+        "reasons": [
+          "unverified_source"
+        ],
+        "missingCount": 0,
+        "sources": [
+          {
+            "observation": "5a783f4724598319b8c1ea49bcf62590d4eb584221acad5c0ff66776dbb27d19",
+            "dataset": "openstreetmap",
+            "endpoint": "osm-extract",
+            "acquired": "20261126T161713Z-45852008906",
+            "stage": "extract",
+            "pass": "20261126T161713Z-45852008906"
+          }
+        ]
+      },
+      {
+        "way": 215558990,
+        "relations": [
+          6170462
+        ],
+        "status": "unknown",
+        "drawable": true,
+        "snapshot": null,
+        "version": null,
+        "expected": 38,
+        "missing": [],
+        "reasons": [
+          "unverified_source"
+        ],
+        "missingCount": 0,
+        "sources": [
+          {
+            "observation": "892d7b10a0fb57b64a3afcf463374f444ebc45ba24f12e8637bbca2582f9b34c",
+            "dataset": "openstreetmap",
+            "endpoint": "osm-extract",
+            "acquired": "20261126T161713Z-45852008906",
+            "stage": "extract",
+            "pass": "20261126T161713Z-45852008906"
+          }
+        ]
+      },
+      {
+        "way": 215723056,
+        "relations": [
+          5904524
+        ],
+        "status": "unknown",
+        "drawable": true,
+        "snapshot": null,
+        "version": null,
+        "expected": 75,
+        "missing": [],
+        "reasons": [
+          "unverified_source"
+        ],
+        "missingCount": 0,
+        "sources": [
+          {
+            "observation": "591ad196f58c436548c2b1b53cde7097d14c3e3243283e6a289733385f62325e",
+            "dataset": "openstreetmap",
+            "endpoint": "osm-extract",
+            "acquired": "20261126T161713Z-45852008906",
+            "stage": "extract",
+            "pass": "20261126T161713Z-45852008906"
+          }
+        ]
+      },
+      {
+        "way": 215723960,
+        "relations": [
+          5904523,
+          5968592
+        ],
+        "status": "unknown",
+        "drawable": true,
+        "snapshot": null,
+        "version": null,
+        "expected": 71,
+        "missing": [],
+        "reasons": [
+          "unverified_source"
+        ],
+        "missingCount": 0,
+        "sources": [
+          {
+            "observation": "d100b5670f1df4b9ca24c5cb33102f0a1ea95fd9a81b497d9545e086cbc4f8b0",
+            "dataset": "openstreetmap",
+            "endpoint": "osm-extract",
+            "acquired": "20261126T161713Z-45852008906",
+            "stage": "extract",
+            "pass": "20261126T161713Z-45852008906"
+          }
+        ]
+      },
+      {
+        "way": 216920784,
+        "relations": [
+          6739127,
+          6739155,
+          15062383
+        ],
+        "status": "unknown",
+        "drawable": true,
+        "snapshot": null,
+        "version": null,
+        "expected": 15,
+        "missing": [],
+        "reasons": [
+          "unverified_source"
+        ],
+        "missingCount": 0,
+        "sources": [
+          {
+            "observation": "e82430d92a0b9c4a19ed8ea05f233f2a0d8b41fc03a085d199f106f4254d266a",
+            "dataset": "openstreetmap",
+            "endpoint": "osm-extract",
+            "acquired": "20261126T161713Z-45852008906",
+            "stage": "extract",
+            "pass": "20261126T161713Z-45852008906"
+          }
+        ]
+      },
+      {
+        "way": 217383837,
+        "relations": [
+          6386785
+        ],
+        "status": "unknown",
+        "drawable": true,
+        "snapshot": null,
+        "version": null,
+        "expected": 18,
+        "missing": [],
+        "reasons": [
+          "unverified_source"
+        ],
+        "missingCount": 0,
+        "sources": [
+          {
+            "observation": "6a39f3780e34c99b0f2035a516db0f7beedad522a8435651ea5ef1912ba85706",
+            "dataset": "openstreetmap",
+            "endpoint": "osm-extract",
+            "acquired": "20261126T161713Z-45852008906",
+            "stage": "extract",
+            "pass": "20261126T161713Z-45852008906"
+          }
+        ]
+      },
+      {
+        "way": 217383859,
+        "relations": [
+          6386785
+        ],
+        "status": "unknown",
+        "drawable": true,
+        "snapshot": null,
+        "version": null,
+        "expected": 4,
+        "missing": [],
+        "reasons": [
+          "unverified_source"
+        ],
+        "missingCount": 0,
+        "sources": [
+          {
+            "observation": "9d7e6eb8487515bb225e80c773de91117f03b3e3951461dc66a61de4d2607bf5",
+            "dataset": "openstreetmap",
+            "endpoint": "osm-extract",
+            "acquired": "20261126T161713Z-45852008906",
+            "stage": "extract",
+            "pass": "20261126T161713Z-45852008906"
+          }
+        ]
+      },
+      {
+        "way": 217383864,
+        "relations": [
+          6386786,
+          6400450
+        ],
+        "status": "unknown",
+        "drawable": true,
+        "snapshot": null,
+        "version": null,
+        "expected": 2,
+        "missing": [],
+        "reasons": [
+          "unverified_source"
+        ],
+        "missingCount": 0,
+        "sources": [
+          {
+            "observation": "bb65b07c1e567e343ad3dbda37c19f8a891a06b0fa23690c5239d7ddea061e13",
+            "dataset": "openstreetmap",
+            "endpoint": "osm-extract",
+            "acquired": "20261126T161713Z-45852008906",
+            "stage": "extract",
+            "pass": "20261126T161713Z-45852008906"
+          }
+        ]
+      },
+      {
+        "way": 217383866,
+        "relations": [
+          6386786,
+          6400450
+        ],
+        "status": "unknown",
+        "drawable": true,
+        "snapshot": null,
+        "version": null,
+        "expected": 12,
+        "missing": [],
+        "reasons": [
+          "unverified_source"
+        ],
+        "missingCount": 0,
+        "sources": [
+          {
+            "observation": "610470fc90d59076cdfeb703a7938ee4b602ae2c1cdcd180c6e5ef5e3de7bf89",
+            "dataset": "openstreetmap",
+            "endpoint": "osm-extract",
+            "acquired": "20261126T161713Z-45852008906",
+            "stage": "extract",
+            "pass": "20261126T161713Z-45852008906"
+          }
+        ]
+      },
+      {
+        "way": 217406730,
+        "relations": [
+          6739156
+        ],
+        "status": "unknown",
+        "drawable": true,
+        "snapshot": null,
+        "version": null,
+        "expected": 68,
+        "missing": [],
+        "reasons": [
+          "unverified_source"
+        ],
+        "missingCount": 0,
+        "sources": [
+          {
+            "observation": "2a69e960902ffdad3a05fab800003eacaf434eee6109b7a8867c5cce210c2e29",
+            "dataset": "openstreetmap",
+            "endpoint": "osm-extract",
+            "acquired": "20261126T161713Z-45852008906",
+            "stage": "extract",
+            "pass": "20261126T161713Z-45852008906"
+          }
+        ]
+      },
+      {
+        "way": 217499721,
+        "relations": [
+          6430934
+        ],
+        "status": "unknown",
+        "drawable": true,
+        "snapshot": null,
+        "version": null,
+        "expected": 62,
+        "missing": [],
+        "reasons": [
+          "unverified_source"
+        ],
+        "missingCount": 0,
+        "sources": [
+          {
+            "observation": "41eff702b7f0a538699c09a516c073497eef4ddd62d52b27e237f8910fb03589",
+            "dataset": "openstreetmap",
+            "endpoint": "osm-extract",
+            "acquired": "20261126T161713Z-45852008906",
+            "stage": "extract",
+            "pass": "20261126T161713Z-45852008906"
+          }
+        ]
+      },
+      {
+        "way": 217600858,
+        "relations": [
+          5892806
+        ],
+        "status": "unknown",
+        "drawable": true,
+        "snapshot": null,
+        "version": null,
+        "expected": 8,
+        "missing": [],
+        "reasons": [
+          "unverified_source"
+        ],
+        "missingCount": 0,
+        "sources": [
+          {
+            "observation": "f5f35a427111e240dd76fdce50f9098dc398ba5eb34cd452c54ef3510933076c",
+            "dataset": "openstreetmap",
+            "endpoint": "osm-extract",
+            "acquired": "20261126T161713Z-45852008906",
+            "stage": "extract",
+            "pass": "20261126T161713Z-45852008906"
+          }
+        ]
+      },
+      {
+        "way": 217600859,
+        "relations": [
+          6386776,
+          6386778
+        ],
+        "status": "unknown",
+        "drawable": true,
+        "snapshot": null,
+        "version": null,
+        "expected": 9,
+        "missing": [],
+        "reasons": [
+          "unverified_source"
+        ],
+        "missingCount": 0,
+        "sources": [
+          {
+            "observation": "9d1f041b85fcb8643b781e0c047f845ccbbec305a2fed5e31832bb559167ad79",
+            "dataset": "openstreetmap",
+            "endpoint": "osm-extract",
+            "acquired": "20261126T161713Z-45852008906",
+            "stage": "extract",
+            "pass": "20261126T161713Z-45852008906"
+          }
+        ]
+      },
+      {
+        "way": 217600864,
+        "relations": [
+          6386777
+        ],
+        "status": "unknown",
+        "drawable": true,
+        "snapshot": null,
+        "version": null,
+        "expected": 9,
+        "missing": [],
+        "reasons": [
+          "unverified_source"
+        ],
+        "missingCount": 0,
+        "sources": [
+          {
+            "observation": "e045014341d71550f8e9cdcdac5fbd6e303114b98fbff207266287d6ccfe7f4e",
+            "dataset": "openstreetmap",
+            "endpoint": "osm-extract",
+            "acquired": "20261126T161713Z-45852008906",
+            "stage": "extract",
+            "pass": "20261126T161713Z-45852008906"
+          }
+        ]
+      },
+      {
+        "way": 217600867,
+        "relations": [
+          5892807
+        ],
+        "status": "unknown",
+        "drawable": true,
+        "snapshot": null,
+        "version": null,
+        "expected": 8,
+        "missing": [],
+        "reasons": [
+          "unverified_source"
+        ],
+        "missingCount": 0,
+        "sources": [
+          {
+            "observation": "cdb1ad9c23cd101cde378536074be70277eda93dd5de880387cc8f2dc4b61605",
+            "dataset": "openstreetmap",
+            "endpoint": "osm-extract",
+            "acquired": "20261126T161713Z-45852008906",
+            "stage": "extract",
+            "pass": "20261126T161713Z-45852008906"
+          }
+        ]
+      },
+      {
+        "way": 217604073,
+        "relations": [
+          5892806
+        ],
+        "status": "unknown",
+        "drawable": true,
+        "snapshot": null,
+        "version": null,
+        "expected": 41,
+        "missing": [],
+        "reasons": [
+          "unverified_source"
+        ],
+        "missingCount": 0,
+        "sources": [
+          {
+            "observation": "ab7cec6e57964935de26a18bd5c1fbedfd957202271d0ee128b6ab87909f97d3",
+            "dataset": "openstreetmap",
+            "endpoint": "osm-extract",
+            "acquired": "20261126T161713Z-45852008906",
+            "stage": "extract",
+            "pass": "20261126T161713Z-45852008906"
+          }
+        ]
+      },
+      {
+        "way": 217620051,
+        "relations": [
+          5892807
+        ],
+        "status": "unknown",
+        "drawable": true,
+        "snapshot": null,
+        "version": null,
+        "expected": 43,
+        "missing": [],
+        "reasons": [
+          "unverified_source"
+        ],
+        "missingCount": 0,
+        "sources": [
+          {
+            "observation": "018b164692a794fca8117843e0fcbc84ad13148cc589e3b947ab250bdf964561",
+            "dataset": "openstreetmap",
+            "endpoint": "osm-extract",
+            "acquired": "20261126T161713Z-45852008906",
+            "stage": "extract",
+            "pass": "20261126T161713Z-45852008906"
+          }
+        ]
+      },
+      {
+        "way": 217833973,
+        "relations": [
+          5904534
+        ],
+        "status": "unknown",
+        "drawable": true,
+        "snapshot": null,
+        "version": null,
+        "expected": 26,
+        "missing": [],
+        "reasons": [
+          "unverified_source"
+        ],
+        "missingCount": 0,
+        "sources": [
+          {
+            "observation": "a1dc2254a83c7f51b40dc5b52c016caf87060fc3e8bba9ea9a2228f5ba3a79a9",
+            "dataset": "openstreetmap",
+            "endpoint": "osm-extract",
+            "acquired": "20261126T161713Z-45852008906",
+            "stage": "extract",
+            "pass": "20261126T161713Z-45852008906"
+          }
+        ]
+      },
+      {
+        "way": 217839344,
+        "relations": [
+          5904524,
+          5904526,
+          5904528,
+          5904530,
+          5951427,
+          5951432,
+          5968593,
+          6027326
+        ],
+        "status": "unknown",
+        "drawable": true,
+        "snapshot": null,
+        "version": null,
+        "expected": 17,
+        "missing": [],
+        "reasons": [
+          "unverified_source"
+        ],
+        "missingCount": 0,
+        "sources": [
+          {
+            "observation": "7dfe8437ef413b4f83caefe2f1beb7ae344180f34ca89852c97c042821a71efb",
+            "dataset": "openstreetmap",
+            "endpoint": "osm-extract",
+            "acquired": "20261126T161713Z-45852008906",
+            "stage": "extract",
+            "pass": "20261126T161713Z-45852008906"
+          }
+        ]
+      },
+      {
+        "way": 217910698,
+        "relations": [
+          5904523,
+          6386786,
+          6400450
+        ],
+        "status": "unknown",
+        "drawable": true,
+        "snapshot": null,
+        "version": null,
+        "expected": 28,
+        "missing": [],
+        "reasons": [
+          "unverified_source"
+        ],
+        "missingCount": 0,
+        "sources": [
+          {
+            "observation": "aa067a5607d798201c8130e2446ab3bd2c298641bb22b958be03b38d557582ea",
+            "dataset": "openstreetmap",
+            "endpoint": "osm-extract",
+            "acquired": "20261126T161713Z-45852008906",
+            "stage": "extract",
+            "pass": "20261126T161713Z-45852008906"
+          }
+        ]
+      },
+      {
+        "way": 217911113,
+        "relations": [
+          5904524,
+          5968593,
+          6386785
+        ],
+        "status": "unknown",
+        "drawable": true,
+        "snapshot": null,
+        "version": null,
+        "expected": 28,
+        "missing": [],
+        "reasons": [
+          "unverified_source"
+        ],
+        "missingCount": 0,
+        "sources": [
+          {
+            "observation": "89ef04cf80f2a88b13b36c0bc2cc1904e05f3379226a9d18d2cd5d0050f08b67",
+            "dataset": "openstreetmap",
+            "endpoint": "osm-extract",
+            "acquired": "20261126T161713Z-45852008906",
+            "stage": "extract",
+            "pass": "20261126T161713Z-45852008906"
+          }
+        ]
+      },
+      {
+        "way": 218187033,
+        "relations": [
+          6739127,
+          6739155,
+          15062383
+        ],
+        "status": "unknown",
+        "drawable": true,
+        "snapshot": null,
+        "version": null,
+        "expected": 72,
+        "missing": [],
+        "reasons": [
+          "unverified_source"
+        ],
+        "missingCount": 0,
+        "sources": [
+          {
+            "observation": "35ec109e879594b00a95002b828c289ce669712b198ba1ead92ae91bb34ada66",
+            "dataset": "openstreetmap",
+            "endpoint": "osm-extract",
+            "acquired": "20261126T161713Z-45852008906",
+            "stage": "extract",
+            "pass": "20261126T161713Z-45852008906"
+          }
+        ]
+      },
+      {
+        "way": 218204485,
+        "relations": [
+          6430933
+        ],
+        "status": "unknown",
+        "drawable": true,
+        "snapshot": null,
+        "version": null,
+        "expected": 67,
+        "missing": [],
+        "reasons": [
+          "unverified_source"
+        ],
+        "missingCount": 0,
+        "sources": [
+          {
+            "observation": "c3dd9480a32429f0384207367fc4db1460210a32c0330e9f53155b6e8eb1a81d",
+            "dataset": "openstreetmap",
+            "endpoint": "osm-extract",
+            "acquired": "20261126T161713Z-45852008906",
+            "stage": "extract",
+            "pass": "20261126T161713Z-45852008906"
+          }
+        ]
+      },
+      {
+        "way": 218204877,
+        "relations": [
+          5904533
+        ],
+        "status": "unknown",
+        "drawable": true,
+        "snapshot": null,
+        "version": null,
+        "expected": 25,
+        "missing": [],
+        "reasons": [
+          "unverified_source"
+        ],
+        "missingCount": 0,
+        "sources": [
+          {
+            "observation": "80f1b9f7a43f6967da1f182671b47651fd4ece421eeaaaaa9f71ab839e4dbe8a",
+            "dataset": "openstreetmap",
+            "endpoint": "osm-extract",
+            "acquired": "20261126T161713Z-45852008906",
+            "stage": "extract",
+            "pass": "20261126T161713Z-45852008906"
+          }
+        ]
+      },
+      {
+        "way": 218438860,
+        "relations": [
+          5904530
+        ],
+        "status": "unknown",
+        "drawable": true,
+        "snapshot": null,
+        "version": null,
+        "expected": 40,
+        "missing": [],
+        "reasons": [
+          "unverified_source"
+        ],
+        "missingCount": 0,
+        "sources": [
+          {
+            "observation": "2eccef87ed511028585f81af7765d39965f311f5a0910ecc4193a1422ef4fb08",
+            "dataset": "openstreetmap",
+            "endpoint": "osm-extract",
+            "acquired": "20261126T161713Z-45852008906",
+            "stage": "extract",
+            "pass": "20261126T161713Z-45852008906"
+          }
+        ]
+      },
+      {
+        "way": 218454989,
+        "relations": [
+          5904529
+        ],
+        "status": "unknown",
+        "drawable": true,
+        "snapshot": null,
+        "version": null,
+        "expected": 45,
+        "missing": [],
+        "reasons": [
+          "unverified_source"
+        ],
+        "missingCount": 0,
+        "sources": [
+          {
+            "observation": "fd77887f5089bef6c995e8f229d32a6d4e67d34425b8c7beb4461ce1810e5c88",
+            "dataset": "openstreetmap",
+            "endpoint": "osm-extract",
+            "acquired": "20261126T161713Z-45852008906",
+            "stage": "extract",
+            "pass": "20261126T161713Z-45852008906"
+          }
+        ]
+      },
+      {
+        "way": 232580830,
+        "relations": [
+          421697
+        ],
+        "status": "unknown",
+        "drawable": true,
+        "snapshot": null,
+        "version": null,
+        "expected": 31,
+        "missing": [],
+        "reasons": [
+          "unverified_source"
+        ],
+        "missingCount": 0,
+        "sources": [
+          {
+            "observation": "01e22c0b6ccc4bad2f5ec0283dbb1864189e7ca9c1bdc69dc9ba78835db1c830",
+            "dataset": "openstreetmap",
+            "endpoint": "osm-extract",
+            "acquired": "20261126T161713Z-45852008906",
+            "stage": "extract",
+            "pass": "20261126T161713Z-45852008906"
+          }
+        ]
+      },
+      {
+        "way": 241580571,
+        "relations": [
+          5892807
+        ],
+        "status": "unknown",
+        "drawable": true,
+        "snapshot": null,
+        "version": null,
+        "expected": 50,
+        "missing": [],
+        "reasons": [
+          "unverified_source"
+        ],
+        "missingCount": 0,
+        "sources": [
+          {
+            "observation": "9df5701be5f29eae9016f2a7b7906e45e7665dcc61e62f39a61e9ee31678377d",
+            "dataset": "openstreetmap",
+            "endpoint": "osm-extract",
+            "acquired": "20261126T161713Z-45852008906",
+            "stage": "extract",
+            "pass": "20261126T161713Z-45852008906"
+          }
+        ]
+      },
+      {
+        "way": 247012853,
+        "relations": [
+          19402819,
+          20170820,
+          20180086,
+          20609085,
+          20709380
+        ],
+        "status": "unknown",
+        "drawable": true,
+        "snapshot": null,
+        "version": null,
+        "expected": 27,
+        "missing": [],
+        "reasons": [
+          "unverified_source"
+        ],
+        "missingCount": 0,
+        "sources": [
+          {
+            "observation": "4a79f65ff3ea4129350c4a8f253c551b3121171b5d198ca93400835072a5585a",
+            "dataset": "openstreetmap",
+            "endpoint": "osm-extract",
+            "acquired": "20261126T161713Z-45852008906",
+            "stage": "extract",
+            "pass": "20261126T161713Z-45852008906"
+          }
+        ]
+      },
+      {
+        "way": 256630182,
+        "relations": [
+          1889578
+        ],
+        "status": "unknown",
+        "drawable": true,
+        "snapshot": null,
+        "version": null,
+        "expected": 32,
+        "missing": [],
+        "reasons": [
+          "unverified_source"
+        ],
+        "missingCount": 0,
+        "sources": [
+          {
+            "observation": "77b79f307d93d5dc1b56dcfcc84232ee720d7c89ef7ac4f126c49157947adf42",
+            "dataset": "openstreetmap",
+            "endpoint": "osm-extract",
+            "acquired": "20261126T161713Z-45852008906",
+            "stage": "extract",
+            "pass": "20261126T161713Z-45852008906"
+          }
+        ]
+      },
+      {
+        "way": 260472203,
+        "relations": [
+          3842635
+        ],
+        "status": "unknown",
+        "drawable": true,
+        "snapshot": null,
+        "version": null,
+        "expected": 7,
+        "missing": [],
+        "reasons": [
+          "unverified_source"
+        ],
+        "missingCount": 0,
+        "sources": [
+          {
+            "observation": "60b13f5f1c49dc7450158e137c526725782458180e7fc71a9bd3b2ec05f7eba4",
+            "dataset": "openstreetmap",
+            "endpoint": "osm-extract",
+            "acquired": "20261126T161713Z-45852008906",
+            "stage": "extract",
+            "pass": "20261126T161713Z-45852008906"
+          }
+        ]
+      },
+      {
+        "way": 268211318,
+        "relations": [
+          3739886
+        ],
+        "status": "unknown",
+        "drawable": true,
+        "snapshot": null,
+        "version": null,
+        "expected": 9,
+        "missing": [],
+        "reasons": [
+          "unverified_source"
+        ],
+        "missingCount": 0,
+        "sources": [
+          {
+            "observation": "d811f8417abd87036d4c4c962bf32855d1d885a01d785d9a45ef948d1f3ba7b6",
+            "dataset": "openstreetmap",
+            "endpoint": "osm-extract",
+            "acquired": "20261126T161713Z-45852008906",
+            "stage": "extract",
+            "pass": "20261126T161713Z-45852008906"
+          }
+        ]
+      },
+      {
+        "way": 289992988,
+        "relations": [
+          19402819,
+          20170820,
+          20180086,
+          20609085,
+          20709380
+        ],
+        "status": "unknown",
+        "drawable": true,
+        "snapshot": null,
+        "version": null,
+        "expected": 58,
+        "missing": [],
+        "reasons": [
+          "unverified_source"
+        ],
+        "missingCount": 0,
+        "sources": [
+          {
+            "observation": "cdf032b5832c97b9aa0a784d534c54ba87fcd25ab84757c260d5e86b09dea070",
+            "dataset": "openstreetmap",
+            "endpoint": "osm-extract",
+            "acquired": "20261126T161713Z-45852008906",
+            "stage": "extract",
+            "pass": "20261126T161713Z-45852008906"
+          }
+        ]
+      },
+      {
+        "way": 308994525,
+        "relations": [
+          19391683,
+          19402820,
+          20180085,
+          20349887,
+          20600657,
+          20609084,
+          20609085,
+          20709379
+        ],
+        "status": "unknown",
+        "drawable": true,
+        "snapshot": null,
+        "version": null,
+        "expected": 11,
+        "missing": [],
+        "reasons": [
+          "unverified_source"
+        ],
+        "missingCount": 0,
+        "sources": [
+          {
+            "observation": "e59d49d3c3ac774795e8296a2f8e1ac1e69ab4d2f193c324ec5379eb8f67a721",
+            "dataset": "openstreetmap",
+            "endpoint": "osm-extract",
+            "acquired": "20261126T161713Z-45852008906",
+            "stage": "extract",
+            "pass": "20261126T161713Z-45852008906"
+          }
+        ]
+      },
+      {
+        "way": 308994526,
+        "relations": [
+          20188868,
+          20609083
+        ],
+        "status": "unknown",
+        "drawable": true,
+        "snapshot": null,
+        "version": null,
+        "expected": 4,
+        "missing": [],
+        "reasons": [
+          "unverified_source"
+        ],
+        "missingCount": 0,
+        "sources": [
+          {
+            "observation": "6b51eb8428cf907b0ec84583104b119e03572afe24508a4f92b4bd3682d96777",
+            "dataset": "openstreetmap",
+            "endpoint": "osm-extract",
+            "acquired": "20261126T161713Z-45852008906",
+            "stage": "extract",
+            "pass": "20261126T161713Z-45852008906"
+          }
+        ]
+      },
+      {
+        "way": 308994638,
+        "relations": [
+          20188867,
+          20188868,
+          20609083,
+          20609084
+        ],
+        "status": "unknown",
+        "drawable": true,
+        "snapshot": null,
+        "version": null,
+        "expected": 61,
+        "missing": [],
+        "reasons": [
+          "unverified_source"
+        ],
+        "missingCount": 0,
+        "sources": [
+          {
+            "observation": "df0d4b707c5aded7dbf269b719314c7d2201d8123353ca25f027048c05e4230e",
+            "dataset": "openstreetmap",
+            "endpoint": "osm-extract",
+            "acquired": "20261126T161713Z-45852008906",
+            "stage": "extract",
+            "pass": "20261126T161713Z-45852008906"
+          }
+        ]
+      },
+      {
+        "way": 333651442,
+        "relations": [
+          2933166
+        ],
+        "status": "unknown",
+        "drawable": true,
+        "snapshot": null,
+        "version": null,
+        "expected": 33,
+        "missing": [],
+        "reasons": [
+          "unverified_source"
+        ],
+        "missingCount": 0,
+        "sources": [
+          {
+            "observation": "92ed17b4f2ab7aee41bbcea8cfe6a7bb156ea82401c9b4871aa39cb76c6db96e",
+            "dataset": "openstreetmap",
+            "endpoint": "osm-extract",
+            "acquired": "20261126T161713Z-45852008906",
+            "stage": "extract",
+            "pass": "20261126T161713Z-45852008906"
+          }
+        ]
+      },
+      {
+        "way": 390557463,
+        "relations": [
+          5846087,
+          5892809
+        ],
+        "status": "unknown",
+        "drawable": true,
+        "snapshot": null,
+        "version": null,
+        "expected": 75,
+        "missing": [],
+        "reasons": [
+          "unverified_source"
+        ],
+        "missingCount": 0,
+        "sources": [
+          {
+            "observation": "76a4adb5b2036fdef8aa4be1687e0282123ee52aeafac135d7668714680a0d0b",
+            "dataset": "openstreetmap",
+            "endpoint": "osm-extract",
+            "acquired": "20261126T161713Z-45852008906",
+            "stage": "extract",
+            "pass": "20261126T161713Z-45852008906"
+          }
+        ]
+      },
+      {
+        "way": 391360138,
+        "relations": [
+          5861625,
+          5863287,
+          6386783,
+          6386785,
+          6400449
+        ],
+        "status": "unknown",
+        "drawable": true,
+        "snapshot": null,
+        "version": null,
+        "expected": 3,
+        "missing": [],
+        "reasons": [
+          "unverified_source"
+        ],
+        "missingCount": 0,
+        "sources": [
+          {
+            "observation": "361cfb620c28732510206b327d8cc3b52e8cb6b7c696c61fc3cfedf66dd06017",
+            "dataset": "openstreetmap",
+            "endpoint": "osm-extract",
+            "acquired": "20261126T161713Z-45852008906",
+            "stage": "extract",
+            "pass": "20261126T161713Z-45852008906"
+          }
+        ]
+      },
+      {
+        "way": 391360139,
+        "relations": [
+          5861626,
+          6386784,
+          6386786,
+          6430224
+        ],
+        "status": "unknown",
+        "drawable": true,
+        "snapshot": null,
+        "version": null,
+        "expected": 3,
+        "missing": [],
+        "reasons": [
+          "unverified_source"
+        ],
+        "missingCount": 0,
+        "sources": [
+          {
+            "observation": "2a69188f5dc6d3930c0f9c44ca4cab321418bf4e0ceee1eb4479fc9dca7e49b9",
+            "dataset": "openstreetmap",
+            "endpoint": "osm-extract",
+            "acquired": "20261126T161713Z-45852008906",
+            "stage": "extract",
+            "pass": "20261126T161713Z-45852008906"
+          }
+        ]
+      },
+      {
+        "way": 392940601,
+        "relations": [
+          5892806
+        ],
+        "status": "unknown",
+        "drawable": true,
+        "snapshot": null,
+        "version": null,
+        "expected": 27,
+        "missing": [],
+        "reasons": [
+          "unverified_source"
+        ],
+        "missingCount": 0,
+        "sources": [
+          {
+            "observation": "366fac224b7dd7e68c953b21b069c90be165cdcc852f769f589a3a10cd6fb15c",
+            "dataset": "openstreetmap",
+            "endpoint": "osm-extract",
+            "acquired": "20261126T161713Z-45852008906",
+            "stage": "extract",
+            "pass": "20261126T161713Z-45852008906"
+          }
+        ]
+      },
+      {
+        "way": 392940602,
+        "relations": [
+          5892807
+        ],
+        "status": "unknown",
+        "drawable": true,
+        "snapshot": null,
+        "version": null,
+        "expected": 28,
+        "missing": [],
+        "reasons": [
+          "unverified_source"
+        ],
+        "missingCount": 0,
+        "sources": [
+          {
+            "observation": "9cf1a314f4b273b155a5cbab03368c0dc5df3cecf27373412c8c1e8db698d8f5",
+            "dataset": "openstreetmap",
+            "endpoint": "osm-extract",
+            "acquired": "20261126T161713Z-45852008906",
+            "stage": "extract",
+            "pass": "20261126T161713Z-45852008906"
+          }
+        ]
+      },
+      {
+        "way": 393558707,
+        "relations": [
+          6739156
+        ],
+        "status": "unknown",
+        "drawable": true,
+        "snapshot": null,
+        "version": null,
+        "expected": 21,
+        "missing": [],
+        "reasons": [
+          "unverified_source"
+        ],
+        "missingCount": 0,
+        "sources": [
+          {
+            "observation": "57bbd00b9132ce6909a99ac7ebdbbd4440a5c1fd503b0741e22d00b44e8b11e8",
+            "dataset": "openstreetmap",
+            "endpoint": "osm-extract",
+            "acquired": "20261126T161713Z-45852008906",
+            "stage": "extract",
+            "pass": "20261126T161713Z-45852008906"
+          }
+        ]
+      },
+      {
+        "way": 400184204,
+        "relations": [
+          6386775
+        ],
+        "status": "unknown",
+        "drawable": true,
+        "snapshot": null,
+        "version": null,
+        "expected": 96,
+        "missing": [],
+        "reasons": [
+          "unverified_source"
+        ],
+        "missingCount": 0,
+        "sources": [
+          {
+            "observation": "c045cead104c03862fe3706ceeb1f181b4db1c370d84256f297b1abc7d5c7560",
+            "dataset": "openstreetmap",
+            "endpoint": "osm-extract",
+            "acquired": "20261126T161713Z-45852008906",
+            "stage": "extract",
+            "pass": "20261126T161713Z-45852008906"
+          }
+        ]
+      },
+      {
+        "way": 412913531,
+        "relations": [
+          6462639,
+          6663104
+        ],
+        "status": "unknown",
+        "drawable": true,
+        "snapshot": null,
+        "version": null,
+        "expected": 55,
+        "missing": [],
+        "reasons": [
+          "unverified_source"
+        ],
+        "missingCount": 0,
+        "sources": [
+          {
+            "observation": "bba13f40a9661d6c351b1f2910ef86d28a75c575a120543f32959712ed391ba9",
+            "dataset": "openstreetmap",
+            "endpoint": "osm-extract",
+            "acquired": "20261126T161713Z-45852008906",
+            "stage": "extract",
+            "pass": "20261126T161713Z-45852008906"
+          }
+        ]
+      },
+      {
+        "way": 424478458,
+        "relations": [
+          5861625,
+          6386783,
+          6386785,
+          6400449
+        ],
+        "status": "unknown",
+        "drawable": true,
+        "snapshot": null,
+        "version": null,
+        "expected": 17,
+        "missing": [],
+        "reasons": [
+          "unverified_source"
+        ],
+        "missingCount": 0,
+        "sources": [
+          {
+            "observation": "2c905734c7dd86ec63fbaef2c83b0f13e52894610fd2c4e7ed899715a9388c91",
+            "dataset": "openstreetmap",
+            "endpoint": "osm-extract",
+            "acquired": "20261126T161713Z-45852008906",
+            "stage": "extract",
+            "pass": "20261126T161713Z-45852008906"
+          }
+        ]
+      },
+      {
+        "way": 447129070,
+        "relations": [
+          6462638,
+          6663102
+        ],
+        "status": "unknown",
+        "drawable": true,
+        "snapshot": null,
+        "version": null,
+        "expected": 48,
+        "missing": [],
+        "reasons": [
+          "unverified_source"
+        ],
+        "missingCount": 0,
+        "sources": [
+          {
+            "observation": "e6c399ad552ee457fd6a4afad7bc65c0228682a6d0dfd21308577455e6da510b",
+            "dataset": "openstreetmap",
+            "endpoint": "osm-extract",
+            "acquired": "20261126T161713Z-45852008906",
+            "stage": "extract",
+            "pass": "20261126T161713Z-45852008906"
+          }
+        ]
+      },
+      {
+        "way": 455680177,
+        "relations": [
+          6739155
+        ],
+        "status": "unknown",
+        "drawable": true,
+        "snapshot": null,
+        "version": null,
+        "expected": 22,
+        "missing": [],
+        "reasons": [
+          "unverified_source"
+        ],
+        "missingCount": 0,
+        "sources": [
+          {
+            "observation": "f02a51a3cb7b407fb003df4f655c1af38df2671c94d76da0da66520908f35928",
+            "dataset": "openstreetmap",
+            "endpoint": "osm-extract",
+            "acquired": "20261126T161713Z-45852008906",
+            "stage": "extract",
+            "pass": "20261126T161713Z-45852008906"
+          }
+        ]
+      },
+      {
+        "way": 455680178,
+        "relations": [
+          6739126,
+          6739156,
+          15841116
+        ],
+        "status": "unknown",
+        "drawable": true,
+        "snapshot": null,
+        "version": null,
+        "expected": 25,
+        "missing": [],
+        "reasons": [
+          "unverified_source"
+        ],
+        "missingCount": 0,
+        "sources": [
+          {
+            "observation": "0c13d72e08d63c1f2541a5989bceb5ca784475636aa35dfb3832c03a295f0fd7",
+            "dataset": "openstreetmap",
+            "endpoint": "osm-extract",
+            "acquired": "20261126T161713Z-45852008906",
+            "stage": "extract",
+            "pass": "20261126T161713Z-45852008906"
+          }
+        ]
+      },
+      {
+        "way": 694838059,
+        "relations": [
+          4510189,
+          7945216
+        ],
+        "status": "unknown",
+        "drawable": true,
+        "snapshot": null,
+        "version": null,
+        "expected": 3,
+        "missing": [],
+        "reasons": [
+          "unverified_source"
+        ],
+        "missingCount": 0,
+        "sources": [
+          {
+            "observation": "e357e1dfac4ea960e5783539c9017b0e2d5f962aa493993705f8b239947dc38d",
+            "dataset": "openstreetmap",
+            "endpoint": "osm-extract",
+            "acquired": "20261126T161713Z-45852008906",
+            "stage": "extract",
+            "pass": "20261126T161713Z-45852008906"
+          }
+        ]
+      },
+      {
+        "way": 989048746,
+        "relations": [
+          19391683,
+          19402820,
+          20180085,
+          20349887,
+          20600657,
+          20709379
+        ],
+        "status": "unknown",
+        "drawable": true,
+        "snapshot": null,
+        "version": null,
+        "expected": 45,
+        "missing": [],
+        "reasons": [
+          "unverified_source"
+        ],
+        "missingCount": 0,
+        "sources": [
+          {
+            "observation": "d99d59e2d417eb07374819c265737f96a54b5290c2eb6c1e7e1f653b1bd37e86",
+            "dataset": "openstreetmap",
+            "endpoint": "osm-extract",
+            "acquired": "20261126T161713Z-45852008906",
+            "stage": "extract",
+            "pass": "20261126T161713Z-45852008906"
+          }
+        ]
+      },
+      {
+        "way": 1080183150,
+        "relations": [
+          2167565,
+          9709947,
+          9796596,
+          9806975
+        ],
+        "status": "unknown",
+        "drawable": true,
+        "snapshot": null,
+        "version": null,
+        "expected": 18,
+        "missing": [],
+        "reasons": [
+          "unverified_source"
+        ],
+        "missingCount": 0,
+        "sources": [
+          {
+            "observation": "c6f8953e5320e447cad00580c04cefa976c67c48e74d5329a99fa45ccc1551ba",
+            "dataset": "openstreetmap",
+            "endpoint": "osm-extract",
+            "acquired": "20261126T161713Z-45852008906",
+            "stage": "extract",
+            "pass": "20261126T161713Z-45852008906"
+          }
+        ]
+      },
+      {
+        "way": 1096192749,
+        "relations": [
+          19391683,
+          19402820,
+          20180085,
+          20349887,
+          20600657,
+          20709379
+        ],
+        "status": "unknown",
+        "drawable": true,
+        "snapshot": null,
+        "version": null,
+        "expected": 8,
+        "missing": [],
+        "reasons": [
+          "unverified_source"
+        ],
+        "missingCount": 0,
+        "sources": [
+          {
+            "observation": "98668bbc48ee75c09ec68488c67a2d391323ef12f2a395869e7c1d20bc9d2068",
+            "dataset": "openstreetmap",
+            "endpoint": "osm-extract",
+            "acquired": "20261126T161713Z-45852008906",
+            "stage": "extract",
+            "pass": "20261126T161713Z-45852008906"
+          }
+        ]
+      },
+      {
+        "way": 1096192750,
+        "relations": [
+          20188867,
+          20188868,
+          20609083,
+          20609084
+        ],
+        "status": "unknown",
+        "drawable": true,
+        "snapshot": null,
+        "version": null,
+        "expected": 7,
+        "missing": [],
+        "reasons": [
+          "unverified_source"
+        ],
+        "missingCount": 0,
+        "sources": [
+          {
+            "observation": "14822c7bc3cc41f0b526153d48b9a5f10438517c510a2097c762133e5a8c9b78",
+            "dataset": "openstreetmap",
+            "endpoint": "osm-extract",
+            "acquired": "20261126T161713Z-45852008906",
+            "stage": "extract",
+            "pass": "20261126T161713Z-45852008906"
+          }
+        ]
+      },
+      {
+        "way": 1096192751,
+        "relations": [
+          19402819,
+          20170820,
+          20180086,
+          20609085,
+          20709380
+        ],
+        "status": "unknown",
+        "drawable": true,
+        "snapshot": null,
+        "version": null,
+        "expected": 6,
+        "missing": [],
+        "reasons": [
+          "unverified_source"
+        ],
+        "missingCount": 0,
+        "sources": [
+          {
+            "observation": "f620970f51f4901475e0c4a85e3ad1b96cad3adc70acbbfb80b516b4f06a27a7",
+            "dataset": "openstreetmap",
+            "endpoint": "osm-extract",
+            "acquired": "20261126T161713Z-45852008906",
+            "stage": "extract",
+            "pass": "20261126T161713Z-45852008906"
+          }
+        ]
+      },
+      {
+        "way": 1096192752,
+        "relations": [
+          19402819,
+          20170820,
+          20180086,
+          20609085,
+          20709380
+        ],
+        "status": "unknown",
+        "drawable": true,
+        "snapshot": null,
+        "version": null,
+        "expected": 3,
+        "missing": [],
+        "reasons": [
+          "unverified_source"
+        ],
+        "missingCount": 0,
+        "sources": [
+          {
+            "observation": "2fae0b3c3552d90be0f2e19ee69e4112990a33a3626697d05a5fdf645ee4cd65",
+            "dataset": "openstreetmap",
+            "endpoint": "osm-extract",
+            "acquired": "20261126T161713Z-45852008906",
+            "stage": "extract",
+            "pass": "20261126T161713Z-45852008906"
+          }
+        ]
+      },
+      {
+        "way": 1096192753,
+        "relations": [
+          20188867,
+          20188868,
+          20609083,
+          20609084
+        ],
+        "status": "unknown",
+        "drawable": true,
+        "snapshot": null,
+        "version": null,
+        "expected": 3,
+        "missing": [],
+        "reasons": [
+          "unverified_source"
+        ],
+        "missingCount": 0,
+        "sources": [
+          {
+            "observation": "200aacbf285f7744e6fd84d5606d21e25691aa05d83e01030979a721b4adac31",
+            "dataset": "openstreetmap",
+            "endpoint": "osm-extract",
+            "acquired": "20261126T161713Z-45852008906",
+            "stage": "extract",
+            "pass": "20261126T161713Z-45852008906"
+          }
+        ]
+      },
+      {
+        "way": 1096192754,
+        "relations": [
+          19391683,
+          19402820,
+          20180085,
+          20349887,
+          20600657,
+          20709379
+        ],
+        "status": "unknown",
+        "drawable": true,
+        "snapshot": null,
+        "version": null,
+        "expected": 3,
+        "missing": [],
+        "reasons": [
+          "unverified_source"
+        ],
+        "missingCount": 0,
+        "sources": [
+          {
+            "observation": "36df53be5b20dbda5af13561d661ebd6ea0f4dc3430f1d7cce146e3cef5fb642",
+            "dataset": "openstreetmap",
+            "endpoint": "osm-extract",
+            "acquired": "20261126T161713Z-45852008906",
+            "stage": "extract",
+            "pass": "20261126T161713Z-45852008906"
+          }
+        ]
+      },
+      {
+        "way": 1096192755,
+        "relations": [
+          19391683,
+          19402820,
+          20180085,
+          20349887,
+          20600657,
+          20709379
+        ],
+        "status": "unknown",
+        "drawable": true,
+        "snapshot": null,
+        "version": null,
+        "expected": 3,
+        "missing": [],
+        "reasons": [
+          "unverified_source"
+        ],
+        "missingCount": 0,
+        "sources": [
+          {
+            "observation": "dc60961906e303ee1d2e894550d5ecad16cd7051a9f45f905d6a10b6339df60f",
+            "dataset": "openstreetmap",
+            "endpoint": "osm-extract",
+            "acquired": "20261126T161713Z-45852008906",
+            "stage": "extract",
+            "pass": "20261126T161713Z-45852008906"
+          }
+        ]
+      },
+      {
+        "way": 1096192756,
+        "relations": [
+          20188867,
+          20188868,
+          20609083,
+          20609084
+        ],
+        "status": "unknown",
+        "drawable": true,
+        "snapshot": null,
+        "version": null,
+        "expected": 11,
+        "missing": [],
+        "reasons": [
+          "unverified_source"
+        ],
+        "missingCount": 0,
+        "sources": [
+          {
+            "observation": "8c92973951ca53780a327aa4f7c883cb6b674751a72edcc550930b5bbb6113b6",
+            "dataset": "openstreetmap",
+            "endpoint": "osm-extract",
+            "acquired": "20261126T161713Z-45852008906",
+            "stage": "extract",
+            "pass": "20261126T161713Z-45852008906"
+          }
+        ]
+      },
+      {
+        "way": 1096192757,
+        "relations": [
+          19402819,
+          20170820,
+          20180086,
+          20609085,
+          20709380
+        ],
+        "status": "unknown",
+        "drawable": true,
+        "snapshot": null,
+        "version": null,
+        "expected": 12,
+        "missing": [],
+        "reasons": [
+          "unverified_source"
+        ],
+        "missingCount": 0,
+        "sources": [
+          {
+            "observation": "ae74a449c97b9f4a2c6dd142b625a437a795d8ed07abb3e58862c31ad2983312",
+            "dataset": "openstreetmap",
+            "endpoint": "osm-extract",
+            "acquired": "20261126T161713Z-45852008906",
+            "stage": "extract",
+            "pass": "20261126T161713Z-45852008906"
+          }
+        ]
+      },
+      {
+        "way": 1125532210,
+        "relations": [
+          19391683,
+          19402820,
+          20180085,
+          20349887,
+          20600657,
+          20709379
+        ],
+        "status": "unknown",
+        "drawable": true,
+        "snapshot": null,
+        "version": null,
+        "expected": 14,
+        "missing": [],
+        "reasons": [
+          "unverified_source"
+        ],
+        "missingCount": 0,
+        "sources": [
+          {
+            "observation": "7253de6f48f2f70f74cac63f243782036e7edc54b3c9a0ad39b6a8069dbd99db",
+            "dataset": "openstreetmap",
+            "endpoint": "osm-extract",
+            "acquired": "20261126T161713Z-45852008906",
+            "stage": "extract",
+            "pass": "20261126T161713Z-45852008906"
+          }
+        ]
+      },
+      {
+        "way": 1125532211,
+        "relations": [
+          19391683,
+          19402820,
+          20180085,
+          20349887,
+          20600657,
+          20709379
+        ],
+        "status": "unknown",
+        "drawable": true,
+        "snapshot": null,
+        "version": null,
+        "expected": 11,
+        "missing": [],
+        "reasons": [
+          "unverified_source"
+        ],
+        "missingCount": 0,
+        "sources": [
+          {
+            "observation": "45b4f8be6c88a2a0e781a6b3d411ae46ca0988723d4d4fdb2534bdce380e7ca2",
+            "dataset": "openstreetmap",
+            "endpoint": "osm-extract",
+            "acquired": "20261126T161713Z-45852008906",
+            "stage": "extract",
+            "pass": "20261126T161713Z-45852008906"
+          }
+        ]
+      },
+      {
+        "way": 1125532212,
+        "relations": [
+          20188867,
+          20188868,
+          20609083,
+          20609084
+        ],
+        "status": "unknown",
+        "drawable": true,
+        "snapshot": null,
+        "version": null,
+        "expected": 13,
+        "missing": [],
+        "reasons": [
+          "unverified_source"
+        ],
+        "missingCount": 0,
+        "sources": [
+          {
+            "observation": "b1abca60ede333b2d5a310d14046ae7cb8625d9b140ff8e8cc08554fe564e5cb",
+            "dataset": "openstreetmap",
+            "endpoint": "osm-extract",
+            "acquired": "20261126T161713Z-45852008906",
+            "stage": "extract",
+            "pass": "20261126T161713Z-45852008906"
+          }
+        ]
+      },
+      {
+        "way": 1125532213,
+        "relations": [
+          20188867,
+          20188868,
+          20609083,
+          20609084
+        ],
+        "status": "unknown",
+        "drawable": true,
+        "snapshot": null,
+        "version": null,
+        "expected": 10,
+        "missing": [],
+        "reasons": [
+          "unverified_source"
+        ],
+        "missingCount": 0,
+        "sources": [
+          {
+            "observation": "2bbbfcfa8405f73950e7d1aa3f5c162dcf71c05c6bb8e44cfb0534c12248bbaf",
+            "dataset": "openstreetmap",
+            "endpoint": "osm-extract",
+            "acquired": "20261126T161713Z-45852008906",
+            "stage": "extract",
+            "pass": "20261126T161713Z-45852008906"
+          }
+        ]
+      },
+      {
+        "way": 1125532214,
+        "relations": [
+          19402819,
+          20170820,
+          20180086,
+          20609085,
+          20709380
+        ],
+        "status": "unknown",
+        "drawable": true,
+        "snapshot": null,
+        "version": null,
+        "expected": 13,
+        "missing": [],
+        "reasons": [
+          "unverified_source"
+        ],
+        "missingCount": 0,
+        "sources": [
+          {
+            "observation": "f0125b568c20569334a97c703fb4c15e6ea8375f66de98aaac07b0761bfa8147",
+            "dataset": "openstreetmap",
+            "endpoint": "osm-extract",
+            "acquired": "20261126T161713Z-45852008906",
+            "stage": "extract",
+            "pass": "20261126T161713Z-45852008906"
+          }
+        ]
+      },
+      {
+        "way": 1125532215,
+        "relations": [
+          19402819,
+          20170820,
+          20180086,
+          20609085,
+          20709380
+        ],
+        "status": "unknown",
+        "drawable": true,
+        "snapshot": null,
+        "version": null,
+        "expected": 12,
+        "missing": [],
+        "reasons": [
+          "unverified_source"
+        ],
+        "missingCount": 0,
+        "sources": [
+          {
+            "observation": "5a03a553cbccad8d5dc4fe1a9d57bf4256789f8eacde8a80433d61203f8da8c0",
+            "dataset": "openstreetmap",
+            "endpoint": "osm-extract",
+            "acquired": "20261126T161713Z-45852008906",
+            "stage": "extract",
+            "pass": "20261126T161713Z-45852008906"
+          }
+        ]
+      },
+      {
+        "way": 1146037835,
+        "relations": [
+          19566688
+        ],
+        "status": "unknown",
+        "drawable": true,
+        "snapshot": null,
+        "version": null,
+        "expected": 33,
+        "missing": [],
+        "reasons": [
+          "unverified_source"
+        ],
+        "missingCount": 0,
+        "sources": [
+          {
+            "observation": "b3dbef24efa1efdca2b3d0ac45db2e9ab02b6a5f27fb9d308563d167658eeb7d",
+            "dataset": "openstreetmap",
+            "endpoint": "osm-extract",
+            "acquired": "20261126T161713Z-45852008906",
+            "stage": "extract",
+            "pass": "20261126T161713Z-45852008906"
+          }
+        ]
+      },
+      {
+        "way": 1216665479,
+        "relations": [
+          19391683,
+          19402820,
+          20180085,
+          20349887,
+          20600657,
+          20709379
+        ],
+        "status": "unknown",
+        "drawable": true,
+        "snapshot": null,
+        "version": null,
+        "expected": 6,
+        "missing": [],
+        "reasons": [
+          "unverified_source"
+        ],
+        "missingCount": 0,
+        "sources": [
+          {
+            "observation": "765e9f334327f44722fe4b79d2441f36a407f65d8ad58de90d4a96e9ae8fecd2",
+            "dataset": "openstreetmap",
+            "endpoint": "osm-extract",
+            "acquired": "20261126T161713Z-45852008906",
+            "stage": "extract",
+            "pass": "20261126T161713Z-45852008906"
+          }
+        ]
+      },
+      {
+        "way": 1216665480,
+        "relations": [
+          20188867,
+          20188868,
+          20609083,
+          20609084
+        ],
+        "status": "unknown",
+        "drawable": true,
+        "snapshot": null,
+        "version": null,
+        "expected": 5,
+        "missing": [],
+        "reasons": [
+          "unverified_source"
+        ],
+        "missingCount": 0,
+        "sources": [
+          {
+            "observation": "0b20a34447226a48026e6759de8fef5eb00f2f71a54da5246a61f097dfd83186",
+            "dataset": "openstreetmap",
+            "endpoint": "osm-extract",
+            "acquired": "20261126T161713Z-45852008906",
+            "stage": "extract",
+            "pass": "20261126T161713Z-45852008906"
+          }
+        ]
+      },
+      {
+        "way": 1216665481,
+        "relations": [
+          19402819,
+          20170820,
+          20180086,
+          20609085,
+          20709380
+        ],
+        "status": "unknown",
+        "drawable": true,
+        "snapshot": null,
+        "version": null,
+        "expected": 5,
+        "missing": [],
+        "reasons": [
+          "unverified_source"
+        ],
+        "missingCount": 0,
+        "sources": [
+          {
+            "observation": "772b3481aa84d0ee8b946080a2d1c3ee51ac08a1e8b5d43db4189e5cbb886618",
+            "dataset": "openstreetmap",
+            "endpoint": "osm-extract",
+            "acquired": "20261126T161713Z-45852008906",
+            "stage": "extract",
+            "pass": "20261126T161713Z-45852008906"
+          }
+        ]
+      },
+      {
+        "way": 1216665485,
+        "relations": [
+          19402819,
+          20170820,
+          20180086,
+          20609085,
+          20709380
+        ],
+        "status": "unknown",
+        "drawable": true,
+        "snapshot": null,
+        "version": null,
+        "expected": 2,
+        "missing": [],
+        "reasons": [
+          "unverified_source"
+        ],
+        "missingCount": 0,
+        "sources": [
+          {
+            "observation": "cdb9caa2f946f9433b4b7a6244b06b544574ebe48004739718b5aa6158b6f0ab",
+            "dataset": "openstreetmap",
+            "endpoint": "osm-extract",
+            "acquired": "20261126T161713Z-45852008906",
+            "stage": "extract",
+            "pass": "20261126T161713Z-45852008906"
+          }
+        ]
+      },
+      {
+        "way": 1216665486,
+        "relations": [
+          20188867,
+          20188868,
+          20609083,
+          20609084
+        ],
+        "status": "unknown",
+        "drawable": true,
+        "snapshot": null,
+        "version": null,
+        "expected": 2,
+        "missing": [],
+        "reasons": [
+          "unverified_source"
+        ],
+        "missingCount": 0,
+        "sources": [
+          {
+            "observation": "924bd798a05b1795c52a40bac44f99c44121982210975634d6a04bf02b43328c",
+            "dataset": "openstreetmap",
+            "endpoint": "osm-extract",
+            "acquired": "20261126T161713Z-45852008906",
+            "stage": "extract",
+            "pass": "20261126T161713Z-45852008906"
+          }
+        ]
+      },
+      {
+        "way": 1216665487,
+        "relations": [
+          19391683,
+          19402820,
+          20180085,
+          20349887,
+          20600657,
+          20709379
+        ],
+        "status": "unknown",
+        "drawable": true,
+        "snapshot": null,
+        "version": null,
+        "expected": 2,
+        "missing": [],
+        "reasons": [
+          "unverified_source"
+        ],
+        "missingCount": 0,
+        "sources": [
+          {
+            "observation": "129a5f200fec8ad417e05c2c390fb169ee25822d1e3a901b37b5a3fd86553159",
+            "dataset": "openstreetmap",
+            "endpoint": "osm-extract",
+            "acquired": "20261126T161713Z-45852008906",
+            "stage": "extract",
+            "pass": "20261126T161713Z-45852008906"
+          }
+        ]
+      },
+      {
+        "way": 1216665488,
+        "relations": [
+          19391683,
+          19402820,
+          20180085,
+          20349887,
+          20600657,
+          20709379
+        ],
+        "status": "unknown",
+        "drawable": true,
+        "snapshot": null,
+        "version": null,
+        "expected": 8,
+        "missing": [],
+        "reasons": [
+          "unverified_source"
+        ],
+        "missingCount": 0,
+        "sources": [
+          {
+            "observation": "664eb54bfa805b6ee9409fccddbca42975f52e199a9651a00f2de84bd53821f5",
+            "dataset": "openstreetmap",
+            "endpoint": "osm-extract",
+            "acquired": "20261126T161713Z-45852008906",
+            "stage": "extract",
+            "pass": "20261126T161713Z-45852008906"
+          }
+        ]
+      }
+    ],
+    "relations": {
+      "schema": 1,
+      "relationsWithConflicts": [],
+      "relationsWithUnknownProvenance": [
+        420605,
+        964748,
+        2167463,
+        2167565,
+        3165393,
+        3165566,
+        3165664,
+        3739886,
+        3842635,
+        4510189,
+        5861625,
+        5861626,
+        5904523,
+        5904524,
+        5968593,
+        6087652,
+        6386783,
+        6386784,
+        6386785,
+        6386786,
+        6400449,
+        6400450,
+        6430224,
+        6440108,
+        7945216,
+        8406989,
+        8408241,
+        8631621,
+        9391002,
+        9391003,
+        9470134,
+        9678583,
+        9684394,
+        9697191,
+        9698736,
+        9698880,
+        9709947,
+        9724268,
+        9724269,
+        9724605,
+        9736832,
+        9736834,
+        9775429,
+        9775430,
+        9796596,
+        9800345,
+        9800346,
+        9800347,
+        9802352,
+        9802353,
+        9806974,
+        9806975,
+        10411681,
+        10411682,
+        14024886,
+        17051046,
+        17051047,
+        19380517,
+        19380519,
+        19380520,
+        19380523,
+        19380524,
+        19380525,
+        19391683,
+        19402819,
+        19402820,
+        19566688,
+        20170820,
+        20180085,
+        20180086,
+        20188867,
+        20188868,
+        20349887,
+        20600657,
+        20609083,
+        20609084,
+        20609085,
+        20709379,
+        20709380
+      ],
+      "relationsWithUnresolvedMembers": [
+        11004,
+        22320,
+        23294,
+        50623,
+        66639,
+        83279,
+        84470,
+        85355,
+        86510,
+        105884,
+        110418,
+        178083,
+        178795,
+        207814,
+        241601,
+        241602,
+        271401,
+        278591,
+        289331,
+        294915,
+        300003,
+        331250,
+        331251,
+        331252,
+        331253,
+        331254,
+        331279,
+        331281,
+        331282,
+        331283,
+        331284,
+        331285,
+        358087,
+        358088,
+        371336,
+        371337,
+        377470,
+        383717,
+        385215,
+        385217,
+        387738,
+        399971,
+        443140,
+        443307,
+        572526,
+        917552,
+        939199,
+        952470,
+        953269,
+        953278,
+        953303,
+        953317,
+        962919,
+        1112285,
+        1112307,
+        1112313,
+        1112508,
+        1112509,
+        1133381,
+        1133383,
+        1133422,
+        1171503,
+        1221336,
+        1221337,
+        1271500,
+        1275400,
+        1278220,
+        1279256,
+        1279393,
+        1282338,
+        1282341,
+        1354958,
+        1390151,
+        1405182,
+        1405558,
+        1452689,
+        1525348,
+        1525349,
+        1535561,
+        1535562,
+        1536164,
+        1536165,
+        1570939,
+        1570940,
+        1621839,
+        1622359,
+        1622360,
+        1674700,
+        1674754,
+        1722440,
+        1722441,
+        1761541,
+        1766484,
+        1766485,
+        1769489,
+        1769490,
+        1783279,
+        1809688,
+        1838775,
+        1838955,
+        1838956,
+        1849754,
+        1860361,
+        1940503,
+        1955836,
+        1955837,
+        1955937,
+        1955989,
+        1956961,
+        1956963,
+        1956975,
+        1956976,
+        1957029,
+        1957030,
+        1964714,
+        1964715,
+        2044513,
+        2064636,
+        2077160,
+        2077161,
+        2077162,
+        2077163,
+        2077646,
+        2077647,
+        2077981,
+        2077982,
+        2078078,
+        2078079,
+        2080356,
+        2080358,
+        2084109,
+        2084110,
+        2084473,
+        2084474,
+        2084497,
+        2084498,
+        2124054,
+        2125143,
+        2125292,
+        2125311,
+        2125368,
+        2127397,
+        2152511,
+        2168775,
+        2168776,
+        2168849,
+        2168850,
+        2170197,
+        2170198,
+        2171615,
+        2176340,
+        2176341,
+        2198036,
+        2202118,
+        2202704,
+        2203209,
+        2205365,
+        2206780,
+        2208754,
+        2210741,
+        2211465,
+        2216344,
+        2224312,
+        2230605,
+        2256413,
+        2305003,
+        2343466,
+        2345032,
+        2345102,
+        2345103,
+        2345104,
+        2424199,
+        2431321,
+        2453918,
+        2453919,
+        2468633,
+        2468634,
+        2548727,
+        2561856,
+        2561857,
+        2561859,
+        2561860,
+        2575578,
+        2575601,
+        2575608,
+        2575679,
+        2575704,
+        2576323,
+        2581270,
+        2581271,
+        2606967,
+        2653189,
+        2653190,
+        2653193,
+        2653194,
+        2653205,
+        2653206,
+        2703073,
+        2706181,
+        2753056,
+        2753085,
+        2753154,
+        2753158,
+        2800693,
+        2804168,
+        2860815,
+        2860816,
+        2897488,
+        2901596,
+        2901597,
+        2954026,
+        3118284,
+        3201249,
+        3218722,
+        3218723,
+        3221747,
+        3287304,
+        3304344,
+        3309806,
+        3309807,
+        3350642,
+        3407929,
+        3409484,
+        3517270,
+        3555581,
+        3555582,
+        3571839,
+        3774038,
+        3774039,
+        3788350,
+        3939084,
+        3969571,
+        3984434,
+        4096010,
+        4108298,
+        4110002,
+        4139149,
+        4153861,
+        4153862,
+        4621819,
+        4631288,
+        4631289,
+        4633529,
+        4657180,
+        4665783,
+        4665784,
+        4665785,
+        4665786,
+        4749874,
+        4763597,
+        4786115,
+        5189455,
+        5189456,
+        5189500,
+        5189501,
+        5189572,
+        5409699,
+        5424493,
+        5424495,
+        5486023,
+        5587308,
+        5587309,
+        5587310,
+        5587311,
+        5587312,
+        5587340,
+        5617782,
+        5633682,
+        5648273,
+        5648274,
+        5661082,
+        5661083,
+        5692274,
+        5742828,
+        5752351,
+        5755241,
+        5755242,
+        6171130,
+        6171164,
+        6171175,
+        6171193,
+        6171263,
+        6171283,
+        6171284,
+        6172444,
+        6183627,
+        6286479,
+        6286481,
+        6323706,
+        6323707,
+        6336541,
+        6504062,
+        6545466,
+        6582965,
+        6582966,
+        6604729,
+        6616903,
+        6679980,
+        6692571,
+        6692572,
+        6730491,
+        6749430,
+        6787022,
+        6787023,
+        6812078,
+        6812439,
+        6814586,
+        6967089,
+        7006047,
+        7023559,
+        7023560,
+        7130264,
+        7130265,
+        7152119,
+        7409680,
+        7409686,
+        7409703,
+        7409709,
+        7410761,
+        7702519,
+        7702520,
+        7705632,
+        7705668,
+        7728725,
+        7728726,
+        7832324,
+        7833970,
+        7898732,
+        7913721,
+        7968954,
+        7968955,
+        7968956,
+        7968957,
+        8021091,
+        8021102,
+        8021103,
+        8021104,
+        8021105,
+        8032733,
+        8059889,
+        8210886,
+        8210887,
+        8300862,
+        8312413,
+        8312414,
+        8312415,
+        8312416,
+        8312417,
+        8467441,
+        8467446,
+        8467514,
+        8764536,
+        8764537,
+        9082107,
+        9181537,
+        9204860,
+        9206064,
+        9217292,
+        9255286,
+        9283743,
+        9286361,
+        9286362,
+        9357512,
+        9434100,
+        9584649,
+        9584650,
+        9600511,
+        9600551,
+        9631351,
+        9725779,
+        9726752,
+        9726760,
+        9736634,
+        9940825,
+        10003054,
+        10003055,
+        10068521,
+        10103679,
+        10103680,
+        10379599,
+        10379600,
+        10406565,
+        10406566,
+        10537855,
+        10609778,
+        10609779,
+        10609786,
+        10670932,
+        10671054,
+        10671153,
+        10671154,
+        10671155,
+        10672955,
+        10693446,
+        10807449,
+        11294195,
+        11379809,
+        11529447,
+        11529448,
+        11561062,
+        11593003,
+        11604705,
+        11604708,
+        11607962,
+        11607963,
+        11644048,
+        11755131,
+        11917777,
+        11917778,
+        11929616,
+        12222275,
+        12226153,
+        12226278,
+        12229163,
+        12229164,
+        12271401,
+        12316476,
+        12322082,
+        12322083,
+        12695832,
+        12695833,
+        12696013,
+        12696014,
+        12824257,
+        12828618,
+        12893893,
+        12896377,
+        12940681,
+        12940682,
+        13035324,
+        13046189,
+        13046198,
+        13064486,
+        13199266,
+        13199267,
+        13305613,
+        13350006,
+        13350007,
+        13364068,
+        13408068,
+        13490751,
+        13490752,
+        13571814,
+        13879319,
+        13882494,
+        13883770,
+        14001352,
+        14001353,
+        14004562,
+        14004563,
+        14040038,
+        14040039,
+        14040609,
+        14040610,
+        14048876,
+        14103507,
+        14112553,
+        14300249,
+        14300250,
+        14337418,
+        14337419,
+        14337420,
+        14337421,
+        14412290,
+        14412291,
+        14457151,
+        14460895,
+        14614365,
+        14614366,
+        14623682,
+        14864787,
+        14864788,
+        14864789,
+        14864790,
+        14864791,
+        14864792,
+        14978347,
+        14978348,
+        15046200,
+        15046201,
+        15062140,
+        15066305,
+        15066514,
+        15446398,
+        15545705,
+        15589445,
+        15711260,
+        15775740,
+        15816038,
+        15824023,
+        15858526,
+        15874031,
+        15874032,
+        15926646,
+        15926647,
+        15951675,
+        16172603,
+        16244036,
+        16244037,
+        16318123,
+        16318124,
+        16337327,
+        16337536,
+        16337799,
+        16337930,
+        16347690,
+        16358740,
+        16358830,
+        16375141,
+        16375142,
+        16694211,
+        16805930,
+        16828138,
+        16828139,
+        16828422,
+        16997911,
+        16997912,
+        17001642,
+        17075185,
+        17135614,
+        17135615,
+        17168709,
+        17186141,
+        17186142,
+        17186143,
+        17186144,
+        17186145,
+        17186146,
+        17186147,
+        17248967,
+        17259487,
+        17259488,
+        17486839,
+        17504372,
+        17526384,
+        17581553,
+        17649146,
+        17714137,
+        17714146,
+        17739982,
+        17739983,
+        17775265,
+        17787820,
+        17787821,
+        17825690,
+        17852991,
+        17883966,
+        17885132,
+        17986413,
+        17987362,
+        17987364,
+        18052921,
+        18052943,
+        18052944,
+        18054722,
+        18058146,
+        18251231,
+        18251232,
+        18360763,
+        18367296,
+        18420791,
+        18420792,
+        18451721,
+        18451722,
+        18451828,
+        18451829,
+        18451830,
+        18451832,
+        18523160,
+        18523161,
+        18586107,
+        18586108,
+        18586117,
+        18586118,
+        18621862,
+        18622253,
+        18624687,
+        18624725,
+        18649601,
+        18649602,
+        18651301,
+        18651302,
+        18663751,
+        18663752,
+        18788174,
+        18846885,
+        18846886,
+        18846887,
+        18846888,
+        18850076,
+        19053681,
+        19064976,
+        19131817,
+        19161636,
+        19165543,
+        19206257,
+        19233909,
+        19416960,
+        19427410,
+        19427411,
+        19566688,
+        19659733,
+        19807284,
+        19807285,
+        19835432,
+        19905908,
+        19905909,
+        19925415,
+        19937258,
+        19974771,
+        19980660,
+        19983333,
+        20040971,
+        20042681,
+        20085036,
+        20140335,
+        20141427,
+        20141428,
+        20185321,
+        20185322,
+        20273516,
+        20273517,
+        20669138,
+        20669139,
+        20736865,
+        20804494,
+        20804495,
+        21038854,
+        21045624,
+        21104772,
+        21208926,
+        21208991,
+        21234053,
+        21239293,
+        21239294,
+        21454852,
+        21457251,
+        21500077,
+        21609019,
+        21650667,
+        21824713,
+        21824785,
+        21922137,
+        21943687
+      ],
+      "relationsWithUnavailableMemberships": [],
+      "relationsWithPendingEvidence": [],
+      "details": [
+        {
+          "relation": 10003054,
+          "status": "partial",
+          "snapshot": "2026-11-15T21:22:28Z",
+          "version": 1,
+          "complete": true,
+          "reasons": [
+            "unresolved_member_eligibility"
+          ],
+          "unresolved": [
+            722211886
+          ],
+          "unavailableMemberships": [],
+          "unresolvedCount": 1,
+          "unavailableMembershipCount": 0,
+          "sources": [
+            {
+              "observation": "f1961da381db0c3769aa2134c232aefe113f4bedf123da4213ee23b46500390f",
+              "dataset": "openstreetmap",
+              "endpoint": "osm-extract",
+              "acquired": "20261126T161713Z-45852008906",
+              "stage": "extract",
+              "pass": "20261126T161713Z-45852008906"
+            }
+          ]
+        },
+        {
+          "relation": 10003055,
+          "status": "partial",
+          "snapshot": "2026-11-15T21:22:28Z",
+          "version": 1,
+          "complete": true,
+          "reasons": [
+            "unresolved_member_eligibility"
+          ],
+          "unresolved": [
+            722211885
+          ],
+          "unavailableMemberships": [],
+          "unresolvedCount": 1,
+          "unavailableMembershipCount": 0,
+          "sources": [
+            {
+              "observation": "78cb25cab9abfb7575663809dbb32f439a5bdf2599b2a28a1f36a813792053f2",
+              "dataset": "openstreetmap",
+              "endpoint": "osm-extract",
+              "acquired": "20261126T161713Z-45852008906",
+              "stage": "extract",
+              "pass": "20261126T161713Z-45852008906"
+            }
+          ]
+        },
+        {
+          "relation": 10068521,
+          "status": "partial",
+          "snapshot": "2026-11-15T21:22:28Z",
+          "version": 17,
+          "complete": true,
+          "reasons": [
+            "unresolved_member_eligibility"
+          ],
+          "unresolved": [
+            727606094
+          ],
+          "unavailableMemberships": [],
+          "unresolvedCount": 1,
+          "unavailableMembershipCount": 0,
+          "sources": [
+            {
+              "observation": "2361b7d22c494d8f26470c343c5f52fb219fe98ca74a52675401de2ea930c382",
+              "dataset": "openstreetmap",
+              "endpoint": "osm-extract",
+              "acquired": "20261126T161713Z-45852008906",
+              "stage": "extract",
+              "pass": "20261126T161713Z-45852008906"
+            }
+          ]
+        },
+        {
+          "relation": 10103679,
+          "status": "partial",
+          "snapshot": "2026-11-15T21:22:28Z",
+          "version": 44,
+          "complete": true,
+          "reasons": [
+            "unresolved_member_eligibility"
+          ],
+          "unresolved": [
+            380978531,
+            380978540,
+            380978559,
+            381205032
+          ],
+          "unavailableMemberships": [],
+          "unresolvedCount": 4,
+          "unavailableMembershipCount": 0,
+          "sources": [
+            {
+              "observation": "7822035c587409ec93201be2bc7a14951f89da94b9e939d6c32f0015d4252350",
+              "dataset": "openstreetmap",
+              "endpoint": "osm-extract",
+              "acquired": "20261126T161713Z-45852008906",
+              "stage": "extract",
+              "pass": "20261126T161713Z-45852008906"
+            }
+          ]
+        },
+        {
+          "relation": 10103680,
+          "status": "partial",
+          "snapshot": "2026-11-15T21:22:28Z",
+          "version": 44,
+          "complete": true,
+          "reasons": [
+            "unresolved_member_eligibility"
+          ],
+          "unresolved": [
+            380978532,
+            380978557,
+            381205033,
+            1303881780
+          ],
+          "unavailableMemberships": [],
+          "unresolvedCount": 4,
+          "unavailableMembershipCount": 0,
+          "sources": [
+            {
+              "observation": "bfce99c225e8f29794904ef921b5fd26f3cc1147db5b412c78cc62f449a942d6",
+              "dataset": "openstreetmap",
+              "endpoint": "osm-extract",
+              "acquired": "20261126T161713Z-45852008906",
+              "stage": "extract",
+              "pass": "20261126T161713Z-45852008906"
+            }
+          ]
+        },
+        {
+          "relation": 10379599,
+          "status": "partial",
+          "snapshot": "2026-11-15T21:22:28Z",
+          "version": 8,
+          "complete": true,
+          "reasons": [
+            "unresolved_member_eligibility"
+          ],
+          "unresolved": [
+            547647492
+          ],
+          "unavailableMemberships": [],
+          "unresolvedCount": 1,
+          "unavailableMembershipCount": 0,
+          "sources": [
+            {
+              "observation": "a6bd2f71f16b7088de3c31834d4bd47d5e0d06249120cde49b778afade8b5168",
+              "dataset": "openstreetmap",
+              "endpoint": "osm-extract",
+              "acquired": "20261126T161713Z-45852008906",
+              "stage": "extract",
+              "pass": "20261126T161713Z-45852008906"
+            }
+          ]
+        },
+        {
+          "relation": 10379600,
+          "status": "partial",
+          "snapshot": "2026-11-15T21:22:28Z",
+          "version": 8,
+          "complete": true,
+          "reasons": [
+            "unresolved_member_eligibility"
+          ],
+          "unresolved": [
+            547647492
+          ],
+          "unavailableMemberships": [],
+          "unresolvedCount": 1,
+          "unavailableMembershipCount": 0,
+          "sources": [
+            {
+              "observation": "313ef706e3ab239427eb5adfdab92ff758350424aa470c7b1553fb43b39c386f",
+              "dataset": "openstreetmap",
+              "endpoint": "osm-extract",
+              "acquired": "20261126T161713Z-45852008906",
+              "stage": "extract",
+              "pass": "20261126T161713Z-45852008906"
+            }
+          ]
+        },
+        {
+          "relation": 10406565,
+          "status": "partial",
+          "snapshot": "2026-11-15T21:22:28Z",
+          "version": 18,
+          "complete": true,
+          "reasons": [
+            "unresolved_member_eligibility"
+          ],
+          "unresolved": [
+            1178578086
+          ],
+          "unavailableMemberships": [],
+          "unresolvedCount": 1,
+          "unavailableMembershipCount": 0,
+          "sources": [
+            {
+              "observation": "5bf8eb650df8f26478a07f10a3fbae4af2299f22f30cbac1a72dae5e5c78a6d2",
+              "dataset": "openstreetmap",
+              "endpoint": "osm-extract",
+              "acquired": "20261126T161713Z-45852008906",
+              "stage": "extract",
+              "pass": "20261126T161713Z-45852008906"
+            }
+          ]
+        },
+        {
+          "relation": 10406566,
+          "status": "partial",
+          "snapshot": "2026-11-15T21:22:28Z",
+          "version": 20,
+          "complete": true,
+          "reasons": [
+            "unresolved_member_eligibility"
+          ],
+          "unresolved": [
+            1178578087
+          ],
+          "unavailableMemberships": [],
+          "unresolvedCount": 1,
+          "unavailableMembershipCount": 0,
+          "sources": [
+            {
+              "observation": "0f7b1579c8743e97c02b9efc253c1531c9707c77c444d44b9af12110dad64be9",
+              "dataset": "openstreetmap",
+              "endpoint": "osm-extract",
+              "acquired": "20261126T161713Z-45852008906",
+              "stage": "extract",
+              "pass": "20261126T161713Z-45852008906"
+            }
+          ]
+        },
+        {
+          "relation": 10411681,
+          "status": "unknown",
+          "snapshot": null,
+          "version": 26,
+          "complete": true,
+          "reasons": [
+            "unverified_relation"
+          ],
+          "unresolved": [],
+          "unavailableMemberships": [],
+          "unresolvedCount": 0,
+          "unavailableMembershipCount": 0,
+          "sources": [
+            {
+              "observation": "0d73fdfcb108945ca4b7c1f94710ac8bf26194d7464a564a15cea0239d147cdf",
+              "dataset": "openstreetmap",
+              "endpoint": "osm-extract",
+              "acquired": "20261126T161713Z-45852008906",
+              "stage": "extract",
+              "pass": "20261126T161713Z-45852008906"
+            }
+          ]
+        },
+        {
+          "relation": 10411682,
+          "status": "unknown",
+          "snapshot": null,
+          "version": 22,
+          "complete": true,
+          "reasons": [
+            "unverified_relation"
+          ],
+          "unresolved": [],
+          "unavailableMemberships": [],
+          "unresolvedCount": 0,
+          "unavailableMembershipCount": 0,
+          "sources": [
+            {
+              "observation": "ff3fdec1febfeb52efec6c10cc55acb988f64ef65fa6c2104cc84a215ef283e0",
+              "dataset": "openstreetmap",
+              "endpoint": "osm-extract",
+              "acquired": "20261126T161713Z-45852008906",
+              "stage": "extract",
+              "pass": "20261126T161713Z-45852008906"
+            }
+          ]
+        },
+        {
+          "relation": 10537855,
+          "status": "partial",
+          "snapshot": "2026-11-15T21:22:28Z",
+          "version": 32,
+          "complete": true,
+          "reasons": [
+            "unresolved_member_eligibility"
+          ],
+          "unresolved": [
+            377705974,
+            1532613972
+          ],
+          "unavailableMemberships": [],
+          "unresolvedCount": 2,
+          "unavailableMembershipCount": 0,
+          "sources": [
+            {
+              "observation": "cdd3cbb58790f36e4c8bf9250c3b6c185f5b88befdb547bbc6cd67b3f894aa4f",
+              "dataset": "openstreetmap",
+              "endpoint": "osm-extract",
+              "acquired": "20261126T161713Z-45852008906",
+              "stage": "extract",
+              "pass": "20261126T161713Z-45852008906"
+            }
+          ]
+        },
+        {
+          "relation": 105884,
+          "status": "partial",
+          "snapshot": "2026-11-15T21:22:28Z",
+          "version": 44,
+          "complete": true,
+          "reasons": [
+            "unresolved_member_eligibility"
+          ],
+          "unresolved": [
+            227487146,
+            727606093
+          ],
+          "unavailableMemberships": [],
+          "unresolvedCount": 2,
+          "unavailableMembershipCount": 0,
+          "sources": [
+            {
+              "observation": "64bbe1b02adf99ec6f123933961289f7cc9912ca7031dfbca0eb18c5f836b241",
+              "dataset": "openstreetmap",
+              "endpoint": "osm-extract",
+              "acquired": "20261126T161713Z-45852008906",
+              "stage": "extract",
+              "pass": "20261126T161713Z-45852008906"
+            }
+          ]
+        },
+        {
+          "relation": 10609778,
+          "status": "partial",
+          "snapshot": "2026-11-15T21:22:28Z",
+          "version": 28,
+          "complete": true,
+          "reasons": [
+            "unresolved_member_eligibility"
+          ],
+          "unresolved": [
+            8049433,
+            17044237,
+            17044241,
+            931327752,
+            1544110203
+          ],
+          "unavailableMemberships": [],
+          "unresolvedCount": 5,
+          "unavailableMembershipCount": 0,
+          "sources": [
+            {
+              "observation": "742abcbfa1bb11bfb5eb0776dc19449b0cd4c9791534106f4340809ddc52d15a",
+              "dataset": "openstreetmap",
+              "endpoint": "osm-extract",
+              "acquired": "20261126T161713Z-45852008906",
+              "stage": "extract",
+              "pass": "20261126T161713Z-45852008906"
+            }
+          ]
+        },
+        {
+          "relation": 10609779,
+          "status": "partial",
+          "snapshot": "2026-11-15T21:22:28Z",
+          "version": 55,
+          "complete": true,
+          "reasons": [
+            "unresolved_member_eligibility"
+          ],
+          "unresolved": [
+            8049433,
+            17044237,
+            17044241,
+            931327752,
+            1544110203
+          ],
+          "unavailableMemberships": [],
+          "unresolvedCount": 5,
+          "unavailableMembershipCount": 0,
+          "sources": [
+            {
+              "observation": "10099b8ecd56509ec47bf3b03360c64ebfe217cfa9c446df3bdbf66f6ccd67e0",
+              "dataset": "openstreetmap",
+              "endpoint": "osm-extract",
+              "acquired": "20261126T161713Z-45852008906",
+              "stage": "extract",
+              "pass": "20261126T161713Z-45852008906"
+            }
+          ]
+        },
+        {
+          "relation": 10609786,
+          "status": "partial",
+          "snapshot": "2026-11-15T21:22:28Z",
+          "version": 86,
+          "complete": true,
+          "reasons": [
+            "unresolved_member_eligibility"
+          ],
+          "unresolved": [
+            8049433,
+            17044237,
+            17044241,
+            931327752,
+            1544110203
+          ],
+          "unavailableMemberships": [],
+          "unresolvedCount": 5,
+          "unavailableMembershipCount": 0,
+          "sources": [
+            {
+              "observation": "4aa44275ba0c2e535b0795395aab03b35445abed5d507509bd76e8b57c44072f",
+              "dataset": "openstreetmap",
+              "endpoint": "osm-extract",
+              "acquired": "20261126T161713Z-45852008906",
+              "stage": "extract",
+              "pass": "20261126T161713Z-45852008906"
+            }
+          ]
+        },
+        {
+          "relation": 10670932,
+          "status": "partial",
+          "snapshot": "2026-11-15T21:22:28Z",
+          "version": 17,
+          "complete": true,
+          "reasons": [
+            "unresolved_member_eligibility"
+          ],
+          "unresolved": [
+            276068000,
+            1558151148
+          ],
+          "unavailableMemberships": [],
+          "unresolvedCount": 2,
+          "unavailableMembershipCount": 0,
+          "sources": [
+            {
+              "observation": "e800908a26ef9809f31864ec1439d13c3159989e71190378d3d9bc11325c4486",
+              "dataset": "openstreetmap",
+              "endpoint": "osm-extract",
+              "acquired": "20261126T161713Z-45852008906",
+              "stage": "extract",
+              "pass": "20261126T161713Z-45852008906"
+            }
+          ]
+        },
+        {
+          "relation": 10671054,
+          "status": "partial",
+          "snapshot": "2026-11-15T21:22:28Z",
+          "version": 9,
+          "complete": true,
+          "reasons": [
+            "unresolved_member_eligibility"
+          ],
+          "unresolved": [
+            71145362,
+            435288806,
+            435288807,
+            1270615890
+          ],
+          "unavailableMemberships": [],
+          "unresolvedCount": 4,
+          "unavailableMembershipCount": 0,
+          "sources": [
+            {
+              "observation": "085e88f44e927a3e97c18845a989fdf0640f5c58937a1dce93306336fb63bc9a",
+              "dataset": "openstreetmap",
+              "endpoint": "osm-extract",
+              "acquired": "20261126T161713Z-45852008906",
+              "stage": "extract",
+              "pass": "20261126T161713Z-45852008906"
+            }
+          ]
+        },
+        {
+          "relation": 10671153,
+          "status": "partial",
+          "snapshot": "2026-11-15T21:22:28Z",
+          "version": 22,
+          "complete": true,
+          "reasons": [
+            "unresolved_member_eligibility"
+          ],
+          "unresolved": [
+            759161715
+          ],
+          "unavailableMemberships": [],
+          "unresolvedCount": 1,
+          "unavailableMembershipCount": 0,
+          "sources": [
+            {
+              "observation": "825299f59991dc40512e1f03080e0a30125ecd8a96103abecf27195a9c11873e",
+              "dataset": "openstreetmap",
+              "endpoint": "osm-extract",
+              "acquired": "20261126T161713Z-45852008906",
+              "stage": "extract",
+              "pass": "20261126T161713Z-45852008906"
+            }
+          ]
+        },
+        {
+          "relation": 10671154,
+          "status": "partial",
+          "snapshot": "2026-11-15T21:22:28Z",
+          "version": 20,
+          "complete": true,
+          "reasons": [
+            "unresolved_member_eligibility"
+          ],
+          "unresolved": [
+            759161715
+          ],
+          "unavailableMemberships": [],
+          "unresolvedCount": 1,
+          "unavailableMembershipCount": 0,
+          "sources": [
+            {
+              "observation": "5cc4f77cd7a9b7d3e99201791a23201563095e604f662ca42f0a1add9d2cea93",
+              "dataset": "openstreetmap",
+              "endpoint": "osm-extract",
+              "acquired": "20261126T161713Z-45852008906",
+              "stage": "extract",
+              "pass": "20261126T161713Z-45852008906"
+            }
+          ]
+        },
+        {
+          "relation": 10671155,
+          "status": "partial",
+          "snapshot": "2026-11-15T21:22:28Z",
+          "version": 24,
+          "complete": true,
+          "reasons": [
+            "unresolved_member_eligibility"
+          ],
+          "unresolved": [
+            759161715
+          ],
+          "unavailableMemberships": [],
+          "unresolvedCount": 1,
+          "unavailableMembershipCount": 0,
+          "sources": [
+            {
+              "observation": "f46a6b32fb90e785b7b45f26cbcdb014b4a8941939fff4d0635295649ffc395b",
+              "dataset": "openstreetmap",
+              "endpoint": "osm-extract",
+              "acquired": "20261126T161713Z-45852008906",
+              "stage": "extract",
+              "pass": "20261126T161713Z-45852008906"
+            }
+          ]
+        },
+        {
+          "relation": 10672955,
+          "status": "partial",
+          "snapshot": "2026-11-15T21:22:28Z",
+          "version": 16,
+          "complete": true,
+          "reasons": [
+            "unresolved_member_eligibility"
+          ],
+          "unresolved": [
+            276068000,
+            1558151148
+          ],
+          "unavailableMemberships": [],
+          "unresolvedCount": 2,
+          "unavailableMembershipCount": 0,
+          "sources": [
+            {
+              "observation": "ec4153cfe48356071db0e28adb5c741291f4dc3121454455bd4c527e08448800",
+              "dataset": "openstreetmap",
+              "endpoint": "osm-extract",
+              "acquired": "20261126T161713Z-45852008906",
+              "stage": "extract",
+              "pass": "20261126T161713Z-45852008906"
+            }
+          ]
+        },
+        {
+          "relation": 10693446,
+          "status": "partial",
+          "snapshot": "2026-11-15T21:22:28Z",
+          "version": 64,
+          "complete": true,
+          "reasons": [
+            "unresolved_member_eligibility"
+          ],
+          "unresolved": [
+            33868762,
+            42365343,
+            58261572,
+            58390438,
+            146120377,
+            161866000,
+            161883762,
+            183876156,
+            197450373,
+            251979085,
+            362661832,
+            362661840,
+            517016345,
+            566753856,
+            640145102,
+            698887334,
+            965353311,
+            965703642,
+            992813382
+          ],
+          "unavailableMemberships": [],
+          "unresolvedCount": 19,
+          "unavailableMembershipCount": 0,
+          "sources": [
+            {
+              "observation": "1f882c536127a52dd37969d4f01901935a63f22b62119c2c7270da3a6b519a77",
+              "dataset": "openstreetmap",
+              "endpoint": "osm-extract",
+              "acquired": "20261126T161713Z-45852008906",
+              "stage": "extract",
+              "pass": "20261126T161713Z-45852008906"
+            }
+          ]
+        },
+        {
+          "relation": 10807449,
+          "status": "partial",
+          "snapshot": "2026-11-15T21:22:28Z",
+          "version": 7,
+          "complete": true,
+          "reasons": [
+            "unresolved_member_eligibility"
+          ],
+          "unresolved": [
+            1299128356
+          ],
+          "unavailableMemberships": [],
+          "unresolvedCount": 1,
+          "unavailableMembershipCount": 0,
+          "sources": [
+            {
+              "observation": "6301194a5ccc0d7a6f96fad6ee8221ef32d65e3579d060c5bddf1b0f4cd71634",
+              "dataset": "openstreetmap",
+              "endpoint": "osm-extract",
+              "acquired": "20261126T161713Z-45852008906",
+              "stage": "extract",
+              "pass": "20261126T161713Z-45852008906"
+            }
+          ]
+        },
+        {
+          "relation": 11004,
+          "status": "partial",
+          "snapshot": "2026-11-15T21:22:28Z",
+          "version": 151,
+          "complete": true,
+          "reasons": [
+            "unresolved_member_eligibility"
+          ],
+          "unresolved": [
+            225995355,
+            242811794,
+            258905746,
+            306741493,
+            306752157,
+            306815172,
+            532294655,
+            532294661,
+            536061053,
+            631299842,
+            633348760,
+            633644699
+          ],
+          "unavailableMemberships": [],
+          "unresolvedCount": 12,
+          "unavailableMembershipCount": 0,
+          "sources": [
+            {
+              "observation": "af0f8c9da1a916ad957111816f8135301d81817a7e80e751c55dbe1730ad8f05",
+              "dataset": "openstreetmap",
+              "endpoint": "osm-extract",
+              "acquired": "20261126T161713Z-45852008906",
+              "stage": "extract",
+              "pass": "20261126T161713Z-45852008906"
+            }
+          ]
+        },
+        {
+          "relation": 110418,
+          "status": "partial",
+          "snapshot": "2026-11-15T21:22:28Z",
+          "version": 80,
+          "complete": true,
+          "reasons": [
+            "unresolved_member_eligibility"
+          ],
+          "unresolved": [
+            559135465,
+            1119540253
+          ],
+          "unavailableMemberships": [],
+          "unresolvedCount": 2,
+          "unavailableMembershipCount": 0,
+          "sources": [
+            {
+              "observation": "216c81ff187bc0ca8143449cdc9707cd54110261df0bf367da1c316a2424a8dd",
+              "dataset": "openstreetmap",
+              "endpoint": "osm-extract",
+              "acquired": "20261126T161713Z-45852008906",
+              "stage": "extract",
+              "pass": "20261126T161713Z-45852008906"
+            }
+          ]
+        },
+        {
+          "relation": 1112285,
+          "status": "partial",
+          "snapshot": "2026-11-15T21:22:28Z",
+          "version": 26,
+          "complete": true,
+          "reasons": [
+            "unresolved_member_eligibility"
+          ],
+          "unresolved": [
+            71145362,
+            435288806,
+            435288807,
+            1270615890
+          ],
+          "unavailableMemberships": [],
+          "unresolvedCount": 4,
+          "unavailableMembershipCount": 0,
+          "sources": [
+            {
+              "observation": "d34f21921f5edb504367658161658dc01ff2b828741e03ea0852c9d3f575600c",
+              "dataset": "openstreetmap",
+              "endpoint": "osm-extract",
+              "acquired": "20261126T161713Z-45852008906",
+              "stage": "extract",
+              "pass": "20261126T161713Z-45852008906"
+            }
+          ]
+        },
+        {
+          "relation": 1112307,
+          "status": "partial",
+          "snapshot": "2026-11-15T21:22:28Z",
+          "version": 30,
+          "complete": true,
+          "reasons": [
+            "unresolved_member_eligibility"
+          ],
+          "unresolved": [
+            276068000,
+            1558151148
+          ],
+          "unavailableMemberships": [],
+          "unresolvedCount": 2,
+          "unavailableMembershipCount": 0,
+          "sources": [
+            {
+              "observation": "8a68351d1e717236761be122317034b14403baf441f8a381296fd1a856fd8692",
+              "dataset": "openstreetmap",
+              "endpoint": "osm-extract",
+              "acquired": "20261126T161713Z-45852008906",
+              "stage": "extract",
+              "pass": "20261126T161713Z-45852008906"
+            }
+          ]
+        },
+        {
+          "relation": 1112313,
+          "status": "partial",
+          "snapshot": "2026-11-15T21:22:28Z",
+          "version": 42,
+          "complete": true,
+          "reasons": [
+            "unresolved_member_eligibility"
+          ],
+          "unresolved": [
+            276068000,
+            1558151148
+          ],
+          "unavailableMemberships": [],
+          "unresolvedCount": 2,
+          "unavailableMembershipCount": 0,
+          "sources": [
+            {
+              "observation": "4745ee12519a1c368d4d9139016b7c07d9935660ac02c05e6f19dea4cc880e06",
+              "dataset": "openstreetmap",
+              "endpoint": "osm-extract",
+              "acquired": "20261126T161713Z-45852008906",
+              "stage": "extract",
+              "pass": "20261126T161713Z-45852008906"
+            }
+          ]
+        },
+        {
+          "relation": 1112508,
+          "status": "partial",
+          "snapshot": "2026-11-15T21:22:28Z",
+          "version": 46,
+          "complete": true,
+          "reasons": [
+            "unresolved_member_eligibility"
+          ],
+          "unresolved": [
+            759161715
+          ],
+          "unavailableMemberships": [],
+          "unresolvedCount": 1,
+          "unavailableMembershipCount": 0,
+          "sources": [
+            {
+              "observation": "1c7db44c814118b530e98471d690afe5e0ec9eb65100320e4c07b00c9a320a1c",
+              "dataset": "openstreetmap",
+              "endpoint": "osm-extract",
+              "acquired": "20261126T161713Z-45852008906",
+              "stage": "extract",
+              "pass": "20261126T161713Z-45852008906"
+            }
+          ]
+        },
+        {
+          "relation": 1112509,
+          "status": "partial",
+          "snapshot": "2026-11-15T21:22:28Z",
+          "version": 37,
+          "complete": true,
+          "reasons": [
+            "unresolved_member_eligibility"
+          ],
+          "unresolved": [
+            759161715
+          ],
+          "unavailableMemberships": [],
+          "unresolvedCount": 1,
+          "unavailableMembershipCount": 0,
+          "sources": [
+            {
+              "observation": "c5e6ec132938a20077e48c6fdccc7259465fa5030a3f9bb0f13eb0039ab2e8fb",
+              "dataset": "openstreetmap",
+              "endpoint": "osm-extract",
+              "acquired": "20261126T161713Z-45852008906",
+              "stage": "extract",
+              "pass": "20261126T161713Z-45852008906"
+            }
+          ]
+        },
+        {
+          "relation": 11294195,
+          "status": "partial",
+          "snapshot": "2026-11-15T21:22:28Z",
+          "version": 5,
+          "complete": true,
+          "reasons": [
+            "unresolved_member_eligibility"
+          ],
+          "unresolved": [
+            82741491,
+            82741493,
+            82741494,
+            82741495,
+            82741497,
+            82741498,
+            82741499,
+            760905062,
+            825351231,
+            825351232,
+            825351233,
+            825351234,
+            1064565174,
+            1502524175,
+            1502524178,
+            1502524179,
+            1502524180
+          ],
+          "unavailableMemberships": [],
+          "unresolvedCount": 17,
+          "unavailableMembershipCount": 0,
+          "sources": [
+            {
+              "observation": "bc93b9f474dd088e9b67728413746cbe8f4151f0de95aed9aa63a613ddd180c6",
+              "dataset": "openstreetmap",
+              "endpoint": "osm-extract",
+              "acquired": "20261126T161713Z-45852008906",
+              "stage": "extract",
+              "pass": "20261126T161713Z-45852008906"
+            }
+          ]
+        },
+        {
+          "relation": 1133381,
+          "status": "partial",
+          "snapshot": "2026-11-15T21:22:28Z",
+          "version": 59,
+          "complete": true,
+          "reasons": [
+            "unresolved_member_eligibility"
+          ],
+          "unresolved": [
+            251979085,
+            965353311,
+            1292365689
+          ],
+          "unavailableMemberships": [],
+          "unresolvedCount": 3,
+          "unavailableMembershipCount": 0,
+          "sources": [
+            {
+              "observation": "0388ae3b6fee0365a82843eee780c05164bf010be9b86f131f18eca8eb8e8f5e",
+              "dataset": "openstreetmap",
+              "endpoint": "osm-extract",
+              "acquired": "20261126T161713Z-45852008906",
+              "stage": "extract",
+              "pass": "20261126T161713Z-45852008906"
+            }
+          ]
+        },
+        {
+          "relation": 1133383,
+          "status": "partial",
+          "snapshot": "2026-11-15T21:22:28Z",
+          "version": 104,
+          "complete": true,
+          "reasons": [
+            "unresolved_member_eligibility"
+          ],
+          "unresolved": [
+            33868762
+          ],
+          "unavailableMemberships": [],
+          "unresolvedCount": 1,
+          "unavailableMembershipCount": 0,
+          "sources": [
+            {
+              "observation": "b5701b92f7e5c9b0223e2bb8d0fbe0ac14914ff9ff6e7914a459606020a8746d",
+              "dataset": "openstreetmap",
+              "endpoint": "osm-extract",
+              "acquired": "20261126T161713Z-45852008906",
+              "stage": "extract",
+              "pass": "20261126T161713Z-45852008906"
+            }
+          ]
+        },
+        {
+          "relation": 1133422,
+          "status": "partial",
+          "snapshot": "2026-11-15T21:22:28Z",
+          "version": 109,
+          "complete": true,
+          "reasons": [
+            "unresolved_member_eligibility"
+          ],
+          "unresolved": [
+            4774489,
+            24286478,
+            39823559,
+            58261572,
+            73173002,
+            87379473,
+            87379478,
+            150812648,
+            152451714,
+            160089162,
+            161883762,
+            179642055,
+            179642056,
+            183876156,
+            197450373,
+            251655316,
+            253498832,
+            338164688,
+            338164693,
+            384069947
+          ],
+          "unavailableMemberships": [],
+          "unresolvedCount": 36,
+          "unavailableMembershipCount": 0,
+          "sources": [
+            {
+              "observation": "8247e84bf7458161f37229c011c107e55b9888d2b314b1292d5bfe3b4987bcd8",
+              "dataset": "openstreetmap",
+              "endpoint": "osm-extract",
+              "acquired": "20261126T161713Z-45852008906",
+              "stage": "extract",
+              "pass": "20261126T161713Z-45852008906"
+            }
+          ]
+        },
+        {
+          "relation": 11379809,
+          "status": "partial",
+          "snapshot": "2026-11-15T21:22:28Z",
+          "version": 14,
+          "complete": true,
+          "reasons": [
+            "unresolved_member_eligibility"
+          ],
+          "unresolved": [
+            29025995,
+            52007995,
+            52007998,
+            129311547,
+            260816366,
+            337937052,
+            468561746,
+            468561751,
+            468561752,
+            468561755,
+            468561756,
+            833905133,
+            918329797,
+            918329798,
+            941111968,
+            968013648,
+            1018546552,
+            1018546553,
+            1018546554,
+            1018548151
+          ],
+          "unavailableMemberships": [],
+          "unresolvedCount": 46,
+          "unavailableMembershipCount": 0,
+          "sources": [
+            {
+              "observation": "359b508279c7daa6deae455e8275710b8e757b9d825bb894d3a230ce533d1597",
+              "dataset": "openstreetmap",
+              "endpoint": "osm-extract",
+              "acquired": "20261126T161713Z-45852008906",
+              "stage": "extract",
+              "pass": "20261126T161713Z-45852008906"
+            }
+          ]
+        },
+        {
+          "relation": 11529447,
+          "status": "partial",
+          "snapshot": "2026-11-15T21:22:28Z",
+          "version": 5,
+          "complete": true,
+          "reasons": [
+            "unresolved_member_eligibility"
+          ],
+          "unresolved": [
+            82379964,
+            199832657,
+            839629296,
+            1180493153,
+            1193126008,
+            1193126009,
+            1487168351,
+            1487168352
+          ],
+          "unavailableMemberships": [],
+          "unresolvedCount": 8,
+          "unavailableMembershipCount": 0,
+          "sources": [
+            {
+              "observation": "1a57a53c765d909780336a3b111b77b74b850c77986825f1d89d789d7b2a85fc",
+              "dataset": "openstreetmap",
+              "endpoint": "osm-extract",
+              "acquired": "20261126T161713Z-45852008906",
+              "stage": "extract",
+              "pass": "20261126T161713Z-45852008906"
+            }
+          ]
+        },
+        {
+          "relation": 11529448,
+          "status": "partial",
+          "snapshot": "2026-11-15T21:22:28Z",
+          "version": 5,
+          "complete": true,
+          "reasons": [
+            "unresolved_member_eligibility"
+          ],
+          "unresolved": [
+            1180493153
+          ],
+          "unavailableMemberships": [],
+          "unresolvedCount": 1,
+          "unavailableMembershipCount": 0,
+          "sources": [
+            {
+              "observation": "0421e66e0cb240eea2ee80a9b63c65f7fa26099241bc5ae7b2e7118221a69d54",
+              "dataset": "openstreetmap",
+              "endpoint": "osm-extract",
+              "acquired": "20261126T161713Z-45852008906",
+              "stage": "extract",
+              "pass": "20261126T161713Z-45852008906"
+            }
+          ]
+        },
+        {
+          "relation": 11561062,
+          "status": "partial",
+          "snapshot": "2026-11-15T21:22:28Z",
+          "version": 39,
+          "complete": true,
+          "reasons": [
+            "unresolved_member_eligibility"
+          ],
+          "unresolved": [
+            1009214534,
+            1009214677,
+            1009214774
+          ],
+          "unavailableMemberships": [],
+          "unresolvedCount": 3,
+          "unavailableMembershipCount": 0,
+          "sources": [
+            {
+              "observation": "73c028803f70ff6d7972f2fb41f5c4a9d837c0bf9d4fd050616bd43945979450",
+              "dataset": "openstreetmap",
+              "endpoint": "osm-extract",
+              "acquired": "20261126T161713Z-45852008906",
+              "stage": "extract",
+              "pass": "20261126T161713Z-45852008906"
+            }
+          ]
+        },
+        {
+          "relation": 11593003,
+          "status": "partial",
+          "snapshot": "2026-11-15T21:22:28Z",
+          "version": 85,
+          "complete": true,
+          "reasons": [
+            "unresolved_member_eligibility"
+          ],
+          "unresolved": [
+            102734815,
+            183052570,
+            335121465,
+            335121467,
+            839286654
+          ],
+          "unavailableMemberships": [],
+          "unresolvedCount": 5,
+          "unavailableMembershipCount": 0,
+          "sources": [
+            {
+              "observation": "b3e94f008aa849b66a43eb736bd715d9b3555d454eb89bf0712cbbb1633433c6",
+              "dataset": "openstreetmap",
+              "endpoint": "osm-extract",
+              "acquired": "20261126T161713Z-45852008906",
+              "stage": "extract",
+              "pass": "20261126T161713Z-45852008906"
+            }
+          ]
+        },
+        {
+          "relation": 11604705,
+          "status": "partial",
+          "snapshot": "2026-11-15T21:22:28Z",
+          "version": 16,
+          "complete": true,
+          "reasons": [
+            "unresolved_member_eligibility"
+          ],
+          "unresolved": [
+            27575495,
+            148909055,
+            1065699052,
+            1516917002
+          ],
+          "unavailableMemberships": [],
+          "unresolvedCount": 4,
+          "unavailableMembershipCount": 0,
+          "sources": [
+            {
+              "observation": "5ed0df664168e1965c8d34e8e0219f0c3338466538712dd27008761d7b955a32",
+              "dataset": "openstreetmap",
+              "endpoint": "osm-extract",
+              "acquired": "20261126T161713Z-45852008906",
+              "stage": "extract",
+              "pass": "20261126T161713Z-45852008906"
+            }
+          ]
+        },
+        {
+          "relation": 11604708,
+          "status": "partial",
+          "snapshot": "2026-11-15T21:22:28Z",
+          "version": 13,
+          "complete": true,
+          "reasons": [
+            "unresolved_member_eligibility"
+          ],
+          "unresolved": [
+            130282760,
+            130282761
+          ],
+          "unavailableMemberships": [],
+          "unresolvedCount": 2,
+          "unavailableMembershipCount": 0,
+          "sources": [
+            {
+              "observation": "832da486a0ee77fd083d402df2acb1301b6f9681fd6e8c4901a0662e92e62fb5",
+              "dataset": "openstreetmap",
+              "endpoint": "osm-extract",
+              "acquired": "20261126T161713Z-45852008906",
+              "stage": "extract",
+              "pass": "20261126T161713Z-45852008906"
+            }
+          ]
+        },
+        {
+          "relation": 11607962,
+          "status": "partial",
+          "snapshot": "2026-11-15T21:22:28Z",
+          "version": 12,
+          "complete": true,
+          "reasons": [
+            "unresolved_member_eligibility"
+          ],
+          "unresolved": [
+            182133117,
+            1378163306
+          ],
+          "unavailableMemberships": [],
+          "unresolvedCount": 2,
+          "unavailableMembershipCount": 0,
+          "sources": [
+            {
+              "observation": "d9d6ccffb004853084ce1a81e9911272a6be818ba69f96170e533d80d6ac2dd0",
+              "dataset": "openstreetmap",
+              "endpoint": "osm-extract",
+              "acquired": "20261126T161713Z-45852008906",
+              "stage": "extract",
+              "pass": "20261126T161713Z-45852008906"
+            }
+          ]
+        },
+        {
+          "relation": 11607963,
+          "status": "partial",
+          "snapshot": "2026-11-15T21:22:28Z",
+          "version": 12,
+          "complete": true,
+          "reasons": [
+            "unresolved_member_eligibility"
+          ],
+          "unresolved": [
+            182133117,
+            1378163306
+          ],
+          "unavailableMemberships": [],
+          "unresolvedCount": 2,
+          "unavailableMembershipCount": 0,
+          "sources": [
+            {
+              "observation": "62bcd36a384dea6b3e1efdcf3101e02d758ed7a0c33c24ed7e76dc499970b672",
+              "dataset": "openstreetmap",
+              "endpoint": "osm-extract",
+              "acquired": "20261126T161713Z-45852008906",
+              "stage": "extract",
+              "pass": "20261126T161713Z-45852008906"
+            }
+          ]
+        },
+        {
+          "relation": 11644048,
+          "status": "partial",
+          "snapshot": "2026-11-15T21:22:28Z",
+          "version": 23,
+          "complete": true,
+          "reasons": [
+            "unresolved_member_eligibility"
+          ],
+          "unresolved": [
+            848874515
+          ],
+          "unavailableMemberships": [],
+          "unresolvedCount": 1,
+          "unavailableMembershipCount": 0,
+          "sources": [
+            {
+              "observation": "afcb59a20722cf7584c05d6d3ee065f2f164ae332c5b2ad538ef8bdf2ecbc722",
+              "dataset": "openstreetmap",
+              "endpoint": "osm-extract",
+              "acquired": "20261126T161713Z-45852008906",
+              "stage": "extract",
+              "pass": "20261126T161713Z-45852008906"
+            }
+          ]
+        },
+        {
+          "relation": 1171503,
+          "status": "partial",
+          "snapshot": "2026-11-15T21:22:28Z",
+          "version": 51,
+          "complete": true,
+          "reasons": [
+            "unresolved_member_eligibility"
+          ],
+          "unresolved": [
+            153930401
+          ],
+          "unavailableMemberships": [],
+          "unresolvedCount": 1,
+          "unavailableMembershipCount": 0,
+          "sources": [
+            {
+              "observation": "5e62fab80b2472c8f6cff737d0ea5784453b7bf175309a6e4b52c6308732e5d7",
+              "dataset": "openstreetmap",
+              "endpoint": "osm-extract",
+              "acquired": "20261126T161713Z-45852008906",
+              "stage": "extract",
+              "pass": "20261126T161713Z-45852008906"
+            }
+          ]
+        },
+        {
+          "relation": 11755131,
+          "status": "partial",
+          "snapshot": "2026-11-15T21:22:28Z",
+          "version": 8,
+          "complete": true,
+          "reasons": [
+            "unresolved_member_eligibility"
+          ],
+          "unresolved": [
+            1204580481
+          ],
+          "unavailableMemberships": [],
+          "unresolvedCount": 1,
+          "unavailableMembershipCount": 0,
+          "sources": [
+            {
+              "observation": "344b37b4ee40d4dd8b0cde44ef47083871177cb292e5b995d165c476caa00e00",
+              "dataset": "openstreetmap",
+              "endpoint": "osm-extract",
+              "acquired": "20261126T161713Z-45852008906",
+              "stage": "extract",
+              "pass": "20261126T161713Z-45852008906"
+            }
+          ]
+        },
+        {
+          "relation": 11917777,
+          "status": "partial",
+          "snapshot": "2026-11-15T21:22:28Z",
+          "version": 17,
+          "complete": true,
+          "reasons": [
+            "unresolved_member_eligibility"
+          ],
+          "unresolved": [
+            874734450,
+            875277082,
+            875311769,
+            1159027772,
+            1159027774,
+            1159027775,
+            1159027778,
+            1523633972
+          ],
+          "unavailableMemberships": [],
+          "unresolvedCount": 8,
+          "unavailableMembershipCount": 0,
+          "sources": [
+            {
+              "observation": "071f2b4339c474e88954fd3d43220a1063d68d2a9c3e4648bbfd7ce494c8586f",
+              "dataset": "openstreetmap",
+              "endpoint": "osm-extract",
+              "acquired": "20261126T161713Z-45852008906",
+              "stage": "extract",
+              "pass": "20261126T161713Z-45852008906"
+            }
+          ]
+        },
+        {
+          "relation": 11917778,
+          "status": "partial",
+          "snapshot": "2026-11-15T21:22:28Z",
+          "version": 14,
+          "complete": true,
+          "reasons": [
+            "unresolved_member_eligibility"
+          ],
+          "unresolved": [
+            23695424,
+            229679623,
+            875311767,
+            1159027771,
+            1159027773,
+            1159027776,
+            1159027777,
+            1480451137,
+            1523633971,
+            1523633973
+          ],
+          "unavailableMemberships": [],
+          "unresolvedCount": 10,
+          "unavailableMembershipCount": 0,
+          "sources": [
+            {
+              "observation": "8258074737583cbbfc7310c74d08ad3f2331172ff7eea5643815a19410607421",
+              "dataset": "openstreetmap",
+              "endpoint": "osm-extract",
+              "acquired": "20261126T161713Z-45852008906",
+              "stage": "extract",
+              "pass": "20261126T161713Z-45852008906"
+            }
+          ]
+        },
+        {
+          "relation": 11929616,
+          "status": "partial",
+          "snapshot": "2026-11-15T21:22:28Z",
+          "version": 1,
+          "complete": true,
+          "reasons": [
+            "unresolved_member_eligibility"
+          ],
+          "unresolved": [
+            876145443
+          ],
+          "unavailableMemberships": [],
+          "unresolvedCount": 1,
+          "unavailableMembershipCount": 0,
+          "sources": [
+            {
+              "observation": "0224da2ce28e5f2e7bec9f9f00d5d24b97cefcd418b08c7c3f17c36fdfb3f626",
+              "dataset": "openstreetmap",
+              "endpoint": "osm-extract",
+              "acquired": "20261126T161713Z-45852008906",
+              "stage": "extract",
+              "pass": "20261126T161713Z-45852008906"
+            }
+          ]
+        },
+        {
+          "relation": 1221336,
+          "status": "partial",
+          "snapshot": "2026-11-15T21:22:28Z",
+          "version": 88,
+          "complete": true,
+          "reasons": [
+            "unresolved_member_eligibility"
+          ],
+          "unresolved": [
+            149459699,
+            936244440,
+            965144568,
+            965144569,
+            965144573,
+            1456450900,
+            1506104725
+          ],
+          "unavailableMemberships": [],
+          "unresolvedCount": 7,
+          "unavailableMembershipCount": 0,
+          "sources": [
+            {
+              "observation": "ded73d1fc13e06a6bf77413323e870dfcf3f947fcf805fb3f9d2bb94b18093f5",
+              "dataset": "openstreetmap",
+              "endpoint": "osm-extract",
+              "acquired": "20261126T161713Z-45852008906",
+              "stage": "extract",
+              "pass": "20261126T161713Z-45852008906"
+            }
+          ]
+        },
+        {
+          "relation": 1221337,
+          "status": "partial",
+          "snapshot": "2026-11-15T21:22:28Z",
+          "version": 83,
+          "complete": true,
+          "reasons": [
+            "unresolved_member_eligibility"
+          ],
+          "unresolved": [
+            936244438,
+            965144567,
+            965144570,
+            965144571,
+            965144572,
+            1506104724
+          ],
+          "unavailableMemberships": [],
+          "unresolvedCount": 6,
+          "unavailableMembershipCount": 0,
+          "sources": [
+            {
+              "observation": "4f0d6bbfe06f9da550ee3a997bba002367c9d8e9ae08850d21a3263a96bead3c",
+              "dataset": "openstreetmap",
+              "endpoint": "osm-extract",
+              "acquired": "20261126T161713Z-45852008906",
+              "stage": "extract",
+              "pass": "20261126T161713Z-45852008906"
+            }
+          ]
+        },
+        {
+          "relation": 12222275,
+          "status": "partial",
+          "snapshot": "2026-11-15T21:22:28Z",
+          "version": 20,
+          "complete": true,
+          "reasons": [
+            "unresolved_member_eligibility"
+          ],
+          "unresolved": [
+            27011093,
+            85514874,
+            205077351,
+            289213552,
+            289213562,
+            669189552,
+            875361577,
+            875361590,
+            875361597,
+            893583691,
+            898553673,
+            920117623,
+            1460913162,
+            1523633966,
+            1550349460,
+            1551449350,
+            1574732615
+          ],
+          "unavailableMemberships": [],
+          "unresolvedCount": 17,
+          "unavailableMembershipCount": 0,
+          "sources": [
+            {
+              "observation": "bccc3be158453720924d891ad130bdd7ea03663d414ddc22c02d82cf3110fb54",
+              "dataset": "openstreetmap",
+              "endpoint": "osm-extract",
+              "acquired": "20261126T161713Z-45852008906",
+              "stage": "extract",
+              "pass": "20261126T161713Z-45852008906"
+            }
+          ]
+        },
+        {
+          "relation": 12226153,
+          "status": "partial",
+          "snapshot": "2026-11-15T21:22:28Z",
+          "version": 25,
+          "complete": true,
+          "reasons": [
+            "unresolved_member_eligibility"
+          ],
+          "unresolved": [
+            27014637,
+            85248656,
+            314463965,
+            893583709,
+            893583719,
+            899302225,
+            948710665,
+            1484394060,
+            1507114219
+          ],
+          "unavailableMemberships": [],
+          "unresolvedCount": 9,
+          "unavailableMembershipCount": 0,
+          "sources": [
+            {
+              "observation": "cd0567636f6b849a4cff9d5faaf8bca2a186b835b0bd4e42f531846d96ae65d1",
+              "dataset": "openstreetmap",
+              "endpoint": "osm-extract",
+              "acquired": "20261126T161713Z-45852008906",
+              "stage": "extract",
+              "pass": "20261126T161713Z-45852008906"
+            }
+          ]
+        },
+        {
+          "relation": 12226278,
+          "status": "partial",
+          "snapshot": "2026-11-15T21:22:28Z",
+          "version": 22,
+          "complete": true,
+          "reasons": [
+            "unresolved_member_eligibility"
+          ],
+          "unresolved": [
+            23708476,
+            85220813,
+            892445519,
+            899293867,
+            899302221,
+            899302222,
+            948710668,
+            1484394059,
+            1507114221
+          ],
+          "unavailableMemberships": [],
+          "unresolvedCount": 9,
+          "unavailableMembershipCount": 0,
+          "sources": [
+            {
+              "observation": "ba8c6fb57037cc3e5894060bde71461988c7071cfb5dd0b15fbb05f8e3191cc8",
+              "dataset": "openstreetmap",
+              "endpoint": "osm-extract",
+              "acquired": "20261126T161713Z-45852008906",
+              "stage": "extract",
+              "pass": "20261126T161713Z-45852008906"
+            }
+          ]
+        },
+        {
+          "relation": 12229163,
+          "status": "partial",
+          "snapshot": "2026-11-15T21:22:28Z",
+          "version": 19,
+          "complete": true,
+          "reasons": [
+            "unresolved_member_eligibility"
+          ],
+          "unresolved": [
+            893402878,
+            893402880,
+            893402883,
+            899609681,
+            1225079597,
+            1225079614,
+            1225088965,
+            1225436849,
+            1225436854,
+            1225436860
+          ],
+          "unavailableMemberships": [],
+          "unresolvedCount": 10,
+          "unavailableMembershipCount": 0,
+          "sources": [
+            {
+              "observation": "9dcb8612c12e3fd5371228933e6222c98e6c3a4e9a81a236204baab17c119308",
+              "dataset": "openstreetmap",
+              "endpoint": "osm-extract",
+              "acquired": "20261126T161713Z-45852008906",
+              "stage": "extract",
+              "pass": "20261126T161713Z-45852008906"
+            }
+          ]
+        },
+        {
+          "relation": 12229164,
+          "status": "partial",
+          "snapshot": "2026-11-15T21:22:28Z",
+          "version": 23,
+          "complete": true,
+          "reasons": [
+            "unresolved_member_eligibility"
+          ],
+          "unresolved": [
+            3039872,
+            27844758,
+            893402881,
+            1069516665,
+            1225079609,
+            1225088967,
+            1225436851,
+            1225436859,
+            1225436861,
+            1564643337
+          ],
+          "unavailableMemberships": [],
+          "unresolvedCount": 10,
+          "unavailableMembershipCount": 0,
+          "sources": [
+            {
+              "observation": "d3bea28bd71c3e1cadd610ae18aa0b9f23181424ced179f30471e1d431cfdbd8",
+              "dataset": "openstreetmap",
+              "endpoint": "osm-extract",
+              "acquired": "20261126T161713Z-45852008906",
+              "stage": "extract",
+              "pass": "20261126T161713Z-45852008906"
+            }
+          ]
+        },
+        {
+          "relation": 12271401,
+          "status": "partial",
+          "snapshot": "2026-11-15T21:22:28Z",
+          "version": 2,
+          "complete": true,
+          "reasons": [
+            "unresolved_member_eligibility"
+          ],
+          "unresolved": [
+            344843994,
+            344843997,
+            344846039,
+            393614894,
+            393615508,
+            437109389,
+            901708831
+          ],
+          "unavailableMemberships": [],
+          "unresolvedCount": 7,
+          "unavailableMembershipCount": 0,
+          "sources": [
+            {
+              "observation": "c4d87ab8c573db3bcffbee73f344ec318b7e794a3327ecf43a5e0d558d53f93c",
+              "dataset": "openstreetmap",
+              "endpoint": "osm-extract",
+              "acquired": "20261126T161713Z-45852008906",
+              "stage": "extract",
+              "pass": "20261126T161713Z-45852008906"
+            }
+          ]
+        },
+        {
+          "relation": 12316476,
+          "status": "partial",
+          "snapshot": "2026-11-15T21:22:28Z",
+          "version": 6,
+          "complete": true,
+          "reasons": [
+            "unresolved_member_eligibility"
+          ],
+          "unresolved": [
+            96708002,
+            96711154,
+            96711155,
+            96847170,
+            96847175,
+            96945649,
+            106846299,
+            106846310,
+            106922845,
+            106922853,
+            106922857,
+            106922906,
+            243119878,
+            243119879,
+            335699212,
+            335699213,
+            587354183,
+            587354184,
+            620995129,
+            907143086
+          ],
+          "unavailableMemberships": [],
+          "unresolvedCount": 33,
+          "unavailableMembershipCount": 0,
+          "sources": [
+            {
+              "observation": "633aa76c51662e92dddcf623624976f2a2cf92b2367e51b90995d9ae8f26a712",
+              "dataset": "openstreetmap",
+              "endpoint": "osm-extract",
+              "acquired": "20261126T161713Z-45852008906",
+              "stage": "extract",
+              "pass": "20261126T161713Z-45852008906"
+            }
+          ]
+        },
+        {
+          "relation": 12322082,
+          "status": "partial",
+          "snapshot": "2026-11-15T21:22:28Z",
+          "version": 6,
+          "complete": true,
+          "reasons": [
+            "unresolved_member_eligibility"
+          ],
+          "unresolved": [
+            47703714,
+            47703749,
+            47703751,
+            47703752,
+            47703754,
+            47703763,
+            589853416,
+            589853423,
+            661038650,
+            907569769,
+            907569771,
+            907569783,
+            907569796,
+            907569801,
+            907569802,
+            907569806,
+            907569807,
+            907569808,
+            907569809,
+            907569813
+          ],
+          "unavailableMemberships": [],
+          "unresolvedCount": 23,
+          "unavailableMembershipCount": 0,
+          "sources": [
+            {
+              "observation": "764f82d899c22be128b201064cb4a92b9e2b338aeb695014613d335d3d24de51",
+              "dataset": "openstreetmap",
+              "endpoint": "osm-extract",
+              "acquired": "20261126T161713Z-45852008906",
+              "stage": "extract",
+              "pass": "20261126T161713Z-45852008906"
+            }
+          ]
+        },
+        {
+          "relation": 12322083,
+          "status": "partial",
+          "snapshot": "2026-11-15T21:22:28Z",
+          "version": 4,
+          "complete": true,
+          "reasons": [
+            "unresolved_member_eligibility"
+          ],
+          "unresolved": [
+            47703714,
+            47703749,
+            661038650,
+            780407291,
+            780407292,
+            907569780,
+            907569783,
+            907569790,
+            907569791,
+            907569808,
+            907569809,
+            907569813,
+            907569814,
+            907569815
+          ],
+          "unavailableMemberships": [],
+          "unresolvedCount": 14,
+          "unavailableMembershipCount": 0,
+          "sources": [
+            {
+              "observation": "f818f5f15cd15fc820826af86498f7918ac30c49bab57c9b41433b7f7cf07671",
+              "dataset": "openstreetmap",
+              "endpoint": "osm-extract",
+              "acquired": "20261126T161713Z-45852008906",
+              "stage": "extract",
+              "pass": "20261126T161713Z-45852008906"
+            }
+          ]
+        },
+        {
+          "relation": 12695832,
+          "status": "partial",
+          "snapshot": "2026-11-15T21:22:28Z",
+          "version": 20,
+          "complete": true,
+          "reasons": [
+            "unresolved_member_eligibility"
+          ],
+          "unresolved": [
+            23062705,
+            96493806
+          ],
+          "unavailableMemberships": [],
+          "unresolvedCount": 2,
+          "unavailableMembershipCount": 0,
+          "sources": [
+            {
+              "observation": "f3b54a46ff637d8380557f83803abd8835c4cb32cb507708e2318c4fb10b1703",
+              "dataset": "openstreetmap",
+              "endpoint": "osm-extract",
+              "acquired": "20261126T161713Z-45852008906",
+              "stage": "extract",
+              "pass": "20261126T161713Z-45852008906"
+            }
+          ]
+        },
+        {
+          "relation": 12695833,
+          "status": "partial",
+          "snapshot": "2026-11-15T21:22:28Z",
+          "version": 18,
+          "complete": true,
+          "reasons": [
+            "unresolved_member_eligibility"
+          ],
+          "unresolved": [
+            96478611,
+            96493805
+          ],
+          "unavailableMemberships": [],
+          "unresolvedCount": 2,
+          "unavailableMembershipCount": 0,
+          "sources": [
+            {
+              "observation": "e5ad876736b365a96f9bdb1b79512aba184ff644a641e8e97b248f3718e706d1",
+              "dataset": "openstreetmap",
+              "endpoint": "osm-extract",
+              "acquired": "20261126T161713Z-45852008906",
+              "stage": "extract",
+              "pass": "20261126T161713Z-45852008906"
+            }
+          ]
+        },
+        {
+          "relation": 12696013,
+          "status": "partial",
+          "snapshot": "2026-11-15T21:22:28Z",
+          "version": 24,
+          "complete": true,
+          "reasons": [
+            "unresolved_member_eligibility"
+          ],
+          "unresolved": [
+            23062705,
+            96493806
+          ],
+          "unavailableMemberships": [],
+          "unresolvedCount": 2,
+          "unavailableMembershipCount": 0,
+          "sources": [
+            {
+              "observation": "83ca4493976acb54686b44050e754f5f6984b6c6460406a230bf6904ad20914f",
+              "dataset": "openstreetmap",
+              "endpoint": "osm-extract",
+              "acquired": "20261126T161713Z-45852008906",
+              "stage": "extract",
+              "pass": "20261126T161713Z-45852008906"
+            }
+          ]
+        },
+        {
+          "relation": 12696014,
+          "status": "partial",
+          "snapshot": "2026-11-15T21:22:28Z",
+          "version": 23,
+          "complete": true,
+          "reasons": [
+            "unresolved_member_eligibility"
+          ],
+          "unresolved": [
+            96478611,
+            96493805
+          ],
+          "unavailableMemberships": [],
+          "unresolvedCount": 2,
+          "unavailableMembershipCount": 0,
+          "sources": [
+            {
+              "observation": "c17b83434705e6cdde1f58a004ec56511f8391eabe66cf7882f5d2a28308011c",
+              "dataset": "openstreetmap",
+              "endpoint": "osm-extract",
+              "acquired": "20261126T161713Z-45852008906",
+              "stage": "extract",
+              "pass": "20261126T161713Z-45852008906"
+            }
+          ]
+        },
+        {
+          "relation": 1271500,
+          "status": "partial",
+          "snapshot": "2026-11-15T21:22:28Z",
+          "version": 61,
+          "complete": true,
+          "reasons": [
+            "unresolved_member_eligibility"
+          ],
+          "unresolved": [
+            23708476,
+            85248023
+          ],
+          "unavailableMemberships": [],
+          "unresolvedCount": 2,
+          "unavailableMembershipCount": 0,
+          "sources": [
+            {
+              "observation": "e14265642de97dd592ca13db6f5ae9429e46acfbab39734dbe235f8df46285be",
+              "dataset": "openstreetmap",
+              "endpoint": "osm-extract",
+              "acquired": "20261126T161713Z-45852008906",
+              "stage": "extract",
+              "pass": "20261126T161713Z-45852008906"
+            }
+          ]
+        },
+        {
+          "relation": 1275400,
+          "status": "partial",
+          "snapshot": "2026-11-15T21:22:28Z",
+          "version": 57,
+          "complete": true,
+          "reasons": [
+            "unresolved_member_eligibility"
+          ],
+          "unresolved": [
+            23705325,
+            23708476,
+            85514874,
+            893402881,
+            893583690,
+            893583710,
+            899293866,
+            899293867,
+            982306346,
+            1069516665,
+            1225079609,
+            1225079613,
+            1478790133,
+            1564643337
+          ],
+          "unavailableMemberships": [],
+          "unresolvedCount": 14,
+          "unavailableMembershipCount": 0,
+          "sources": [
+            {
+              "observation": "033764facdfe0643dc9d1db26492e3891a192ff5494e0ae356dfe6883ddd0d3b",
+              "dataset": "openstreetmap",
+              "endpoint": "osm-extract",
+              "acquired": "20261126T161713Z-45852008906",
+              "stage": "extract",
+              "pass": "20261126T161713Z-45852008906"
+            }
+          ]
+        },
+        {
+          "relation": 1278220,
+          "status": "partial",
+          "snapshot": "2026-11-15T21:22:28Z",
+          "version": 70,
+          "complete": true,
+          "reasons": [
+            "unresolved_member_eligibility"
+          ],
+          "unresolved": [
+            27009771,
+            27809524,
+            27844758,
+            893402881,
+            1069516665,
+            1126350846,
+            1225079609,
+            1225088967,
+            1225416894,
+            1225436841,
+            1225436847,
+            1493496937,
+            1564643337
+          ],
+          "unavailableMemberships": [],
+          "unresolvedCount": 13,
+          "unavailableMembershipCount": 0,
+          "sources": [
+            {
+              "observation": "e4ee52f321c00a3c6d779fa66fd765ad46bdd07adef575da2af53b5703bbca4d",
+              "dataset": "openstreetmap",
+              "endpoint": "osm-extract",
+              "acquired": "20261126T161713Z-45852008906",
+              "stage": "extract",
+              "pass": "20261126T161713Z-45852008906"
+            }
+          ]
+        },
+        {
+          "relation": 1279256,
+          "status": "partial",
+          "snapshot": "2026-11-15T21:22:28Z",
+          "version": 61,
+          "complete": true,
+          "reasons": [
+            "unresolved_member_eligibility"
+          ],
+          "unresolved": [
+            23583767,
+            23732224,
+            27015521,
+            27015573,
+            893402881,
+            902027546,
+            902027553,
+            1000059014,
+            1069516665,
+            1224993958,
+            1224993974,
+            1224993997,
+            1225324650,
+            1491895033,
+            1498214322,
+            1530972306,
+            1530972310,
+            1530972313,
+            1564643337
+          ],
+          "unavailableMemberships": [],
+          "unresolvedCount": 19,
+          "unavailableMembershipCount": 0,
+          "sources": [
+            {
+              "observation": "ccd829f2774ea084140bd6eeee74adfc3ed1ba292820cf025340265a6c73875e",
+              "dataset": "openstreetmap",
+              "endpoint": "osm-extract",
+              "acquired": "20261126T161713Z-45852008906",
+              "stage": "extract",
+              "pass": "20261126T161713Z-45852008906"
+            }
+          ]
+        },
+        {
+          "relation": 1279393,
+          "status": "partial",
+          "snapshot": "2026-11-15T21:22:28Z",
+          "version": 58,
+          "complete": true,
+          "reasons": [
+            "unresolved_member_eligibility"
+          ],
+          "unresolved": [
+            27009771,
+            27011093,
+            27015903,
+            85514874,
+            205077351,
+            764577781,
+            893583691,
+            902027550,
+            902027551,
+            1224993990,
+            1224993994,
+            1224994006,
+            1224994009,
+            1225048271,
+            1225416887,
+            1225416890,
+            1225416906,
+            1498214321,
+            1498214323,
+            1530971102
+          ],
+          "unavailableMemberships": [],
+          "unresolvedCount": 21,
+          "unavailableMembershipCount": 0,
+          "sources": [
+            {
+              "observation": "699f8e044eea4bbdc582c7cb768f4ab6845e9f6e5cbc457879b8b778e033e07b",
+              "dataset": "openstreetmap",
+              "endpoint": "osm-extract",
+              "acquired": "20261126T161713Z-45852008906",
+              "stage": "extract",
+              "pass": "20261126T161713Z-45852008906"
+            }
+          ]
+        },
+        {
+          "relation": 1282338,
+          "status": "partial",
+          "snapshot": "2026-11-15T21:22:28Z",
+          "version": 58,
+          "complete": true,
+          "reasons": [
+            "unresolved_member_eligibility"
+          ],
+          "unresolved": [
+            23489764,
+            23489782,
+            23489786,
+            28775182,
+            85855073,
+            231253176,
+            256343304,
+            267004741,
+            875311769,
+            875326500,
+            875352044,
+            875361577,
+            875361587,
+            902455845,
+            902455850,
+            982234610,
+            1076398535,
+            1159027772,
+            1159027774,
+            1159027775
+          ],
+          "unavailableMemberships": [],
+          "unresolvedCount": 28,
+          "unavailableMembershipCount": 0,
+          "sources": [
+            {
+              "observation": "bec79171c92a9e91b8e09a314b9debf7e4397bcceb5b615478e6ac5b1aad2c6b",
+              "dataset": "openstreetmap",
+              "endpoint": "osm-extract",
+              "acquired": "20261126T161713Z-45852008906",
+              "stage": "extract",
+              "pass": "20261126T161713Z-45852008906"
+            }
+          ]
+        },
+        {
+          "relation": 1282341,
+          "status": "partial",
+          "snapshot": "2026-11-15T21:22:28Z",
+          "version": 54,
+          "complete": true,
+          "reasons": [
+            "unresolved_member_eligibility"
+          ],
+          "unresolved": [
+            229679623,
+            289213563,
+            875311767,
+            875352043,
+            875361583,
+            1159027771,
+            1159027773,
+            1159027776,
+            1159027777,
+            1523633968,
+            1523633971,
+            1523633973
+          ],
+          "unavailableMemberships": [],
+          "unresolvedCount": 12,
+          "unavailableMembershipCount": 0,
+          "sources": [
+            {
+              "observation": "eba4dc379cf23c1390a41cb1136e8753a26cef51c60188e526a6d95a079a8e35",
+              "dataset": "openstreetmap",
+              "endpoint": "osm-extract",
+              "acquired": "20261126T161713Z-45852008906",
+              "stage": "extract",
+              "pass": "20261126T161713Z-45852008906"
+            }
+          ]
+        },
+        {
+          "relation": 12824257,
+          "status": "partial",
+          "snapshot": "2026-11-15T21:22:28Z",
+          "version": 9,
+          "complete": true,
+          "reasons": [
+            "unresolved_member_eligibility"
+          ],
+          "unresolved": [
+            952378463,
+            1188056520
+          ],
+          "unavailableMemberships": [],
+          "unresolvedCount": 2,
+          "unavailableMembershipCount": 0,
+          "sources": [
+            {
+              "observation": "58f7a33db9d947ca4ac95897b7571a89029cafd9ce2170dee357207b94d7eda4",
+              "dataset": "openstreetmap",
+              "endpoint": "osm-extract",
+              "acquired": "20261126T161713Z-45852008906",
+              "stage": "extract",
+              "pass": "20261126T161713Z-45852008906"
+            }
+          ]
+        },
+        {
+          "relation": 12828618,
+          "status": "partial",
+          "snapshot": "2026-11-15T21:22:28Z",
+          "version": 18,
+          "complete": true,
+          "reasons": [
+            "unresolved_member_eligibility"
+          ],
+          "unresolved": [
+            952696682,
+            1188056517,
+            1288635109,
+            1533466785,
+            1540116146,
+            1558761543
+          ],
+          "unavailableMemberships": [],
+          "unresolvedCount": 6,
+          "unavailableMembershipCount": 0,
+          "sources": [
+            {
+              "observation": "1e21fd03f9eba7517f3ecae46807eedeb4e120ff9c0b7a0227905d855da0c021",
+              "dataset": "openstreetmap",
+              "endpoint": "osm-extract",
+              "acquired": "20261126T161713Z-45852008906",
+              "stage": "extract",
+              "pass": "20261126T161713Z-45852008906"
+            }
+          ]
+        },
+        {
+          "relation": 12893893,
+          "status": "partial",
+          "snapshot": "2026-11-15T21:22:28Z",
+          "version": 4,
+          "complete": true,
+          "reasons": [
+            "unresolved_member_eligibility"
+          ],
+          "unresolved": [
+            958863756,
+            958989508,
+            958989509
+          ],
+          "unavailableMemberships": [],
+          "unresolvedCount": 3,
+          "unavailableMembershipCount": 0,
+          "sources": [
+            {
+              "observation": "324c47b9e45f7b537b6af7825264b7402d3390712ad5eea846554e25e73494c8",
+              "dataset": "openstreetmap",
+              "endpoint": "osm-extract",
+              "acquired": "20261126T161713Z-45852008906",
+              "stage": "extract",
+              "pass": "20261126T161713Z-45852008906"
+            }
+          ]
+        },
+        {
+          "relation": 12896377,
+          "status": "partial",
+          "snapshot": "2026-11-15T21:22:28Z",
+          "version": 3,
+          "complete": true,
+          "reasons": [
+            "unresolved_member_eligibility"
+          ],
+          "unresolved": [
+            958863756,
+            958989509,
+            958989510
+          ],
+          "unavailableMemberships": [],
+          "unresolvedCount": 3,
+          "unavailableMembershipCount": 0,
+          "sources": [
+            {
+              "observation": "a908bb69b6bddb2c700dcd39cdf371a67787e97e7ec05b6770e10f70a4b0b0aa",
+              "dataset": "openstreetmap",
+              "endpoint": "osm-extract",
+              "acquired": "20261126T161713Z-45852008906",
+              "stage": "extract",
+              "pass": "20261126T161713Z-45852008906"
+            }
+          ]
+        },
+        {
+          "relation": 12940681,
+          "status": "partial",
+          "snapshot": "2026-11-15T21:22:28Z",
+          "version": 18,
+          "complete": true,
+          "reasons": [
+            "unresolved_member_eligibility"
+          ],
+          "unresolved": [
+            952696681,
+            1125364139,
+            1288635108,
+            1533465469,
+            1540116145,
+            1558761542
+          ],
+          "unavailableMemberships": [],
+          "unresolvedCount": 6,
+          "unavailableMembershipCount": 0,
+          "sources": [
+            {
+              "observation": "f94661c181745b0d4cdd05f6f5fb33757b271ac915a536c994183844a4f1dadb",
+              "dataset": "openstreetmap",
+              "endpoint": "osm-extract",
+              "acquired": "20261126T161713Z-45852008906",
+              "stage": "extract",
+              "pass": "20261126T161713Z-45852008906"
+            }
+          ]
+        },
+        {
+          "relation": 12940682,
+          "status": "partial",
+          "snapshot": "2026-11-15T21:22:28Z",
+          "version": 8,
+          "complete": true,
+          "reasons": [
+            "unresolved_member_eligibility"
+          ],
+          "unresolved": [
+            952378462,
+            1188056521
+          ],
+          "unavailableMemberships": [],
+          "unresolvedCount": 2,
+          "unavailableMembershipCount": 0,
+          "sources": [
+            {
+              "observation": "c5c05ae5c01a45cfd735a15a81753f36a2a13e8ae40ab4229a0d346c8f31a4fa",
+              "dataset": "openstreetmap",
+              "endpoint": "osm-extract",
+              "acquired": "20261126T161713Z-45852008906",
+              "stage": "extract",
+              "pass": "20261126T161713Z-45852008906"
+            }
+          ]
+        },
+        {
+          "relation": 13035324,
+          "status": "partial",
+          "snapshot": "2026-11-15T21:22:28Z",
+          "version": 10,
+          "complete": true,
+          "reasons": [
+            "unresolved_member_eligibility"
+          ],
+          "unresolved": [
+            667068961,
+            667068962,
+            667068963,
+            667068965,
+            771920827
+          ],
+          "unavailableMemberships": [],
+          "unresolvedCount": 5,
+          "unavailableMembershipCount": 0,
+          "sources": [
+            {
+              "observation": "1d55ce415ca8622c34bbe4ca1c74934bb46daec52fac5380c9d69acf9f74a1cf",
+              "dataset": "openstreetmap",
+              "endpoint": "osm-extract",
+              "acquired": "20261126T161713Z-45852008906",
+              "stage": "extract",
+              "pass": "20261126T161713Z-45852008906"
+            }
+          ]
+        },
+        {
+          "relation": 13046189,
+          "status": "partial",
+          "snapshot": "2026-11-15T21:22:28Z",
+          "version": 2,
+          "complete": true,
+          "reasons": [
+            "unresolved_member_eligibility"
+          ],
+          "unresolved": [
+            860731279,
+            860731280,
+            860752038,
+            860763274,
+            860764636,
+            860765850,
+            860765851
+          ],
+          "unavailableMemberships": [],
+          "unresolvedCount": 7,
+          "unavailableMembershipCount": 0,
+          "sources": [
+            {
+              "observation": "3f9f1c32b62d2c99c53ecbd680c177889388a2e29d40137a9b25f6fa49b5b75b",
+              "dataset": "openstreetmap",
+              "endpoint": "osm-extract",
+              "acquired": "20261126T161713Z-45852008906",
+              "stage": "extract",
+              "pass": "20261126T161713Z-45852008906"
+            }
+          ]
+        },
+        {
+          "relation": 13046198,
+          "status": "partial",
+          "snapshot": "2026-11-15T21:22:28Z",
+          "version": 2,
+          "complete": true,
+          "reasons": [
+            "unresolved_member_eligibility"
+          ],
+          "unresolved": [
+            860731279,
+            860731280,
+            860763274,
+            860764636
+          ],
+          "unavailableMemberships": [],
+          "unresolvedCount": 4,
+          "unavailableMembershipCount": 0,
+          "sources": [
+            {
+              "observation": "687c7b66c06a0209e80fdeb7989319a9eda65ee789d80a31e1c9f7d5a5e3e1a3",
+              "dataset": "openstreetmap",
+              "endpoint": "osm-extract",
+              "acquired": "20261126T161713Z-45852008906",
+              "stage": "extract",
+              "pass": "20261126T161713Z-45852008906"
+            }
+          ]
+        },
+        {
+          "relation": 13064486,
+          "status": "partial",
+          "snapshot": "2026-11-15T21:22:28Z",
+          "version": 2,
+          "complete": true,
+          "reasons": [
+            "unresolved_member_eligibility"
+          ],
+          "unresolved": [
+            29401228,
+            29401230,
+            971040100
+          ],
+          "unavailableMemberships": [],
+          "unresolvedCount": 3,
+          "unavailableMembershipCount": 0,
+          "sources": [
+            {
+              "observation": "5a4adff42846e363ca3e10c3eeb2e7bcf841343acdb6d99fbfe216373d2286f4",
+              "dataset": "openstreetmap",
+              "endpoint": "osm-extract",
+              "acquired": "20261126T161713Z-45852008906",
+              "stage": "extract",
+              "pass": "20261126T161713Z-45852008906"
+            }
+          ]
+        },
+        {
+          "relation": 13199266,
+          "status": "partial",
+          "snapshot": "2026-11-15T21:22:28Z",
+          "version": 9,
+          "complete": true,
+          "reasons": [
+            "unresolved_member_eligibility"
+          ],
+          "unresolved": [
+            23489764,
+            23489782,
+            23489786,
+            28775182,
+            231253176,
+            256343304,
+            267004741,
+            660927528,
+            902455850,
+            911302441,
+            1076398535,
+            1262110923,
+            1550349457,
+            1550349459
+          ],
+          "unavailableMemberships": [],
+          "unresolvedCount": 14,
+          "unavailableMembershipCount": 0,
+          "sources": [
+            {
+              "observation": "8ed6f49ba9c57d60c2c6ed0026bf9b7c9aa8a0ab5be491882dac98f558663648",
+              "dataset": "openstreetmap",
+              "endpoint": "osm-extract",
+              "acquired": "20261126T161713Z-45852008906",
+              "stage": "extract",
+              "pass": "20261126T161713Z-45852008906"
+            }
+          ]
+        },
+        {
+          "relation": 13199267,
+          "status": "partial",
+          "snapshot": "2026-11-15T21:22:28Z",
+          "version": 6,
+          "complete": true,
+          "reasons": [
+            "unresolved_member_eligibility"
+          ],
+          "unresolved": [
+            121473054,
+            121473055,
+            231253177,
+            301962419,
+            660927522,
+            660927526,
+            1550349458
+          ],
+          "unavailableMemberships": [],
+          "unresolvedCount": 7,
+          "unavailableMembershipCount": 0,
+          "sources": [
+            {
+              "observation": "61542913441ed511a52dd7896a5944dfa83cf0bfe30924ca1d088ad88746d60f",
+              "dataset": "openstreetmap",
+              "endpoint": "osm-extract",
+              "acquired": "20261126T161713Z-45852008906",
+              "stage": "extract",
+              "pass": "20261126T161713Z-45852008906"
+            }
+          ]
+        },
+        {
+          "relation": 13305613,
+          "status": "partial",
+          "snapshot": "2026-11-15T21:22:28Z",
+          "version": 24,
+          "complete": true,
+          "reasons": [
+            "unresolved_member_eligibility"
+          ],
+          "unresolved": [
+            154755854,
+            1563806056
+          ],
+          "unavailableMemberships": [],
+          "unresolvedCount": 2,
+          "unavailableMembershipCount": 0,
+          "sources": [
+            {
+              "observation": "855f3f0355b99f6ba3a803113dc040b4fcbea0a9c3b70b57db71164694e3546a",
+              "dataset": "openstreetmap",
+              "endpoint": "osm-extract",
+              "acquired": "20261126T161713Z-45852008906",
+              "stage": "extract",
+              "pass": "20261126T161713Z-45852008906"
+            }
+          ]
+        },
+        {
+          "relation": 13350006,
+          "status": "partial",
+          "snapshot": "2026-11-15T21:22:28Z",
+          "version": 4,
+          "complete": true,
+          "reasons": [
+            "unresolved_member_eligibility"
+          ],
+          "unresolved": [
+            344322047
+          ],
+          "unavailableMemberships": [],
+          "unresolvedCount": 1,
+          "unavailableMembershipCount": 0,
+          "sources": [
+            {
+              "observation": "1df0aec184663add50a26714f31150c790078e4b0240ad7b43c4d8d8db92aad8",
+              "dataset": "openstreetmap",
+              "endpoint": "osm-extract",
+              "acquired": "20261126T161713Z-45852008906",
+              "stage": "extract",
+              "pass": "20261126T161713Z-45852008906"
+            }
+          ]
+        },
+        {
+          "relation": 13350007,
+          "status": "partial",
+          "snapshot": "2026-11-15T21:22:28Z",
+          "version": 4,
+          "complete": true,
+          "reasons": [
+            "unresolved_member_eligibility"
+          ],
+          "unresolved": [
+            361025171
+          ],
+          "unavailableMemberships": [],
+          "unresolvedCount": 1,
+          "unavailableMembershipCount": 0,
+          "sources": [
+            {
+              "observation": "764a1d01fed90c91953499f49f5f2ba18237599c7346deab6194027885f35d26",
+              "dataset": "openstreetmap",
+              "endpoint": "osm-extract",
+              "acquired": "20261126T161713Z-45852008906",
+              "stage": "extract",
+              "pass": "20261126T161713Z-45852008906"
+            }
+          ]
+        },
+        {
+          "relation": 13364068,
+          "status": "partial",
+          "snapshot": "2026-11-15T21:22:28Z",
+          "version": 5,
+          "complete": true,
+          "reasons": [
+            "unresolved_member_eligibility"
+          ],
+          "unresolved": [
+            996021753,
+            996021755,
+            996021763
+          ],
+          "unavailableMemberships": [],
+          "unresolvedCount": 3,
+          "unavailableMembershipCount": 0,
+          "sources": [
+            {
+              "observation": "faeb5f041aadc49b9d315122bf5de06d811aac8243d950c7b77f488ee899e7eb",
+              "dataset": "openstreetmap",
+              "endpoint": "osm-extract",
+              "acquired": "20261126T161713Z-45852008906",
+              "stage": "extract",
+              "pass": "20261126T161713Z-45852008906"
+            }
+          ]
+        },
+        {
+          "relation": 13408068,
+          "status": "partial",
+          "snapshot": "2026-11-15T21:22:28Z",
+          "version": 13,
+          "complete": true,
+          "reasons": [
+            "unresolved_member_eligibility"
+          ],
+          "unresolved": [
+            999477323,
+            999477325
+          ],
+          "unavailableMemberships": [],
+          "unresolvedCount": 2,
+          "unavailableMembershipCount": 0,
+          "sources": [
+            {
+              "observation": "f0cd9fb15ac387a05fb331fccd3e973c4677b597130b57cec4997210004551d8",
+              "dataset": "openstreetmap",
+              "endpoint": "osm-extract",
+              "acquired": "20261126T161713Z-45852008906",
+              "stage": "extract",
+              "pass": "20261126T161713Z-45852008906"
+            }
+          ]
+        },
+        {
+          "relation": 13490751,
+          "status": "partial",
+          "snapshot": "2026-11-15T21:22:28Z",
+          "version": 8,
+          "complete": true,
+          "reasons": [
+            "unresolved_member_eligibility"
+          ],
+          "unresolved": [
+            131405872,
+            131922847,
+            204306926,
+            1408228207
+          ],
+          "unavailableMemberships": [],
+          "unresolvedCount": 4,
+          "unavailableMembershipCount": 0,
+          "sources": [
+            {
+              "observation": "c1cbda734904fcd808bfa64e772da8af80519da4fd412449ee5f130b8f56bd72",
+              "dataset": "openstreetmap",
+              "endpoint": "osm-extract",
+              "acquired": "20261126T161713Z-45852008906",
+              "stage": "extract",
+              "pass": "20261126T161713Z-45852008906"
+            }
+          ]
+        },
+        {
+          "relation": 13490752,
+          "status": "partial",
+          "snapshot": "2026-11-15T21:22:28Z",
+          "version": 7,
+          "complete": true,
+          "reasons": [
+            "unresolved_member_eligibility"
+          ],
+          "unresolved": [
+            131326679,
+            486471924,
+            537826392,
+            607633496,
+            1408228208
+          ],
+          "unavailableMemberships": [],
+          "unresolvedCount": 5,
+          "unavailableMembershipCount": 0,
+          "sources": [
+            {
+              "observation": "4135a97127f29d2b307b26611f67cfff815497b1380931115471b7d0e22a8ad5",
+              "dataset": "openstreetmap",
+              "endpoint": "osm-extract",
+              "acquired": "20261126T161713Z-45852008906",
+              "stage": "extract",
+              "pass": "20261126T161713Z-45852008906"
+            }
+          ]
+        },
+        {
+          "relation": 1354958,
+          "status": "partial",
+          "snapshot": "2026-11-15T21:22:28Z",
+          "version": 63,
+          "complete": true,
+          "reasons": [
+            "unresolved_member_eligibility"
+          ],
+          "unresolved": [
+            48807708,
+            81275237,
+            1195031187
+          ],
+          "unavailableMemberships": [],
+          "unresolvedCount": 3,
+          "unavailableMembershipCount": 0,
+          "sources": [
+            {
+              "observation": "3c8c0897608b8916612b53bd5e93d82d196668e617a2cadc45b5b4f4103b246e",
+              "dataset": "openstreetmap",
+              "endpoint": "osm-extract",
+              "acquired": "20261126T161713Z-45852008906",
+              "stage": "extract",
+              "pass": "20261126T161713Z-45852008906"
+            }
+          ]
+        },
+        {
+          "relation": 13571814,
+          "status": "partial",
+          "snapshot": "2026-11-15T21:22:28Z",
+          "version": 59,
+          "complete": true,
+          "reasons": [
+            "unresolved_member_eligibility"
+          ],
+          "unresolved": [
+            221266457,
+            334729466,
+            417737331,
+            417737342,
+            1099829086,
+            1202768345,
+            1202768349,
+            1202768357,
+            1386853587,
+            1414275539,
+            1414275549,
+            1449389963,
+            1460273000
+          ],
+          "unavailableMemberships": [],
+          "unresolvedCount": 13,
+          "unavailableMembershipCount": 0,
+          "sources": [
+            {
+              "observation": "cc87334a8bded502cc8c27c8cf30d7d7b1ec9ea5d19ea54d139002504f750e73",
+              "dataset": "openstreetmap",
+              "endpoint": "osm-extract",
+              "acquired": "20261126T161713Z-45852008906",
+              "stage": "extract",
+              "pass": "20261126T161713Z-45852008906"
+            }
+          ]
+        },
+        {
+          "relation": 13879319,
+          "status": "partial",
+          "snapshot": "2026-11-15T21:22:28Z",
+          "version": 8,
+          "complete": true,
+          "reasons": [
+            "unresolved_member_eligibility"
+          ],
+          "unresolved": [
+            1512198001
+          ],
+          "unavailableMemberships": [],
+          "unresolvedCount": 1,
+          "unavailableMembershipCount": 0,
+          "sources": [
+            {
+              "observation": "daee030da655d258e69dc6d40cf21e11699a0bd95ee12a08743819fa27c0d1c3",
+              "dataset": "openstreetmap",
+              "endpoint": "osm-extract",
+              "acquired": "20261126T161713Z-45852008906",
+              "stage": "extract",
+              "pass": "20261126T161713Z-45852008906"
+            }
+          ]
+        },
+        {
+          "relation": 13882494,
+          "status": "partial",
+          "snapshot": "2026-11-15T21:22:28Z",
+          "version": 13,
+          "complete": true,
+          "reasons": [
+            "unresolved_member_eligibility"
+          ],
+          "unresolved": [
+            480721723
+          ],
+          "unavailableMemberships": [],
+          "unresolvedCount": 1,
+          "unavailableMembershipCount": 0,
+          "sources": [
+            {
+              "observation": "e236a923864f1174db79ff45ad99d46ff0de11f0c2bad71e4d742b7858b6d7a2",
+              "dataset": "openstreetmap",
+              "endpoint": "osm-extract",
+              "acquired": "20261126T161713Z-45852008906",
+              "stage": "extract",
+              "pass": "20261126T161713Z-45852008906"
+            }
+          ]
+        },
+        {
+          "relation": 13883770,
+          "status": "partial",
+          "snapshot": "2026-11-15T21:22:28Z",
+          "version": 17,
+          "complete": true,
+          "reasons": [
+            "unresolved_member_eligibility"
+          ],
+          "unresolved": [
+            725687674,
+            727572392,
+            1036660696
+          ],
+          "unavailableMemberships": [],
+          "unresolvedCount": 3,
+          "unavailableMembershipCount": 0,
+          "sources": [
+            {
+              "observation": "099aba3dd6630efc3bd5157f99acf83e7ac6c0aa41ba4c1d0a6f59f614cd076e",
+              "dataset": "openstreetmap",
+              "endpoint": "osm-extract",
+              "acquired": "20261126T161713Z-45852008906",
+              "stage": "extract",
+              "pass": "20261126T161713Z-45852008906"
+            }
+          ]
+        },
+        {
+          "relation": 1390151,
+          "status": "partial",
+          "snapshot": "2026-11-15T21:22:28Z",
+          "version": 33,
+          "complete": true,
+          "reasons": [
+            "unresolved_member_eligibility"
+          ],
+          "unresolved": [
+            1419611894,
+            1419611895
+          ],
+          "unavailableMemberships": [],
+          "unresolvedCount": 2,
+          "unavailableMembershipCount": 0,
+          "sources": [
+            {
+              "observation": "c85dadefa4dff863da665e338e61455be39c87a7f842b480bb6537b694f95d97",
+              "dataset": "openstreetmap",
+              "endpoint": "osm-extract",
+              "acquired": "20261126T161713Z-45852008906",
+              "stage": "extract",
+              "pass": "20261126T161713Z-45852008906"
+            }
+          ]
+        },
+        {
+          "relation": 14001352,
+          "status": "partial",
+          "snapshot": "2026-11-15T21:22:28Z",
+          "version": 16,
+          "complete": true,
+          "reasons": [
+            "unresolved_member_eligibility"
+          ],
+          "unresolved": [
+            23063275,
+            96493806
+          ],
+          "unavailableMemberships": [],
+          "unresolvedCount": 2,
+          "unavailableMembershipCount": 0,
+          "sources": [
+            {
+              "observation": "0e5908d145e733b81ea63f125f59904cc757a79c1bc08553cd7ef48753ea7b9b",
+              "dataset": "openstreetmap",
+              "endpoint": "osm-extract",
+              "acquired": "20261126T161713Z-45852008906",
+              "stage": "extract",
+              "pass": "20261126T161713Z-45852008906"
+            }
+          ]
+        },
+        {
+          "relation": 14001353,
+          "status": "partial",
+          "snapshot": "2026-11-15T21:22:28Z",
+          "version": 16,
+          "complete": true,
+          "reasons": [
+            "unresolved_member_eligibility"
+          ],
+          "unresolved": [
+            96493805,
+            96493818
+          ],
+          "unavailableMemberships": [],
+          "unresolvedCount": 2,
+          "unavailableMembershipCount": 0,
+          "sources": [
+            {
+              "observation": "8d52b9be387d71bb129d3c90447900f2920f1d9821b0e6e028ce461dddeec1e1",
+              "dataset": "openstreetmap",
+              "endpoint": "osm-extract",
+              "acquired": "20261126T161713Z-45852008906",
+              "stage": "extract",
+              "pass": "20261126T161713Z-45852008906"
+            }
+          ]
+        },
+        {
+          "relation": 14004562,
+          "status": "partial",
+          "snapshot": "2026-11-15T21:22:28Z",
+          "version": 36,
+          "complete": true,
+          "reasons": [
+            "unresolved_member_eligibility"
+          ],
+          "unresolved": [
+            1533534627
+          ],
+          "unavailableMemberships": [],
+          "unresolvedCount": 1,
+          "unavailableMembershipCount": 0,
+          "sources": [
+            {
+              "observation": "1cc1c05b424f395d906bd99ebcba6d7f770cf93109c9ca5fdbf80c17f7db119e",
+              "dataset": "openstreetmap",
+              "endpoint": "osm-extract",
+              "acquired": "20261126T161713Z-45852008906",
+              "stage": "extract",
+              "pass": "20261126T161713Z-45852008906"
+            }
+          ]
+        }
+      ]
+    }
+  },
+  "generated": "2026-11-26T18:22:16.947Z",
+  "oldestSource": "2026-11-15T21:22:28Z",
+  "newestSource": "2026-11-24T23:34:58Z",
+  "routes": 11742,
+  "retainedRelations": 11787,
+  "ways": 275409,
+  "tiles": 18585,
+  "tileBytes": 17324703,
+  "zooms": [
+    7,
+    12
+  ],
+  "source": "extract",
+  "complete": true,
+  "extract": {
+    "index": "20261126T161713Z-45852008906",
+    "regions": 175,
+    "missingRegions": [],
+    "relations": 11787,
+    "memberWays": 327109,
+    "ways": 275414,
+    "waysWithoutGeometry": 0
+  },
+  "query": "route relations (type=route) with route=subway, light_rail, tram or monorail, or route=train with service=commuter or urban, and their track ways, from the assembled Geofabrik extracts",
+  "license": "ODbL-1.0",
+  "description": "OpenStreetMap urban rail services (metro, light rail, tram, monorail and commuter rail routes) along the tracks they run on, for the Service view."
+}
