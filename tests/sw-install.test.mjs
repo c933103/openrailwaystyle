@@ -339,9 +339,9 @@ async function cachedDepartureBoard(parserBytes, badFirst = false) {
   const get = async address => {
     const url = new URL(address);
     assert.equal(url.origin, 'https://api.transitous.org');
-    if (url.pathname === '/api/v1/reverse-geocode') {
+    if (['/api/v1/reverse-geocode','/api/v6/map/stops'].includes(url.pathname)) {
       calls.push('lookup');
-      return {ok: true, json: async () => ids.map(id => ({id, type: 'STOP', name: 'Central', lat: 0, lon: 0, modes: ['REGIONAL_RAIL']}))};
+      return {ok: true, json: async () => ids.map(id => ({id, stopId:id, type: 'STOP', name: 'Central', lat: 0, lon: 0, modes: ['REGIONAL_RAIL']}))};
     }
     assert.equal(url.pathname, '/api/v1/stoptimes');
     const id = url.searchParams.get('stopId');
@@ -731,8 +731,8 @@ test('Power presentation upgrades a compact old module graph without mixing cach
   // source hash: future compatible parser improvements must remain allowed.
   const departures=await evaluate(await(await next.request('departures.mjs?v='+version)).text());
   const observation={mode:'REGIONAL_RAIL',displayName:'R7',headsign:'Harbour',place:{departure:'2099-01-01T12:00:00Z'}};
-  const board=await departures.stationDepartures({lat:0,lon:0,names:['Central']},{fetch:async url=>({ok:true,json:async()=>url.includes('/reverse-geocode')
-    ? ['a','b'].map(id=>({type:'STOP',id,name:'Central',lat:0,lon:0,modes:['REGIONAL_RAIL']}))
+  const board=await departures.stationDepartures({lat:0,lon:0,names:['Central']},{fetch:async url=>({ok:true,json:async()=>url.includes('/map/stops')
+    ? ['a','b'].map(id=>({type:'STOP',stopId:id,name:'Central',lat:0,lon:0,modes:['REGIONAL_RAIL']}))
     : {stopTimes:new URL(url).searchParams.get('stopId')==='a'?[observation]:[null]}})});
   assert.deepEqual(Object.fromEntries(board.stopResults.map(result=>[result.stopId,result.status])),{a:'fulfilled',b:'rejected'});
   assert.equal(board.rows.length,1);assert.equal(board.rows[0].line,'R7');
@@ -941,8 +941,8 @@ test('destination identity upgrades a compact old module graph and keeps current
     tripId:`trip-${i}`,headsign,cancelled:i===1,place:{departure:at,scheduledDeparture:at,stopId:`stop-${i}`,track:String(i+2)}}]);
   const rows=fixed.departureRows(lists,{now:0});assert.equal(rows.length,2);
   assert.deepEqual(Array.from(rows,row=>[row.tripId,row.stopId,row.track,row.cancelled]),[['trip-0','stop-0','2',false],['trip-1','stop-1','3',true]]);
-  const fetch=async value=>{const url=new URL(value);return {ok:true,json:async()=>url.pathname.endsWith('/reverse-geocode')?['a','b'].map(id=>({
-    type:'STOP',id,name:'Central',lat:0,lon:0,modes:['REGIONAL_RAIL']})):{stopTimes:url.searchParams.get('stopId')==='a'?[{...lists[0][0],headsign:{invalid:true}}]:lists[1]}};};
+  const fetch=async value=>{const url=new URL(value);return {ok:true,json:async()=>url.pathname.endsWith('/map/stops')?['a','b'].map(id=>({
+    type:'STOP',stopId:id,name:'Central',lat:0,lon:0,modes:['REGIONAL_RAIL']})):{stopTimes:url.searchParams.get('stopId')==='a'?[{...lists[0][0],headsign:{invalid:true}}]:lists[1]}};};
   const board=await fixed.stationDepartures({lat:0,lon:0,names:['Central']},{fetch});
   assert.equal(board.rows.length,1);assert.equal(board.rows[0].tripId,'trip-1');
   assert.deepEqual(Object.fromEntries(board.stopResults.map(result=>[result.stopId,result.status])),{a:'rejected',b:'fulfilled'});

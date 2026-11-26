@@ -1,40 +1,40 @@
-import {installSovietStyle, sovietTile} from './soviet-topo.mjs?v=20261125-canvas-terrain-sync-1';
-import {bindTerrainViewport} from './viewport-settle.mjs?v=20261125-canvas-terrain-sync-1';
-import {pruneModeTiles} from './mode-tile-cache.mjs?v=20261125-canvas-terrain-sync-1';
-import {updateMapStatus} from './status-ui.mjs?v=20261125-canvas-terrain-sync-1';
-import {renderLegendUI} from './legend-ui.mjs?v=20261125-canvas-terrain-sync-1';
-import {createInspectorRows, createFeatureInspector} from './feature-inspector.mjs?v=20261125-canvas-terrain-sync-1';
+import {installSovietStyle, sovietTile} from './soviet-topo.mjs?v=20261126-canvas-basemap-sync-1';
+import {bindTerrainViewport} from './viewport-settle.mjs?v=20261126-canvas-basemap-sync-1';
+import {pruneModeTiles} from './mode-tile-cache.mjs?v=20261126-canvas-basemap-sync-1';
+import {updateMapStatus} from './status-ui.mjs?v=20261126-canvas-basemap-sync-1';
+import {renderLegendUI} from './legend-ui.mjs?v=20261126-canvas-basemap-sync-1';
+import {createInspectorRows, createFeatureInspector} from './feature-inspector.mjs?v=20261126-canvas-basemap-sync-1';
 
-import {dataAgeRows, staleNotice} from './data-ages.mjs?v=20261125-canvas-terrain-sync-1';
-import {installHiddenTileMaskGuard, installControlLayout, rememberAttribution, installPwaInstall, backportMapLibre524, MAPLIBRE_BACKPORT} from './map-controls.mjs?v=20261125-canvas-terrain-sync-1';
-import {CJK_FONTS, PROBE_FAMILY, PROBE_FONT, PROBE_SETS, familyNames, chooseCjkFont, isLocalFamily} from './cjk-font.mjs?v=20261125-canvas-terrain-sync-1';
-import {RARE_HAN_FAMILY, createRareHanFonts, rareHanBlocks} from './rare-han.mjs?v=20261125-canvas-terrain-sync-1';
-import {createWorldFonts} from './world-font.mjs?v=20261125-canvas-terrain-sync-1';
-import {hasMongolian, mongolianBlocks, mongolianFontRequests, nameFragment} from './mongolian-text.mjs?v=20261125-canvas-terrain-sync-1';
+import {dataAgeRows, staleNotice} from './data-ages.mjs?v=20261126-canvas-basemap-sync-1';
+import {installHiddenTileMaskGuard, installControlLayout, rememberAttribution, installPwaInstall, backportMapLibre524, MAPLIBRE_BACKPORT} from './map-controls.mjs?v=20261126-canvas-basemap-sync-1';
+import {CJK_FONTS, PROBE_FAMILY, PROBE_FONT, PROBE_SETS, familyNames, chooseCjkFont, isLocalFamily} from './cjk-font.mjs?v=20261126-canvas-basemap-sync-1';
+import {RARE_HAN_FAMILY, createRareHanFonts, rareHanBlocks} from './rare-han.mjs?v=20261126-canvas-basemap-sync-1';
+import {createWorldFonts} from './world-font.mjs?v=20261126-canvas-basemap-sync-1';
+import {hasMongolian, mongolianBlocks, mongolianFontRequests, nameFragment} from './mongolian-text.mjs?v=20261126-canvas-basemap-sync-1';
 
-import {contextIcon, contextLayerInteractive, nearbyTransport} from './context.mjs?v=20261125-canvas-terrain-sync-1';
-import {SETTING_KEYS, SETTING_PARAMS, settingsQuery, UNKNOWN_COLOR, INFRASTRUCTURE, controlColor, trainProtection, trainProtectionShort, trainProtectionSystems, gaugeColor, axleLoad, formatAxleLoad, axleLabel, loadingGauge, loadingDimensions, VIEW_LINE_LAYERS, viewLinePaint, viewLineWidth, inactivePaint, describeCurrent, DEM_URL, contourOptions, speedPaint, speedLabel, SEARCH_API, PLACE_SEARCH_API, searchResponse, searchResults, railwaySearchRows, tileStations, drawnStationQueries, LANGUAGES, chooseName, labelExpression, displayName, legendRows, autoProjection, ORM, DETAIL_LEVELS, formatReadout, osmObject, createPlatformLengths, createPlatformTileGeometry, platformLengthLabel, formatPlatformLength, readSettings, formatSpeed, stationRank, decodeLifecycleTile, isNeutralRailReference} from './map-model.mjs?v=20261125-canvas-terrain-sync-1';
+import {contextIcon, contextLayerInteractive, nearbyTransport} from './context.mjs?v=20261126-canvas-basemap-sync-1';
+import {SETTING_KEYS, SETTING_PARAMS, settingsQuery, UNKNOWN_COLOR, INFRASTRUCTURE, controlColor, trainProtection, trainProtectionShort, trainProtectionSystems, gaugeColor, axleLoad, formatAxleLoad, axleLabel, loadingGauge, loadingDimensions, VIEW_LINE_LAYERS, viewLinePaint, viewLineWidth, inactivePaint, describeCurrent, DEM_URL, contourOptions, speedPaint, speedLabel, SEARCH_API, PLACE_SEARCH_API, searchResponse, searchResults, railwaySearchRows, tileStations, drawnStationQueries, LANGUAGES, chooseName, labelExpression, displayName, legendRows, autoProjection, ORM, DETAIL_LEVELS, formatReadout, osmObject, createPlatformLengths, createPlatformTileGeometry, platformLengthLabel, formatPlatformLength, readSettings, formatSpeed, stationRank, decodeLifecycleTile, isNeutralRailReference} from './map-model.mjs?v=20261126-canvas-basemap-sync-1';
 
-import {Drawing, Measure, readDrawing, lengthKm, formatLength, formatClimb, climb} from './draw.mjs?v=20261125-canvas-terrain-sync-1';
-import {createElevation, createSurfaceElevation, alongLine, profileStats, profileSegments} from './elevation.mjs?v=20261125-canvas-terrain-sync-1';
-import {stationDepartures, plannerLink, TRANSITOUS_SOURCES} from './departures.mjs?v=20261125-canvas-terrain-sync-1';
-import {departureItem} from './departures-ui.mjs?v=20261125-canvas-terrain-sync-1';
-import {installGlobeDrag, allowPolarCentres, readoutZoom, viewHash, parseViewHash} from './globe-drag.mjs?v=20261125-canvas-terrain-sync-1';
-import {installBathymetry, shareArchiveRequests, seabedContourOpacity} from './bathymetry.mjs?v=20261125-canvas-terrain-sync-1';
-import {installTerrain3D, syncTerrain3D, terrain3DEnabled, terrain3DSelectedForPitch, terrain3DViewTarget, terrainExaggeration, syncHighPitchTileBudget, TERRAIN_3D_MAX_PITCH, HIGH_PITCH_TILE_CACHE_LIMIT} from './terrain-3d.mjs?v=20261125-canvas-terrain-sync-1';
-import {installKeyboardPan} from './keyboard-pan.mjs?v=20261125-canvas-terrain-sync-1';
-import {annotateLayers, layerVisibility, shouldLocalizeLayer, installHybridRailCasings} from './layer-semantics.mjs?v=20261125-canvas-terrain-sync-1';
-import {createPowerFacilityLoader, electricitySignalRows, POWER_FACILITY_EXPLANATION} from './power-facilities.mjs?v=20261125-canvas-terrain-sync-1';
-import {serviceFrequencyPaint, nearestServiceFeature, frequencyAvailability, frequencyAttribution, selectedFrequencyProfile, FREQUENCY_LABELS, HOURLY_PROFILES, installFrequencyExpiry} from './service-frequency.mjs?v=20261125-canvas-terrain-sync-1';
-import {installWatchGesture} from './watch-map.mjs?v=20261125-canvas-terrain-sync-1';
-import {createRailProviderRecovery, createSourceFailures} from './rail-provider-recovery.mjs?v=20261125-canvas-terrain-sync-1';
-import {createEnergyNetworkProtocol} from './energy-network.mjs?v=20261125-canvas-terrain-sync-1';
-import {createBundleReader} from './tile-bundles.mjs?v=20261125-canvas-terrain-sync-1';
-import {createReferenceReader} from './mainline-reference.mjs?v=20261125-canvas-terrain-sync-1';
-import {addStationFallbackLayers, createStationFallbackState, createRailReferenceState, createReferenceRefresh, stationFallbackFilter, stationFallbackNamesEnabled, stationFallbackMarkersEnabled, shouldRefreshCuratedStationSource} from './station-fallback.mjs?v=20261125-canvas-terrain-sync-1';
-import {installWorldStationLifecycle, createStationViewPaint, WORLD_STATION_SOURCE, WORLD_STATION_DOTS, WORLD_STATION_SUPERSEDED_DOTS} from './station-world.mjs?v=20261125-canvas-terrain-sync-1';
-import {loadImageryConfig, applyImageryConfig, createImageryProtocol, installImageryAttribution, PROVIDER_ATTRIBUTION} from './imagery.mjs?v=20261125-canvas-terrain-sync-1';
-import {createSharedTileProtocols} from './shared-tile-protocols.mjs?v=20261125-canvas-terrain-sync-1';
+import {Drawing, Measure, readDrawing, lengthKm, formatLength, formatClimb, climb} from './draw.mjs?v=20261126-canvas-basemap-sync-1';
+import {createElevation, createSurfaceElevation, alongLine, profileStats, profileSegments} from './elevation.mjs?v=20261126-canvas-basemap-sync-1';
+import {stationDepartures, plannerLink, TRANSITOUS_SOURCES} from './departures.mjs?v=20261126-canvas-basemap-sync-1';
+import {departureItem} from './departures-ui.mjs?v=20261126-canvas-basemap-sync-1';
+import {installGlobeDrag, allowPolarCentres, readoutZoom, viewHash, parseViewHash} from './globe-drag.mjs?v=20261126-canvas-basemap-sync-1';
+import {installBathymetry, shareArchiveRequests, seabedContourOpacity} from './bathymetry.mjs?v=20261126-canvas-basemap-sync-1';
+import {installTerrain3D, syncTerrain3D, terrain3DEnabled, terrain3DSelectedForPitch, terrain3DViewTarget, terrainExaggeration, syncHighPitchTileBudget, TERRAIN_3D_MAX_PITCH, HIGH_PITCH_TILE_CACHE_LIMIT} from './terrain-3d.mjs?v=20261126-canvas-basemap-sync-1';
+import {installKeyboardPan} from './keyboard-pan.mjs?v=20261126-canvas-basemap-sync-1';
+import {annotateLayers, layerVisibility, shouldLocalizeLayer, installHybridRailCasings} from './layer-semantics.mjs?v=20261126-canvas-basemap-sync-1';
+import {createPowerFacilityLoader, electricitySignalRows, POWER_FACILITY_EXPLANATION} from './power-facilities.mjs?v=20261126-canvas-basemap-sync-1';
+import {serviceFrequencyPaint, nearestServiceFeature, frequencyAvailability, frequencyAttribution, selectedFrequencyProfile, FREQUENCY_LABELS, HOURLY_PROFILES, installFrequencyExpiry} from './service-frequency.mjs?v=20261126-canvas-basemap-sync-1';
+import {installWatchGesture} from './watch-map.mjs?v=20261126-canvas-basemap-sync-1';
+import {createRailProviderRecovery, createSourceFailures} from './rail-provider-recovery.mjs?v=20261126-canvas-basemap-sync-1';
+import {createEnergyNetworkProtocol} from './energy-network.mjs?v=20261126-canvas-basemap-sync-1';
+import {createBundleReader} from './tile-bundles.mjs?v=20261126-canvas-basemap-sync-1';
+import {createReferenceReader} from './mainline-reference.mjs?v=20261126-canvas-basemap-sync-1';
+import {addStationFallbackLayers, createStationFallbackState, createRailReferenceState, createReferenceRefresh, stationFallbackFilter, stationFallbackNamesEnabled, stationFallbackMarkersEnabled, shouldRefreshCuratedStationSource} from './station-fallback.mjs?v=20261126-canvas-basemap-sync-1';
+import {installWorldStationLifecycle, createStationViewPaint, WORLD_STATION_SOURCE, WORLD_STATION_DOTS, WORLD_STATION_SUPERSEDED_DOTS} from './station-world.mjs?v=20261126-canvas-basemap-sync-1';
+import {loadImageryConfig, applyImageryConfig, createImageryProtocol, installImageryAttribution, PROVIDER_ATTRIBUTION} from './imagery.mjs?v=20261126-canvas-basemap-sync-1';
+import {createSharedTileProtocols} from './shared-tile-protocols.mjs?v=20261126-canvas-basemap-sync-1';
 
 const $ = id => document.getElementById(id);
 $('help-power').textContent = POWER_FACILITY_EXPLANATION;
@@ -92,7 +92,7 @@ let railRecovery, stationFailures, railReferenceFailures, wakeRailRecovery = () 
 let stationWorldActive = false, stationWorldLifecycle;
 const stationViewPaint = createStationViewPaint();
 let map, ready = false, currentFeature, searchController, searchPausedUntil = 0, dem, scale, styleLanguage, pendingView, clickable = [], hoverFrame, drawing, measuring;
-const assetVersion = new URL(import.meta.url).searchParams.get('v') || '20261125-canvas-terrain-sync-1';
+const assetVersion = new URL(import.meta.url).searchParams.get('v') || '20261126-canvas-basemap-sync-1';
 // An old active worker can save this new page before its replacement has
 // installed. If that update is interrupted, only old first-party/CDN copies
 // may be available offline. Read exact saved responses without contacting the
@@ -247,9 +247,9 @@ if (!useFlat) {
     restoreCachedMapStyle().catch(() => {});
   }
 }
+const pmtilesLibrary=loadScript(new URL('vendor/pmtiles-4.2.1.js', import.meta.url).href, 'pmtiles', 'pmtiles-js');
 const libraries = Promise.all([
-  webglLibraries,
-  loadScript(new URL('vendor/pmtiles-4.2.1.js', import.meta.url).href, 'pmtiles', 'pmtiles-js'),
+  webglLibraries, pmtilesLibrary,
   loadScript(new URL(`vendor/maplibre-contour.js?v=${assetVersion}`, import.meta.url).href, 'mlcontour'),
 ]);
 const labels = import(`./vendor/tile-labels.js?v=${assetVersion}`);
@@ -1062,6 +1062,10 @@ function serviceSourceRelations(panel, feature) {
 // data, and journey links. Fetched once a minute at most per station (the
 // panel is redrawn when settings change).
 const departureBoards = new Map();
+// Station identity usually outlives a timetable snapshot. Keep only short-
+// lived, successful name matches in this tab, not timetable rows or guesses.
+const departureStopMatches = new Map();
+const STOP_MATCH_TTL = 15 * 60_000, STOP_MATCH_MAX = 128;
 function departureBoardKey(feature, names) {
   const p = feature.properties, object = osmObject(feature);
   const id = [p.id, p.osm_id, feature.id].find(value =>
@@ -1090,7 +1094,12 @@ function showDepartures(panel, feature) {
   let board = departureBoards.get(key);
   if (!board || Date.now() - board.at > 60_000) {
     const entry = {at: Date.now(), progress: null, listeners: new Set()};
+    const match = departureStopMatches.get(key);
+    const identifiedStops = match && entry.at - match.at < STOP_MATCH_TTL ? match.stops : undefined;
+    if (!identifiedStops) departureStopMatches.delete(key);
+    let namedStops;
     entry.promise = stationDepartures({lat, lon, names}, {
+      identifiedStops, onNamedStops: stops => {namedStops=stops;},
       signal: AbortSignal.timeout(15000), onProgress: progress => {
         entry.progress = progress;
         for (const listener of entry.listeners) {
@@ -1100,9 +1109,19 @@ function showDepartures(panel, feature) {
     });
     board = entry;
     departureBoards.set(key, entry);
-    entry.promise.then(() => {entry.progress = null; entry.listeners.clear();}, () => {
+    entry.promise.then(({stopResults}) => {
       entry.progress = null; entry.listeners.clear();
-      if (departureBoards.get(key) === entry) departureBoards.delete(key);
+      if (departureBoards.get(key) !== entry) return;
+      if (stopResults.some(r=>r.status==='rejected'))departureStopMatches.delete(key);
+      else if (namedStops) {
+        departureStopMatches.set(key,{at:entry.at,stops:namedStops});
+        while (departureStopMatches.size>STOP_MATCH_MAX)departureStopMatches.delete(departureStopMatches.keys().next().value);
+      }
+    }, () => {
+      entry.progress = null; entry.listeners.clear();
+      if (departureBoards.get(key) === entry) {
+        departureStopMatches.delete(key); departureBoards.delete(key);
+      }
     });
   }
   function render({stops, rows, stopResults}) {
@@ -1492,9 +1511,11 @@ terrainButton.addEventListener('click', () => {
   saveView();
   const view = terrain3DViewTarget({zoom:map.getZoom(),detail:settings.detail,active:was3D,
     globe:onGlobe(), latitude:map.getCenter().lat});
-  // A cancel must apply the flat camera even while terrain work is holding
-  // up MapLibre's next render frame. Keep the inspection animation on entry.
-  map.easeTo({...view,duration:was3D||matchMedia('(prefers-reduced-motion: reduce)').matches?0:750});
+  // Intermediate 3D camera poses make MapLibre synchronously read terrain
+  // coordinates for scale and other map UI before the next frame. Apply the
+  // final camera in one input turn; normal terrain loading and diagnostics
+  // still run, and exiting keeps the current zoom as before.
+  map.easeTo({...view,duration:0});
 });
 updateTerrainButton();
 const MIN_ZOOM = 1, MAX_ZOOM = 20;
@@ -1717,7 +1738,14 @@ async function initialize() {
   });
   // Esri imagery only when the deployment configures a key; EOX otherwise.
   const imageryConfig=loadImageryConfig(new URL('./imagery-config.json',import.meta.url),{fetcher:fetch});
-  const [, labelCode, style, imagery] = await Promise.all([libraries, labels, styleResponse, imageryConfig]);
+  const prepareBasemap = Promise.all([pmtilesLibrary, labels, styleResponse]).then(([, code, style])=>{
+    const source=code.createBasemapSourceFactory(pmtiles);
+    const archive=url=>new pmtiles.PMTiles(code.timedSource(source(url),20000));
+    return code.warmInitialBasemapArchive(archive,{
+      sourceURL:style.sources.openmaptiles?.url, background:settings.background,
+    });
+  });
+  const [, labelCode, style, imagery, basemapArchive] = await Promise.all([libraries, labels, styleResponse, imageryConfig, prepareBasemap]);
   const {installLabelProtocols, localizeTile, tileTextBlocks} = labelCode;
   locate = labelCode.locate;
   servedBuild = labelCode.buildInfo;
@@ -1732,8 +1760,6 @@ async function initialize() {
   // Both the labelled basemap and bathymetry read the same PMTiles archive.
   // Create it with the timeout wrapper once, before either consumer can ask
   // Protocol.tile() to create an untimed default FetchSource for that URL.
-  const basemapSource = labelCode.createBasemapSourceFactory(pmtiles);
-  const basemapArchive = url => new pmtiles.PMTiles(labelCode.timedSource(basemapSource(url), 20000));
   const requestRefresh=createReferenceRefresh(()=>{if(ready)applyRailReferenceState();});
   worldGlyphFallback = labelCode.createGlyphFallback({worldFonts, language: () => settings.language});
   const labelProtocols = installLabelProtocols(tileProtocols,protocol,fetch,{dataRoot:new URL('./data/', import.meta.url), basemapArchive, rareGlyphs:rareHanFonts.ensure, glyphFallback: worldGlyphFallback,

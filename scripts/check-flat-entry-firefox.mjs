@@ -314,11 +314,13 @@ try {
         const op=url.pathname.split('/').at(-1);
         fixtureDepartures.push(op);
         const place=(name,stopId)=>({name,stopId,tz:'Etc/UTC',departure:fixtureDepartureAt,arrival:fixtureDepartureAt});
-        if(op==='reverse-geocode'){
-          const [lat,lon]=url.searchParams.get('place').split(',').map(Number);
-          assert.ok(Number.isFinite(lat)&&Number.isFinite(lon));
-          assert.equal(url.searchParams.get('type'),'STOP');
-          return json([{type:'STOP',id:'east-station',name:'Primary East',lat,lon,modes:['REGIONAL_RAIL']}]);
+        if(url.pathname==='/api/v6/map/stops'){
+          const min=url.searchParams.get('min').split(',').map(Number), max=url.searchParams.get('max').split(',').map(Number);
+          assert.ok(min.every(Number.isFinite)&&max.every(Number.isFinite)&&min.every((value,i)=>value<max[i]));
+          assert.equal(url.searchParams.get('grouped'),'true');
+          assert.ok(url.searchParams.getAll('modes').includes('RAIL'));
+          const [lat,lon]=min.map((x,i)=>(x+max[i])/2);
+          return json([{stopId:'east-station',name:'Primary East',lat,lon,modes:['REGIONAL_RAIL']}]);
         }
         if(op==='stoptimes'){
           assert.equal(url.searchParams.get('stopId'),'east-station');
@@ -896,12 +898,12 @@ try {
         const summary=p.locator('.departure-summary').filter({hasText:'Fixture Terminus'});
         await summary.waitFor();
         await p.getByText(/Timetabled times: no live data/).waitFor();
-        assert.deepEqual(fixtureDepartures,['reverse-geocode','stoptimes']);
+        assert.deepEqual(fixtureDepartures,['stops','stoptimes']);
         await summary.click();
         await p.locator('.trip-stops').waitFor();
         assert.deepEqual(await p.locator('.trip-stops tbody th').allTextContents(),
           ['Previous Station','Primary East','Fixture Terminus']);
-        assert.deepEqual(fixtureDepartures,['reverse-geocode','stoptimes','trip']);
+        assert.deepEqual(fixtureDepartures,['stops','stoptimes','trip']);
         assert.equal(await p.locator('.trip-current-stop').count(),1);
         console.log('Firefox staged Canvas: clicked painted station, loaded a timetabled board, and opened the correct train schedule without prefetch.');
         await p.locator('#details .close').click();

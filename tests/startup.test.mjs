@@ -111,6 +111,7 @@ test('3D mountain icon starts an actually detailed terrain view, not just a pitc
    map.zoom=2;
    button.click();
    assert.equal(map.lastEase.pitch,60,'3D activation keeps the requested 60° initial angle');
+   assert.equal(map.lastEase.duration,0,'3D entry must not render intermediate terrain cameras');
    assert.ok(!(map.tileLodCalls||[]).some(args=>args.length===2&&args[0]===11&&args[1]===2),
      'initial 60° pitch must not enable the over-65° horizon budget');
    assert.ok(map.lastEase.zoom>=12.3,'whole-globe click must zoom to resolvable terrain');
@@ -126,8 +127,8 @@ test('3D mountain icon starts an actually detailed terrain view, not just a pitc
      'tilt beyond 65° enables coarser horizon tiles for all sources');
    assert.ok(map.tileLodCalls?.some(args=>args[0]===12&&args[1]===1.5&&args[2]==='terrain3d'),
      '3D DEM uses a stronger distant-tile LOD budget');
-   // Mock the intermediate frames of MapLibre's 750 ms exit animation.
-   // They must not reselect 3D merely because their pitch remains nonzero.
+   // Inject pitch events while the exit is applying the new view. A stale
+   // nonzero pitch event must not reselect the terrain mode.
    const nativeEase=map.easeTo.bind(map);
    map.easeTo=options=>{
      if(options.pitch!==0)return nativeEase(options);
@@ -1068,7 +1069,10 @@ test('controls work while the map is still loading, and settings take effect onc
   const {dom,window,maps,errors,loadLibraries} = await start({delayLibraries:true});
   try {
     assert.equal(maps.length,0,'the map waits for its libraries');
-    assert.equal(window.document.head.querySelectorAll('script').length,3,'libraries load from the app, not blocking the page');
+    const head = html.match(/<head>([\s\S]*?)<\/head>/)[1];
+    assert.doesNotMatch(head,/<script\b[^>]*\bsrc=/i,'the HTML head must not load parser-blocking scripts');
+    const libraries = [...window.document.head.querySelectorAll('script[src]')].map(node => new URL(node.src).pathname.split('/').at(-1)).sort();
+    assert.deepEqual(libraries,['maplibre-contour.js','maplibre-gl-5.24.0-atlas.4.js','pmtiles-4.2.1.js']);
     window.document.querySelector('[data-mode="electrification"]').click();
     assert.equal(window.document.querySelector('[data-mode="electrification"]').getAttribute('aria-pressed'),'true');
     const units = window.document.getElementById('units');

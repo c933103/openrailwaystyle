@@ -1,4 +1,4 @@
-import {SEARCH_API} from './map-model.mjs?v=20261125-canvas-terrain-sync-1';
+import {SEARCH_API} from './map-model.mjs?v=20261126-canvas-basemap-sync-1';
 const button = document.getElementById('check');
 button.addEventListener('click', async () => {
   button.disabled = true;

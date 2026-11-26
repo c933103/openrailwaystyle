@@ -88,8 +88,8 @@ test('selected stop boards retain both numbered destinations with normal request
     const requests = [], signal = new AbortController().signal;
     const fetch = async (value, options) => {
       const url = new URL(value); requests.push({url, options});
-      const body = url.pathname.endsWith('/reverse-geocode') ? order.map(id => ({
-        type:'STOP', id, name:'Central', lat:0, lon:0, modes:['REGIONAL_RAIL']})) : {stopTimes:[
+      const body = url.pathname.endsWith('/map/stops') ? order.map(id => ({
+        type:'STOP', stopId:id, name:'Central', lat:0, lon:0, modes:['REGIONAL_RAIL']})) : {stopTimes:[
         observation(url.searchParams.get('stopId') === 'a' ? 'Terminal 1' : 'Terminal 10', url.searchParams.get('stopId'))]};
       return {ok:true, json:async () => body};
     };
@@ -172,8 +172,8 @@ test('selected boards keep lexical destinations separate with normal bounded acq
     const fetch = async value => {
       const url = new URL(value); requests.push(url);
       const id = url.searchParams.get('stopId');
-      return {ok:true, json:async () => url.pathname.endsWith('/reverse-geocode') ? order.map(id => ({
-        type:'STOP', id, name:'Central', lat:0, lon:0, modes:['REGIONAL_RAIL']})) : {
+      return {ok:true, json:async () => url.pathname.endsWith('/map/stops') ? order.map(id => ({
+        type:'STOP', stopId:id, name:'Central', lat:0, lon:0, modes:['REGIONAL_RAIL']})) : {
           stopTimes:[observation(id === 'a' ? a : b, id, {cancelled:id === 'b'})]}};
     };
     const result = await stationDepartures({lat:0, lon:0, names:['Central']}, {fetch});
@@ -204,8 +204,8 @@ test('destination veto preserves standalone baseline coercion of malformed heads
     }
     const fetch = async value => {
       const url = new URL(value);
-      return {ok:true, json:async () => url.pathname.endsWith('/reverse-geocode') ? ['a','b'].map(id => ({
-        type:'STOP', id, name:'Central', lat:0, lon:0, modes:['REGIONAL_RAIL']})) : {
+      return {ok:true, json:async () => url.pathname.endsWith('/map/stops') ? ['a','b'].map(id => ({
+        type:'STOP', stopId:id, name:'Central', lat:0, lon:0, modes:['REGIONAL_RAIL']})) : {
           stopTimes:[url.searchParams.get('stopId') === 'a' ? malformed : healthy]}};
     };
     const result = await stationDepartures({lat:0, lon:0, names:['Central']}, {fetch});

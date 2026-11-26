@@ -3,9 +3,12 @@ import {waitForViewport} from './viewport-settle.mjs';
 // can be exercised with controlled fetch/decode implementations.
 import {REFERENCE_FROM, REPAIR_FROM, referenceTile, repairPixels, witnessTiles, repairFromWitness} from './dem-repair.mjs';
 import {TERRAIN_TIMEOUT_MS, REPAIR_TIMEOUT_MS, terrainAbort, terrainTask, sharedTerrainTiles, terrainBlob, decodeTerrain} from './terrain-requests.mjs';
+// Worker dispatch and the outer contour actor have the same deadline. Keep
+// time for LocalDemManager to decode the final blob and return it to the page.
+const finalDecodeReserveMs = 2_000;
 const TILE = /\/(\d+)\/(\d+)\/(\d+)\.(png|webp)(?=\?|$)/;
 export function createDemTileLoader({fetcher = fetch, decode = decodeTerrain,
-  timeoutMs = TERRAIN_TIMEOUT_MS, repairTimeoutMs = REPAIR_TIMEOUT_MS, isMoving} = {}) {
+  timeoutMs = TERRAIN_TIMEOUT_MS, repairTimeoutMs = REPAIR_TIMEOUT_MS, isMoving, now = () => performance.now()} = {}) {
   const references = sharedTerrainTiles(async (url, signal) => {
     const {blob} = await terrainBlob(url, signal, fetcher);
     return (await decode(blob, signal)).pixels;
@@ -15,11 +18,17 @@ export function createDemTileLoader({fetcher = fetch, decode = decodeTerrain,
     return null;
   });
   return async (url, abortController) => {
+    const started = now();
     const signal = abortController.signal;
     const {blob, response} = await terrainTask(child => terrainBlob(url, child, fetcher), {signal, timeoutMs});
     const tile = {data: blob, expires: response.headers.get('expires') || undefined, cacheControl: response.headers.get('cache-control') || undefined};
     const match = url.match(TILE), [z, x, y] = match ? match.slice(1, 4).map(Number) : [];
     if (!match || z < REPAIR_FROM || typeof OffscreenCanvas === 'undefined') return tile;
+    // The repair budget belongs to this same tile request, not a new
+    // deadline that starts after the primary body finally arrives.
+    const remaining = timeoutMs>0 ? timeoutMs-(now()-started)-Math.min(finalDecodeReserveMs,timeoutMs/4) : Infinity;
+    const repairBudget = Math.min(repairTimeoutMs, remaining);
+    if(repairBudget<=0)return tile;
     try {
       return await terrainTask(async repairSignal => {
         await waitForViewport(repairSignal, isMoving);
@@ -35,7 +44,7 @@ export function createDemTileLoader({fetcher = fetch, decode = decodeTerrain,
         if (!changed) return tile;
         context.putImageData(pixels, 0, 0);
         return {...tile, data: await canvas.convertToBlob({type: 'image/png'})};
-      }, {signal, timeoutMs: repairTimeoutMs});
+      }, {signal, timeoutMs: repairBudget});
     } catch {
       // Optional repair failure must not discard usable fine bytes. A caller
       // cancellation (including DemSource's existing overall timeout) still wins.

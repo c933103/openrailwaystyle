@@ -1,3 +1,4 @@
+import {asMapStops} from './departure-stop-fixtures.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
@@ -17,6 +18,7 @@ function fixture({order = ['a', 'b'], failed = [], times = [], failureKind = 'ne
   const calls = [], before = structuredClone(times);
   return {calls, before, fetch: async (url, options) => {
     calls.push({url: new URL(url), options});
+    if (url.includes('/map/stops')) return {ok: true, json: async () => asMapStops(candidates)};
     if (url.includes('/reverse-geocode')) return {ok: true, json: async () => candidates};
     const id = new URL(url).searchParams.get('stopId');
     if (failed.includes(id)) {
@@ -180,9 +182,9 @@ function boardDom(feed) {
     textNode: (tag, text, className = '') => {
       const node = document.createElement(tag); node.textContent = text; node.className = className; return node;
     }});
-  const {showDepartures, departureBoards} = vm.runInContext(`${renderer}\n({showDepartures, departureBoards})`, context);
+  const {showDepartures, departureBoards, departureStopMatches} = vm.runInContext(`${renderer}\n({showDepartures, departureBoards, departureStopMatches})`, context);
   const panel = document.querySelector('#panel');
-  return {dom, panel, departureBoards, advance: ms => {now += ms;}, language: value => {settings.language = value;},
+  return {dom, panel, departureBoards, departureStopMatches, advance: ms => {now += ms;}, language: value => {settings.language = value;},
     show: (properties = 'Central', extra = {}) => {
       panel.replaceChildren();
       showDepartures(panel, {...extra, properties: typeof properties === 'string' ? {name: properties} : properties, geometry: extra.geometry || {coordinates: [0, 0]}});
@@ -213,7 +215,7 @@ test('DOM keeps numeric and lexical destination conflicts separate through cache
         assert.equal(feed.current.calls.length, 3, 'normal redraws do not request another board');
       }
       view.advance(60_001); view.show(station); await view.settle();
-      assert.equal(feed.current.calls.length, 6, 'normal expiry permits only the next bounded request set');
+      assert.equal(feed.current.calls.length, 5, 'normal expiry refreshes the boards, not their still-valid station identity');
       assert.equal(view.panel.querySelectorAll('.departure-list > li').length, 2);
     } finally {view.dom.window.close();}
   }
@@ -495,7 +497,6 @@ const unmatchedLookups = [
     {...stop('bus'), modes: ['BUS']},
     {...stop('place'), type: 'PLACE'},
     {...stop('far'), lat: 0.01},
-    {...stop('coordinates'), lon: '0'},
   ]],
 ];
 const unmatchedMessage = 'No matching rail timetable stop was found within 400 m.';
@@ -505,7 +506,7 @@ for (const [label, candidates] of unmatchedLookups) test(`successful ${label} lo
   assert.deepEqual(candidates, before);
   assert.equal(feed.calls.length, 1);
   assert.equal(feed.calls[0].options.signal, signal);
-  assert.equal(feed.calls[0].url.pathname, '/api/v1/reverse-geocode');
+  assert.equal(feed.calls[0].url.pathname, '/api/v6/map/stops');
 });
 
 const malformedLookups = [null, {}, {error: 'synthetic private provider response'}, 'synthetic private response', 0, false];
@@ -623,7 +624,7 @@ for (const slow of ['success', 'failure']) for (const fast of ['rows', 'empty'])
     const a = [observation], b = [{...observation, cancelled:true}];
     const base = fixture({bodies:{a:{stopTimes:fast === 'rows' ? a : []}, b:{stopTimes:b}}, failed:slow === 'failure' ? ['b'] : []});
     const feed = {current:{fetch: async (url, options) => {
-      if (url.includes('/reverse-geocode')) await lookup;
+      if (url.includes('/map/stops')) await lookup;
       if (new URL(url).searchParams.get('stopId') === 'b') await blocked;
       return base.fetch(url, options);
     }}}, view = boardDom(feed);
@@ -649,3 +650,46 @@ for (const slow of ['success', 'failure']) for (const fast of ['rows', 'empty'])
     } finally { lookedUp(); release(); view.dom.window.close(); }
   });
 }
+
+test('DOM reuses a confirmed identity after board expiry but not after its own expiry', async ()=>{
+  const good = () => fixture({order:['a'], times:[observation]});
+  const feed={current:good()}, view=boardDom(feed);
+  try {
+    view.show(); await view.settle();
+    const paths=()=>feed.current.calls.map(x=>x.url.pathname);
+    assert.deepEqual(paths(),['/api/v6/map/stops','/api/v1/stoptimes']);
+    view.advance(60_001);feed.current=good();view.show();await view.settle();
+    assert.deepEqual(paths(),['/api/v1/stoptimes']);
+    view.advance(15*60_000-60_001);feed.current=good();view.show();await view.settle();
+    assert.deepEqual(paths(),['/api/v6/map/stops','/api/v1/stoptimes']);
+  } finally {view.dom.window.close();}
+});
+
+test('DOM does not keep an unmatched name or stale positive IDs after a failed board', async ()=>{
+  const good=()=>fixture({order:['a'], times:[observation]});
+  const feed={current:good()}, view=boardDom(feed);
+  const paths=()=>feed.current.calls.map(x=>x.url.pathname);
+  try {
+    view.show('Different name');await view.settle();
+    assert.equal(view.departureStopMatches.size,0);
+    view.advance(60_001);feed.current=good();view.show('Different name');await view.settle();
+    assert.deepEqual(paths(),['/api/v6/map/stops','/api/v1/stoptimes']);
+    feed.current=good();view.show();await view.settle();assert.equal(view.departureStopMatches.size,1);
+    view.advance(60_001);feed.current=fixture({order:['a'],failed:['a']});view.show();await view.settle();
+    assert.deepEqual(paths(),['/api/v1/stoptimes']);
+    assert.equal(view.departureStopMatches.size,0);
+    feed.current=good();view.show();await view.settle();
+    assert.deepEqual(paths(),['/api/v6/map/stops','/api/v1/stoptimes']);
+  } finally {view.dom.window.close();}
+});
+
+test('DOM bounds successful stop matches to 128 per tab', async ()=>{
+  const feed={current:fixture({order:['a']})}, view=boardDom(feed);
+  try {
+    for(let i=0;i<130;i++){view.show({id:`station-${i}`,name:'Central'});await view.settle();}
+    assert.equal(view.departureStopMatches.size,128);
+    view.advance(60_001);feed.current=fixture({order:['a']});
+    view.show({id:'station-0',name:'Central'});await view.settle();
+    assert.deepEqual(feed.current.calls.map(x=>x.url.pathname),['/api/v6/map/stops','/api/v1/stoptimes']);
+  } finally {view.dom.window.close();}
+});

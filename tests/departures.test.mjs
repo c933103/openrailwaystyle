@@ -1,3 +1,4 @@
+import {asMapStops} from './departure-stop-fixtures.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {pickStops, departureRows, clock, plannerLink, stationDepartures} from '../styles/departures.mjs';
@@ -96,17 +97,22 @@ test('a regional train and a metro train leaving together are never merged', () 
 test('journey links and the station board request', async () => {
   assert.equal(plannerLink('from', 'jp-japan-rail_1748', '東京'), 'https://api.transitous.org/?fromPlace=jp-japan-rail_1748&fromName=%E6%9D%B1%E4%BA%AC');
   const urls = [];
-  const fetch = async url => { urls.push(url); return {ok:true, json: async () => url.includes('reverse-geocode') ? [stop('Austin','hk-MTR-AUS',22.30447,114.16666,['SUBWAY'])] : {stopTimes: []}}; };
+  const fetch = async url => { urls.push(url); return {ok:true, json: async () => url.includes('/map/stops') ? asMapStops([stop('Austin','hk-MTR-AUS',22.30447,114.16666,['SUBWAY'])]) : {stopTimes: []}}; };
   const board = await stationDepartures({lat:22.3046, lon:114.1660, names:['Austin']}, {fetch});
   assert.deepEqual(board, {stops:[stop('Austin','hk-MTR-AUS',22.30447,114.16666,['SUBWAY'])], rows:[], stopResults:[{stopId:'hk-MTR-AUS', status:'fulfilled'}]});
-  assert.deepEqual(urls, ['https://api.transitous.org/api/v1/reverse-geocode?place=22.3046,114.166&type=STOP', 'https://api.transitous.org/api/v1/stoptimes?stopId=hk-MTR-AUS&n=30&mode=HIGHSPEED_RAIL,LONG_DISTANCE,NIGHT_RAIL,REGIONAL_FAST_RAIL,REGIONAL_RAIL,SUBURBAN,RAIL,METRO,SUBWAY,TRAM,FUNICULAR,CABLE_CAR']);
+  assert.equal(urls.length,2);
+  const lookup=new URL(urls[0]);
+  assert.equal(lookup.pathname,'/api/v6/map/stops');
+  assert.equal(lookup.searchParams.get('grouped'),'true');
+  assert.deepEqual(lookup.searchParams.getAll('modes'),['RAIL','TRAM','FUNICULAR','CABLE_CAR']);
+  assert.equal(urls[1], 'https://api.transitous.org/api/v1/stoptimes?stopId=hk-MTR-AUS&n=30&mode=HIGHSPEED_RAIL,LONG_DISTANCE,NIGHT_RAIL,REGIONAL_FAST_RAIL,REGIONAL_RAIL,SUBURBAN,RAIL,METRO,SUBWAY,TRAM,FUNICULAR,CABLE_CAR');
 });
 
 test('one stop\'s board failing keeps the other\'s; all failing is an error', async () => {
   const stops = [stop('東京','jr',35.6810,139.7672,['HIGHSPEED_RAIL']), stop('東京 Tōkyō','tokyo-rail',35.6814,139.7668,['REGIONAL_RAIL'])];
   const later = new Date(Date.now() + 600_000).toISOString();
   const board = {stopTimes: [{mode:'HIGHSPEED_RAIL', displayName:'Nozomi 1', headsign:'Hakata', realTime:false, place:{departure:later, scheduledDeparture:later, tz:'Asia/Tokyo'}}]};
-  const fetchWith = failing => async url => url.includes('reverse-geocode') ? {ok:true, json: async () => stops} : failing(url) ? {ok:false, status:404} : {ok:true, json: async () => board};
+  const fetchWith = failing => async url => url.includes('/map/stops') ? {ok:true, json: async () => asMapStops(stops)} : failing(url) ? {ok:false, status:404} : {ok:true, json: async () => board};
   const result = await stationDepartures({lat:35.6812, lon:139.7671, names:['東京']}, {fetch: fetchWith(url => url.includes('tokyo-rail'))});
   assert.deepEqual(result.rows.map(r => r.line), ['Nozomi 1']);
   await assert.rejects(stationDepartures({lat:35.6812, lon:139.7671, names:['東京']}, {fetch: fetchWith(() => true)}), /404/);

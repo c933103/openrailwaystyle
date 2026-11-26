@@ -61,3 +61,23 @@ export function createBasemapSourceFactory({FetchSource, EtagMismatch}, {
     }
   }(url);
 }
+
+// The initial Map/Hybrid scene will need this archive. Start its existing
+// header read while unrelated startup inputs are pending. The protocol gets
+// the SAME archive once, so its shared cache owns the same promise and the
+// normal error/backoff path still replaces a failed archive on retry.
+export function warmInitialBasemapArchive(createArchive, {sourceURL, background}) {
+  let initial;
+  if ((background==='map'||background==='hybrid') && /^pmtiles:\/\/https?:\/\//.test(sourceURL||'')) {
+    const key=sourceURL.slice('pmtiles://'.length), archive=createArchive(key);
+    initial={key,archive};
+    // Observes an early rejection without changing the shared cache result.
+    if(typeof archive.getHeader==='function')archive.getHeader().catch(()=>{});
+  }
+  return key=>{
+    if(initial?.key!==key)return createArchive(key);
+    const {archive}=initial;
+    initial=null;
+    return archive;
+  };
+}

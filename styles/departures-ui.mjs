@@ -1,4 +1,4 @@
-import {clock, trainSchedule} from './departures.mjs?v=20261125-canvas-terrain-sync-1';
+import {clock, trainSchedule} from './departures.mjs?v=20261126-canvas-basemap-sync-1';
 
 const node = (document, tag, text = '', className = '') => {
   const element = document.createElement(tag);
