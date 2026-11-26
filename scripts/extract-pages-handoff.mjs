@@ -13,7 +13,7 @@ const label = 'Retain verified extract generation ';
 const repo = process.env.GITHUB_REPOSITORY;
 
 export function inputIdentity(index, builder, polar) {
-  if (!gitOid.test(builder) || !(polar === null || gitOid.test(polar))) throw Error('Invalid builder or polar tree');
+  if (!sha256.test(builder) || !(polar === null || gitOid.test(polar))) throw Error('Invalid builder or polar tree');
   const regions = ordered(Object.entries(index.regions ?? {}));
   if (!regions.length || regions.some(([, value]) => !sha256.test(value.sha256) || !value.sourceTimestamp))
     throw Error('Extract inputs need a digest and source time for each region');
@@ -41,18 +41,35 @@ export async function selectedGeneration(chosen, read) {
     commits: Object.fromEntries(selected.map(([id, value]) => [id, value.ref]))};
 }
 
-export async function lastVerifiedGeneration(runs, readJobs) {
-  for (const run of [...runs].sort((a, b) => String(b.updated_at ?? '').localeCompare(String(a.updated_at ?? '')))) {
-    if (run.head_branch !== 'main' || run.event === 'pull_request' || run.conclusion !== 'success') continue;
-    const deploy = (await readJobs(run.id, run.run_attempt)).find(job => job.name === 'deploy' && job.conclusion === 'success');
-    if (!deploy) continue;
-    const step = deploy.steps.find(s => s.conclusion === 'success' && s.name.startsWith(label));
-    const generation = step?.name.slice(label.length);
-    // A newer ordinary deployment has no verified identity for this handoff.
-    // Do not let a historic receipt override it.
-    return sha256.test(generation ?? '') ? generation : null;
+export function verifyStagedCommits(expected, observed) {
+  for (const [dataset, commit] of Object.entries(expected)) {
+    const staged = observed.filter(row => row[0] === dataset).map(row => row[1]);
+    if (staged.length !== 1 || staged[0] !== commit)
+      throw Error('No exact staged commit for selected extract ' + dataset);
   }
-  return null;
+}
+
+export async function lastVerifiedGeneration(runs, readJobs) {
+  const publications = [];
+  for (const run of runs) {
+    if (run.head_branch !== 'main' || run.event === 'pull_request') continue;
+    for (let attempt = run.run_attempt; attempt > 0; attempt--) {
+      const deploy = (await readJobs(run.id, attempt)).find(job => job.name === 'deploy');
+      const publication = deploy?.steps?.find(step => step.name === 'Deploy to GitHub Pages');
+      // A publication step that ran can already have changed the live site
+      // even if its workflow, verification or upload receipt later failed.
+      if (!publication || publication.conclusion === 'skipped' ||
+          (!publication.started_at && !publication.conclusion)) continue;
+      const step = deploy.steps.find(s => s.conclusion === 'success' && s.name.startsWith(label));
+      const generation = step?.name.slice(label.length);
+      publications.push({publishedAt: publication.started_at ?? deploy.started_at ?? run.updated_at ?? '',
+        generation: publication.conclusion === 'success' && deploy.conclusion === 'success' &&
+          sha256.test(generation ?? '') ? generation : null});
+      // An older attempt of the same run cannot follow a newer publication.
+      break;
+    }
+  }
+  return publications.sort((a,b)=>b.publishedAt.localeCompare(a.publishedAt))[0]?.generation ?? null;
 }
 
 function github(path, notFoundOk = false, raw = false) {
@@ -77,7 +94,7 @@ async function remote(branch) {
 }
 
 if (import.meta.url === pathToFileURL(process.argv[1] || '').href) {
-  const [phase, indexPath] = process.argv.slice(2);
+  const [phase, indexPath, commit] = process.argv.slice(2);
   if (process.env.GITHUB_REF !== 'refs/heads/main') throw Error('The Pages handoff runs only on main');
   if (phase === 'stamp') {
     const index = JSON.parse(await readFile(indexPath, 'utf8'));
@@ -85,17 +102,22 @@ if (import.meta.url === pathToFileURL(process.argv[1] || '').href) {
     // The published polar directory is already staged and copied byte for
     // byte from the known source, independent of the regional inputs.
     const tree = git => execFileSync('git', git, {encoding:'utf8'}).trim();
-    const builder = tree(['-C', process.env.GITHUB_WORKSPACE, 'rev-parse', 'HEAD:scripts']);
+    const builder = hash(tree(['-C', process.env.GITHUB_WORKSPACE, 'ls-tree', 'HEAD', '--',
+      'scripts', 'styles', 'package.json', 'package-lock.json', '.npmrc', '.github/workflows/osm-assemble.yml']));
     const root = tree(['write-tree']);
     const polar = tree(['ls-tree', root, 'polar']).split(/\s+/)[2] ?? null;
     marker.inputSha256 = inputIdentity(index, builder, polar);
     await writeFile('source.json', JSON.stringify(marker, null, 2) + '\n');
+  } else if (phase === 'staged') {
+    if (!/^[a-z-]+$/.test(indexPath ?? '') || !gitOid.test(commit ?? '')) throw Error('Invalid staged dataset commit');
+    await appendFile(join(process.env.RUNNER_TEMP, 'pages-extract-staged.jsonl'),
+      JSON.stringify([indexPath, commit]) + '\n');
   } else {
     const chosen = settings(parseFile(await readFile(SOURCES_FILE, 'utf8')), parseConfig(process.env.DATA_SOURCES));
     const current = await selectedGeneration(chosen, remote);
     if (phase === 'request') {
       const previous = current.generation ? await lastVerifiedGeneration(
-        (await github('actions/workflows/site.yml/runs?branch=main&status=success&per_page=12')).workflow_runs,
+        (await github('actions/workflows/site.yml/runs?branch=main&per_page=12')).workflow_runs,
         async (id, attempt) => (await github('actions/runs/' + id + '/attempts/' + attempt + '/jobs?per_page=100')).jobs) : null;
       const pending = current.generation && current.generation !== previous ? current.generation : '';
       await appendFile(process.env.GITHUB_OUTPUT, 'generation=' + pending + '\n');
@@ -106,15 +128,20 @@ if (import.meta.url === pathToFileURL(process.argv[1] || '').href) {
       if (!sha256.test(expected ?? '') || current.generation !== expected)
         throw Error('Selected complete extract generation differs from requested generation');
       const path = join(process.env.RUNNER_TEMP, 'pages-extract-pins.json');
-      if (phase === 'pin') await writeFile(path, JSON.stringify(current.commits));
-      else {
+      const stagedPath = join(process.env.RUNNER_TEMP, 'pages-extract-staged.jsonl');
+      if (phase === 'pin') {
+        await writeFile(path, JSON.stringify(current.commits));
+        await writeFile(stagedPath, '');
+      } else {
         if (await readFile(path, 'utf8') !== JSON.stringify(current.commits))
           throw Error('Selected extract refs changed while building the site');
         const used = JSON.parse(await readFile(join(process.env.RUNNER_TEMP, 'data-sources.json'), 'utf8'));
         const extracts = used.filter(row => row.source === 'extract').map(row => row.id).sort();
         if (JSON.stringify(extracts) !== JSON.stringify(Object.keys(current.commits)))
           throw Error('A pinned extract was not actually selected during staging');
+        const staged = (await readFile(stagedPath, 'utf8')).trim().split('\n').filter(Boolean).map(line => JSON.parse(line));
+        verifyStagedCommits(current.commits, staged);
       }
-    } else throw Error('Expected stamp, request, pin or check');
+    } else throw Error('Expected stamp, request, pin, staged or check');
   }
 }

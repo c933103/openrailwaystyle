@@ -141,6 +141,8 @@ jobs:
     needs: [facilities, reference]
     runs-on: ubuntu-latest
     timeout-minutes: 45
+    env:
+      EXPECTED_EXTRACT_GENERATION: ${{ inputs.extract_generation }}
     permissions:
       contents: read
       statuses: read
@@ -230,6 +232,9 @@ jobs:
           python tests/test_lifecycle_mvt.py
           python scripts/unpack-snapshot.py /tmp/lifecycle.pmtiles
           node scripts/build-overview-tiles.mjs
+          if [ -n "$EXPECTED_EXTRACT_GENERATION" ]; then
+            node scripts/extract-pages-handoff.mjs staged lifecycle "$(git -C lifecycle-data rev-parse HEAD)"
+          fi
           # The ODbL lifecycle table is offered from the odbl-tables release
           # (odbl-tables.yml), not deployed with the site.
       - name: Load and verify the complete independently acquired railway reference
@@ -311,6 +316,9 @@ jobs:
           if git ls-remote --exit-code --heads origin "$DATA_BRANCH_AXLE_LOAD"; then
             git fetch --depth=1 origin "$DATA_BRANCH_AXLE_LOAD"
             git show FETCH_HEAD:axle-load.json > styles/data/axle-load.json
+            if [ -n "$EXPECTED_EXTRACT_GENERATION" ]; then
+              node scripts/extract-pages-handoff.mjs staged axle-load "$(git rev-parse FETCH_HEAD)"
+            fi
           fi
       - name: Wait for first street-running snapshot
         run: |
@@ -329,6 +337,9 @@ jobs:
         run: |
           mkdir -p styles/data/street-running
           cp -r street-snapshot/12 street-snapshot/index.json street-snapshot/manifest.json street-snapshot/street-running.geojson.gz styles/data/street-running/
+          if [ -n "$EXPECTED_EXTRACT_GENERATION" ]; then
+            node scripts/extract-pages-handoff.mjs staged street-running "$(git -C street-snapshot rev-parse HEAD)"
+          fi
       # Complete OSM station points only. An in-progress crawl is not
       # published as a worldwide map inventory. The app requires the matching
       # complete manifest and bundle index before activating any of these tiles.
@@ -340,7 +351,11 @@ jobs:
           git ls-remote --exit-code --heads origin "$DATA_BRANCH_STATION_POINTS" >/dev/null || status=$?
           if [ "$status" = 0 ]; then
             git fetch --depth=1 origin "$DATA_BRANCH_STATION_POINTS"
+            set -o pipefail
             git archive FETCH_HEAD | tar -x -C styles/data/station-points --exclude=state.json --exclude=stations.json.gz --exclude=elements.json.gz
+            if [ -n "$EXPECTED_EXTRACT_GENERATION" ]; then
+              node scripts/extract-pages-handoff.mjs staged station-points "$(git rev-parse FETCH_HEAD)"
+            fi
             node --input-type=module <<'JS'
           import assert from 'node:assert/strict';
           import {readFile,stat} from 'node:fs/promises';
@@ -386,7 +401,11 @@ jobs:
           if git ls-remote --exit-code --heads origin "$DATA_BRANCH_CROSSINGS"; then
             git fetch --depth=1 origin "$DATA_BRANCH_CROSSINGS"
             # Tiles, index, manifest and the ODbL table (crossings.tsv.gz).
+            set -o pipefail
             git archive FETCH_HEAD | tar -x -C styles/data/level-crossings --exclude=regions.json
+            if [ -n "$EXPECTED_EXTRACT_GENERATION" ]; then
+              node scripts/extract-pages-handoff.mjs staged crossings "$(git rev-parse FETCH_HEAD)"
+            fi
           else
             echo '{"tiles":[]}' > styles/data/level-crossings/index.json
           fi
@@ -400,7 +419,11 @@ jobs:
           git ls-remote --exit-code --heads origin "$DATA_BRANCH_CONVEYING" || status=$?
           if [ "$status" = 0 ]; then
             git fetch --depth=1 origin "$DATA_BRANCH_CONVEYING"
+            set -o pipefail
             git archive FETCH_HEAD | tar -x -C styles/data/conveying --exclude=elements.json.gz
+            if [ -n "$EXPECTED_EXTRACT_GENERATION" ]; then
+              node scripts/extract-pages-handoff.mjs staged conveying "$(git rev-parse FETCH_HEAD)"
+            fi
           elif [ "$status" = 2 ]; then
             echo '{"tiles":[]}' > styles/data/conveying/index.json
           else
@@ -416,6 +439,9 @@ jobs:
           git fetch --depth=1 origin "refs/heads/$DATA_BRANCH_AERIALWAYS"
           git archive FETCH_HEAD | tar -x -C styles/data/aerialways --exclude=elements.json.gz
           node scripts/validate-aerialway-snapshot.mjs styles/data/aerialways
+          if [ -n "$EXPECTED_EXTRACT_GENERATION" ]; then
+            node scripts/extract-pages-handoff.mjs staged aerialways "$(git rev-parse FETCH_HEAD)"
+          fi
       # Historic areas (heritage.yml); without them the planning context
       # shows no historic areas.
       - name: Load historic areas
@@ -427,7 +453,11 @@ jobs:
           git ls-remote --exit-code --heads origin "$DATA_BRANCH_HERITAGE" || status=$?
           if [ "$status" = 0 ]; then
             git fetch --depth=1 origin "$DATA_BRANCH_HERITAGE"
+            set -o pipefail
             git archive FETCH_HEAD | tar -x -C styles/data/heritage --exclude=elements
+            if [ -n "$EXPECTED_EXTRACT_GENERATION" ]; then
+              node scripts/extract-pages-handoff.mjs staged heritage "$(git rev-parse FETCH_HEAD)"
+            fi
           elif [ "$status" = 2 ]; then
             echo '{"tiles":[]}' > styles/data/heritage/index.json
           else
@@ -445,7 +475,11 @@ jobs:
           git ls-remote --exit-code --heads origin "$DATA_BRANCH_BRANCH_LINES" || status=$?
           if [ "$status" = 0 ]; then
             git fetch --depth=1 origin "$DATA_BRANCH_BRANCH_LINES"
+            set -o pipefail
             git archive FETCH_HEAD | tar -x -C styles/data/branch-lines --exclude=state.json
+            if [ -n "$EXPECTED_EXTRACT_GENERATION" ]; then
+              node scripts/extract-pages-handoff.mjs staged branch-lines "$(git rev-parse FETCH_HEAD)"
+            fi
           elif [ "$status" = 2 ]; then
             echo '{"tiles":[]}' > styles/data/branch-lines/index.json
           else
@@ -461,7 +495,11 @@ jobs:
           git ls-remote --exit-code --heads origin "$DATA_BRANCH_SERVICE_ROUTES" || status=$?
           if [ "$status" = 0 ]; then
             git fetch --depth=1 origin "$DATA_BRANCH_SERVICE_ROUTES"
+            set -o pipefail
             git archive FETCH_HEAD | tar -x -C styles/data/service-routes --exclude=state.json
+            if [ -n "$EXPECTED_EXTRACT_GENERATION" ]; then
+              node scripts/extract-pages-handoff.mjs staged service-routes "$(git rev-parse FETCH_HEAD)"
+            fi
           elif [ "$status" = 2 ]; then
             echo '{"tiles":[]}' > styles/data/service-routes/index.json
           else
@@ -503,7 +541,11 @@ jobs:
         run: |
           mkdir -p styles/data/traction
           git fetch --depth=1 origin "$DATA_BRANCH_TRACTION"
+          set -o pipefail
           git archive FETCH_HEAD | tar -x -C styles/data/traction
+          if [ -n "$EXPECTED_EXTRACT_GENERATION" ]; then
+            node scripts/extract-pages-handoff.mjs staged traction "$(git rev-parse FETCH_HEAD)"
+          fi
           node --input-type=module <<'JS'
           import assert from 'node:assert/strict';
           import {readFile} from 'node:fs/promises';
