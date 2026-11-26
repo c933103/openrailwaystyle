@@ -12,7 +12,7 @@ const destination = new URL('?mode=infrastructure&language=en&relief=0&transport
 const browser = await launchBrowser({engine: 'firefox', executablePath: process.env.FIREFOX_EXECUTABLE,
   firefoxUserPrefs: {'webgl.disabled': true}});
 try {
-  const context = await browser.newContext({serviceWorkers: 'block', viewport: {width: 1220, height: 800}});
+  const context = await browser.newContext({serviceWorkers: 'block', viewport: {width: 1220, height: 800}, deviceScaleFactor: 1});
   await installEmptyMapProviders(context, base, {firstParty: 'network'});
   await context.addInitScript(() => {
     const getContext = HTMLCanvasElement.prototype.getContext;
@@ -87,7 +87,47 @@ try {
   assert.deepEqual(pageErrors, []);
   await mkdir('browser-review', {recursive: true});
   await page.screenshot({path: 'browser-review/published-no-webgl-firefox.png'});
-  console.log('PASS: Firefox native no-WebGL startup; live Canvas pixels, pan, persisted opt-out without WebGL assets, and saved drawing after reload');
+  console.log('PASS: Firefox native no-WebGL startup; Canvas pixels, pan, persisted opt-out without WebGL assets, and saved drawing after reload');
+
+  // This witness belongs to a byte-verified extract generation, not to all
+  // future OSM revisions. The independent deployed-crossings checker still
+  // checks marker, manifest, index and sample bytes for current generations.
+  const root = new URL('data/level-crossings/', base);
+  const marker = await context.request.get(new URL('source.json', root).href);
+  if (marker.status() !== 404) assert.ok(marker.ok(), 'Crossings source marker should be readable');
+  const source = marker.ok() ? await marker.json() : null;
+  if (source?.source === 'extract' &&
+      source.inputSha256 === 'a6d2e6aa00644d58014f03ecd41c6a5a7b2d4c3b7bdb57e7aac52b21f4ee4407') {
+    const crossingUrl = new URL(
+      '?mode=infrastructure&language=en&relief=0&transport=0&stations=0&names=0#10/-43.1016095662/-65.3191280365', base);
+    const tile = new URL('9/163/324.pbf.gz', root).href;
+    const [response] = await Promise.all([
+      page.waitForResponse(r => r.url() === tile, {timeout: 30000}),
+      page.goto(crossingUrl.href, {waitUntil: 'domcontentloaded'}),
+    ]);
+    assert.ok(response.ok(), 'Firefox must receive the actual staged or published crossing tile');
+    assert.ok((await response.body()).byteLength > 0, 'Crossing tile must not be empty');
+    await readyCanvas();
+    await page.waitForFunction(() => {
+      const map = document.querySelector('canvas.atlas-flat-preview');
+      const rgb = map.getContext('2d').getImageData((map.width >> 1) - 2, (map.height >> 1) - 2, 5, 5).data;
+      let matches = 0;
+      for (let i = 0; i < rgb.length; i += 4) {
+        if (Math.abs(rgb[i] - 99) < 30 && Math.abs(rgb[i + 1] - 51) < 30 &&
+            Math.abs(rgb[i + 2] - 44) < 30 && rgb[i + 3] === 255) matches++;
+      }
+      return matches >= 2;
+    }, null, {timeout: 20000});
+    await canvas.click();
+    await page.getByRole('heading', {name: 'Road level crossing', exact: true}).waitFor({timeout: 5000});
+    await page.locator('#detail-content a[href="https://www.openstreetmap.org/node/14357015830"]').waitFor({timeout: 5000});
+    assert.equal(assetRequests.length, count, 'the real-data Canvas visit must not request MapLibre');
+    assert.deepEqual(pageErrors, []);
+    await page.screenshot({path: 'browser-review/published-no-webgl-crossing-firefox.png'});
+    console.log('PASS: Firefox Canvas painted the first-party Geofabrik crossing and opened the inspector for OSM node 14357015830');
+  } else {
+    console.log('SKIP: the pinned Firefox crossing witness is not in this crossings generation');
+  }
 } finally {
   await browser.close();
 }
