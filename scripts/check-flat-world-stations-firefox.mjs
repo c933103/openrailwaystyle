@@ -118,7 +118,15 @@ try{
           return get.call(this,type,...args);
         };
       });
+      const missingBundle=state==='broken-bundle'?p.waitForResponse(r=>r.status()===404&&r.url().includes('.bundle.gz')):null;
       await p.goto(origin+'/?names=0&stations=1&relief=0&transport=0&destinations=0&constraints=0&detail=0#'+z+'/'+lat+'/11.25');
+      if(missingBundle){
+        await missingBundle;
+        await p.evaluate(()=>{
+          window.curatedMarker=false;
+          dispatchEvent(new Event('online'));
+        });
+      }
       const canvas=p.locator('canvas.atlas-flat-preview');
       await canvas.waitFor();
       if(state==='reconnect'){
@@ -142,7 +150,14 @@ try{
         // considered valid. Wait for the first restored marker paint.
         await p.waitForFunction(()=>window.curatedMarker);
         await p.mouse.click(384,320);
-        await p.getByRole('heading',{name:curated,exact:true}).waitFor({timeout:5000});
+        await p.getByRole('heading',{name:curated,exact:true}).waitFor({timeout:5000}).catch(async error=>{
+          console.error('curated marker click',JSON.stringify({state,z,seen,
+            marker:await p.evaluate(()=>window.curatedMarker),
+            target:await p.evaluate(()=>document.elementFromPoint(384,320)?.outerHTML?.slice(0,150)),
+            details:await p.locator('#detail-content').innerText(),
+            status:await p.locator('#map-status').textContent()}));
+          throw error;
+        });
         await p.locator('#detail-content a[href="https://www.openstreetmap.org/node/46103"]').waitFor();
         await p.locator('#details-close').click();
       }
