@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" data-flat-entry="staged">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -31,13 +31,21 @@
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-title" content="Railway Atlas">
-  <link id="maplibre-css" href="vendor/maplibre-gl-5.24.0.css" rel="stylesheet">
-  <link href="app.css?v=20261125-basemap-bootstrap-1" rel="stylesheet">
   <!-- Start first-party map inputs with HTML discovery, before the app's module graph.
        Keep fetch mode and URLs identical to the requests in app.mjs. -->
-  <link rel="preload" as="fetch" crossorigin="anonymous" href="world.style.json?v=20261125-basemap-bootstrap-1">
-  <link rel="preload" as="script" href="vendor/maplibre-gl-5.24.0-atlas.4.js">
-  <link rel="modulepreload" href="vendor/tile-labels.js?v=20261125-basemap-bootstrap-1">
+  <link rel="preload" as="fetch" crossorigin="anonymous" href="world.style.json?v=20261126-canvas-basemap-sync-1">
+  <script id="startup-renderer-preload">
+    // Only preload MapLibre for the legacy entry. The normal entry waits for
+    // renderer selection so WebGL-disabled browsers never download it.
+    if (document.documentElement.dataset.flatEntry !== 'staged') {
+      document.head.append(Object.assign(document.createElement('link'), {
+        rel:'preload', as:'script', href:'vendor/maplibre-gl-5.24.0-atlas.4.js',
+      }));
+    }
+  </script>
+  <link rel="modulepreload" href="vendor/tile-labels.js?v=20261126-canvas-basemap-sync-1">
+  <link id="maplibre-css" data-href="vendor/maplibre-gl-5.24.0.css" rel="stylesheet">
+  <link href="app.css?v=20261126-canvas-basemap-sync-1" rel="stylesheet">
 </head>
 <body>
   <div id="map-frame"><main id="map" aria-label="Interactive worldwide railway map"></main></div>
@@ -87,6 +95,8 @@
     <section id="settings-view" aria-labelledby="settings-title" hidden>
       <div class="settings-head"><button id="settings-close" aria-label="Back to the map controls">‹</button><h2 id="settings-title">Settings</h2></div>
       <div class="display-options">
+        <label id="flat-preview-preference" hidden><input type="checkbox" id="disable-webgl"> Disable WebGL</label>
+        <p id="canvas-mode-note" class="small" hidden>Using the 2D map. Globe view and the 3D terrain mesh are unavailable in this mode. Flat terrain shading and contours still work.</p>
         <fieldset><legend>Railways</legend>
           <label><input type="checkbox" id="stations" checked> Station markers and names</label>
           <label><input type="checkbox" id="stationImportanceColors"> Different colours by station importance at zooms 3–6</label>
@@ -144,7 +154,7 @@
   </div>
   <div id="measure-toolbar" class="draw-toolbar" role="toolbar" aria-label="Measuring tools" hidden>
     <div class="draw-group"><button data-measure="distance" aria-pressed="false">Distance</button><button data-measure="radius" aria-pressed="false">Curve radius</button><button data-measure="elevation" aria-pressed="false">Point elevation</button></div>
-    <div class="draw-group"><button id="measure-undo">Undo</button><button id="measure-clear">Clear</button><button id="measure-delete" hidden>🗑 Delete point</button></div>
+    <div class="draw-group"><button id="measure-undo">Undo</button><button id="measure-clear">Clear</button><button id="measure-finish" hidden>Finish</button><button id="measure-delete" hidden>🗑 Delete point</button></div>
     <button id="measure-profile" hidden>Elevation graph</button>
     <button id="measure-retry" hidden>Retry heights</button>
     <button id="measure-close" class="draw-close" aria-label="Close measuring tools">×</button>
@@ -214,7 +224,7 @@
       <li>Generalized railway backbone: <a href="https://www.naturalearthdata.com/about/terms-of-use/">Natural Earth public-domain data and terms</a>, served by <a href="https://papers.reearth.land/attribution">Re:Earth Papers (source credits)</a>. See the <a href="https://github.com/reearth/reearth-papers#attribution">provider’s attribution documentation</a>; the data licence does not guarantee the hosted service’s availability.</li>
       <li>Satellite imagery: <a href="https://cloudless.eox.at">EOxCloudless 2025</a> by EOX IT Services GmbH (contains modified Copernicus Sentinel data 2025), <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/">CC BY-NC-SA 4.0</a>: non-commercial use only, wherever it has its full 10 m detail. Where this site is configured for it, closer in than that detail and outside Sentinel-2's coverage (south of 56° S and north of 84° N): <a href="https://www.arcgis.com/home/item.html?id=10df2279f9684e4a9f6a7f08febac2a9">Esri World Imagery</a> (powered by Esri; Esri, Vantor, Earthstar Geographics, and the GIS User Community), under the <a href="https://goto.arcgis.com/termsofuse/viewtermsofuse">Esri terms of use</a>. When Esri is unavailable, including when its monthly free allowance is used up, EOxCloudless is shown there too, enlarged beyond its detail.</li>
       <li>Terrain: see the <a href="terrain-credits.html">terrain credits</a>. Departures: <a href="https://transitous.org/sources/">Transitous and its sources</a>. Station search: the <a href="https://www.openrailwaymap.org/">OpenRailwayMap</a> public API (OpenStreetMap data, ODbL). Place search: <a href="https://nominatim.org/">Nominatim</a>, under the <a href="https://operations.osmfoundation.org/policies/nominatim/">OSM Foundation's usage policy</a>.</li>
-      <li>Software in the page: <a href="vendor/maplibre-gl-5.24.0-LICENSE.txt">MapLibre GL JS</a> and <a href="vendor/pmtiles-4.2.1-LICENSE.txt">PMTiles</a> (BSD 3-Clause) are served with this site; maplibre-contour, pbf, vector-tile, vt-pbf, earcut, ieee754, point-geometry and fflate are also bundled with their licence files (BSD 3-Clause, MIT, ISC) under <code>vendor/</code>.</li>
+      <li>Software in the page: <a href="vendor/maplibre-gl-5.24.0-LICENSE.txt">MapLibre GL JS</a> and <a href="vendor/pmtiles-4.2.1-LICENSE.txt">PMTiles</a> (BSD 3-Clause) are served with this site; maplibre-contour, pbf, vector-tile, vt-pbf, earcut, <a href="vendor/geojson-vt-LICENSE.txt">geojson-vt</a>, ieee754, point-geometry and fflate are also bundled with their licence files (BSD 3-Clause, MIT, ISC) under <code>vendor/</code>.</li>
       <li>Label fonts: <a href="https://github.com/notofonts/noto-cjk">Noto Sans CJK</a> (<a href="fonts/OFL.txt">SIL Open Font License 1.1</a>) for Chinese labels, and <a href="https://kamichikoichi.github.io/jigmo/">Jigmo</a> (CC0, glyphs from <a href="https://glyphwiki.org/">GlyphWiki</a>) for rare characters.</li>
     </ul>
     <h3 id="help-terms" tabindex="-1">Terms of use</h3>
@@ -252,6 +262,6 @@
     }, true);
   </script>
   <section id="watch-menu" role="dialog" aria-modal="true" aria-label="Watch map controls" hidden><div id="watch-content"></div></section>
-  <script type="module" src="app.mjs?v=20261125-basemap-bootstrap-1"></script>
+  <script type="module" src="app.mjs?v=20261126-canvas-basemap-sync-1"></script>
 </body>
 </html>

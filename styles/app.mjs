@@ -1,40 +1,40 @@
-import {installSovietStyle, sovietTile} from './soviet-topo.mjs?v=20261125-basemap-bootstrap-1';
-import {bindTerrainViewport} from './viewport-settle.mjs?v=20261125-basemap-bootstrap-1';
-import {pruneModeTiles} from './mode-tile-cache.mjs?v=20261125-basemap-bootstrap-1';
-import {updateMapStatus} from './status-ui.mjs?v=20261125-basemap-bootstrap-1';
-import {renderLegendUI} from './legend-ui.mjs?v=20261125-basemap-bootstrap-1';
-import {createInspectorRows, createFeatureInspector} from './feature-inspector.mjs?v=20261125-basemap-bootstrap-1';
+import {installSovietStyle, sovietTile} from './soviet-topo.mjs?v=20261126-canvas-basemap-sync-1';
+import {bindTerrainViewport} from './viewport-settle.mjs?v=20261126-canvas-basemap-sync-1';
+import {pruneModeTiles} from './mode-tile-cache.mjs?v=20261126-canvas-basemap-sync-1';
+import {updateMapStatus} from './status-ui.mjs?v=20261126-canvas-basemap-sync-1';
+import {renderLegendUI} from './legend-ui.mjs?v=20261126-canvas-basemap-sync-1';
+import {createInspectorRows, createFeatureInspector} from './feature-inspector.mjs?v=20261126-canvas-basemap-sync-1';
 
-import {dataAgeRows, staleNotice} from './data-ages.mjs?v=20261125-basemap-bootstrap-1';
-import {installHiddenTileMaskGuard, installControlLayout, rememberAttribution, installPwaInstall, backportMapLibre524, MAPLIBRE_BACKPORT} from './map-controls.mjs?v=20261125-basemap-bootstrap-1';
-import {CJK_FONTS, PROBE_FAMILY, PROBE_FONT, PROBE_SETS, familyNames, chooseCjkFont, isLocalFamily} from './cjk-font.mjs?v=20261125-basemap-bootstrap-1';
-import {RARE_HAN_FAMILY, createRareHanFonts, rareHanBlocks} from './rare-han.mjs?v=20261125-basemap-bootstrap-1';
-import {createWorldFonts} from './world-font.mjs?v=20261125-basemap-bootstrap-1';
-import {hasMongolian, mongolianFontRequests, nameFragment} from './mongolian-text.mjs?v=20261125-basemap-bootstrap-1';
+import {dataAgeRows, staleNotice} from './data-ages.mjs?v=20261126-canvas-basemap-sync-1';
+import {installHiddenTileMaskGuard, installControlLayout, rememberAttribution, installPwaInstall, backportMapLibre524, MAPLIBRE_BACKPORT} from './map-controls.mjs?v=20261126-canvas-basemap-sync-1';
+import {CJK_FONTS, PROBE_FAMILY, PROBE_FONT, PROBE_SETS, familyNames, chooseCjkFont, isLocalFamily} from './cjk-font.mjs?v=20261126-canvas-basemap-sync-1';
+import {RARE_HAN_FAMILY, createRareHanFonts, rareHanBlocks} from './rare-han.mjs?v=20261126-canvas-basemap-sync-1';
+import {createWorldFonts} from './world-font.mjs?v=20261126-canvas-basemap-sync-1';
+import {hasMongolian, mongolianBlocks, mongolianFontRequests, nameFragment} from './mongolian-text.mjs?v=20261126-canvas-basemap-sync-1';
 
-import {contextIcon, contextLayerInteractive, nearbyTransport} from './context.mjs?v=20261125-basemap-bootstrap-1';
-import {SETTING_KEYS, SETTING_PARAMS, settingsQuery, UNKNOWN_COLOR, INFRASTRUCTURE, controlColor, trainProtection, trainProtectionShort, trainProtectionSystems, gaugeColor, axleLoad, formatAxleLoad, axleLabel, loadingGauge, loadingDimensions, VIEW_LINE_LAYERS, viewLinePaint, viewLineWidth, inactivePaint, describeCurrent, DEM_URL, contourOptions, speedPaint, speedLabel, SEARCH_API, PLACE_SEARCH_API, searchResponse, searchResults, railwaySearchRows, tileStations, drawnStationQueries, LANGUAGES, chooseName, labelExpression, displayName, legendRows, autoProjection, ORM, DETAIL_LEVELS, formatReadout, osmObject, createPlatformLengths, createPlatformTileGeometry, platformLengthLabel, formatPlatformLength, readSettings, formatSpeed, stationRank, decodeLifecycleTile, isNeutralRailReference} from './map-model.mjs?v=20261125-basemap-bootstrap-1';
+import {contextIcon, contextLayerInteractive, nearbyTransport} from './context.mjs?v=20261126-canvas-basemap-sync-1';
+import {TRACK_BADGES, SETTING_KEYS, SETTING_PARAMS, settingsQuery, UNKNOWN_COLOR, INFRASTRUCTURE, controlColor, trainProtection, trainProtectionShort, trainProtectionSystems, gaugeColor, axleLoad, formatAxleLoad, axleLabel, loadingGauge, loadingDimensions, VIEW_LINE_LAYERS, viewLinePaint, viewLineWidth, inactivePaint, describeCurrent, DEM_URL, contourOptions, speedPaint, speedLabel, SEARCH_API, PLACE_SEARCH_API, searchResponse, searchResults, railwaySearchRows, tileStations, drawnStationQueries, LANGUAGES, chooseName, labelExpression, displayName, legendRows, autoProjection, ORM, DETAIL_LEVELS, detailLevel, formatReadout, osmObject, createPlatformLengths, createPlatformTileGeometry, platformLengthLabel, formatPlatformLength, readSettings, formatSpeed, stationRank, decodeLifecycleTile, isNeutralRailReference} from './map-model.mjs?v=20261126-canvas-basemap-sync-1';
 
-import {Drawing, Measure, readDrawing, lengthKm, formatLength, formatClimb, climb} from './draw.mjs?v=20261125-basemap-bootstrap-1';
-import {createElevation, createSurfaceElevation, alongLine, profileStats, profileSegments} from './elevation.mjs?v=20261125-basemap-bootstrap-1';
-import {stationDepartures, plannerLink, TRANSITOUS_SOURCES} from './departures.mjs?v=20261125-basemap-bootstrap-1';
-import {departureItem} from './departures-ui.mjs?v=20261125-basemap-bootstrap-1';
-import {installGlobeDrag, allowPolarCentres, readoutZoom, viewHash, parseViewHash} from './globe-drag.mjs?v=20261125-basemap-bootstrap-1';
-import {installBathymetry, shareArchiveRequests, seabedContourOpacity} from './bathymetry.mjs?v=20261125-basemap-bootstrap-1';
-import {installTerrain3D, syncTerrain3D, terrain3DEnabled, terrain3DSelectedForPitch, terrain3DViewTarget, terrainExaggeration, syncHighPitchTileBudget, TERRAIN_3D_MAX_PITCH, HIGH_PITCH_TILE_CACHE_LIMIT} from './terrain-3d.mjs?v=20261125-basemap-bootstrap-1';
-import {installKeyboardPan} from './keyboard-pan.mjs?v=20261125-basemap-bootstrap-1';
-import {annotateLayers, layerVisibility, shouldLocalizeLayer, installHybridRailCasings} from './layer-semantics.mjs?v=20261125-basemap-bootstrap-1';
-import {createPowerFacilityLoader, electricitySignalRows, POWER_FACILITY_EXPLANATION} from './power-facilities.mjs?v=20261125-basemap-bootstrap-1';
-import {serviceFrequencyPaint, nearestServiceFeature, frequencyAvailability, frequencyAttribution, selectedFrequencyProfile, FREQUENCY_LABELS, HOURLY_PROFILES, installFrequencyExpiry} from './service-frequency.mjs?v=20261125-basemap-bootstrap-1';
-import {installWatchGesture} from './watch-map.mjs?v=20261125-basemap-bootstrap-1';
-import {createRailProviderRecovery, createSourceFailures} from './rail-provider-recovery.mjs?v=20261125-basemap-bootstrap-1';
-import {createEnergyNetworkProtocol} from './energy-network.mjs?v=20261125-basemap-bootstrap-1';
-import {createBundleReader} from './tile-bundles.mjs?v=20261125-basemap-bootstrap-1';
-import {createReferenceReader} from './mainline-reference.mjs?v=20261125-basemap-bootstrap-1';
-import {addStationFallbackLayers, createStationFallbackState, createRailReferenceState, createReferenceRefresh, stationFallbackFilter, stationFallbackNamesEnabled, stationFallbackMarkersEnabled, shouldRefreshCuratedStationSource} from './station-fallback.mjs?v=20261125-basemap-bootstrap-1';
-import {installWorldStationLifecycle, createStationViewPaint, WORLD_STATION_SOURCE, WORLD_STATION_DOTS, WORLD_STATION_SUPERSEDED_DOTS} from './station-world.mjs?v=20261125-basemap-bootstrap-1';
-import {loadImageryConfig, applyImageryConfig, createImageryProtocol, installImageryAttribution} from './imagery.mjs?v=20261125-basemap-bootstrap-1';
-import {createSharedTileProtocols} from './shared-tile-protocols.mjs?v=20261125-basemap-bootstrap-1';
+import {Drawing, Measure, readDrawing, lengthKm, formatLength, formatClimb, climb} from './draw.mjs?v=20261126-canvas-basemap-sync-1';
+import {createElevation, createSurfaceElevation, alongLine, profileStats, profileSegments} from './elevation.mjs?v=20261126-canvas-basemap-sync-1';
+import {stationDepartures, plannerLink, TRANSITOUS_SOURCES} from './departures.mjs?v=20261126-canvas-basemap-sync-1';
+import {departureItem} from './departures-ui.mjs?v=20261126-canvas-basemap-sync-1';
+import {installGlobeDrag, allowPolarCentres, readoutZoom, viewHash, parseViewHash} from './globe-drag.mjs?v=20261126-canvas-basemap-sync-1';
+import {installBathymetry, shareArchiveRequests, seabedContourOpacity} from './bathymetry.mjs?v=20261126-canvas-basemap-sync-1';
+import {installTerrain3D, syncTerrain3D, terrain3DEnabled, terrain3DSelectedForPitch, terrain3DViewTarget, terrainExaggeration, syncHighPitchTileBudget, TERRAIN_3D_MAX_PITCH, HIGH_PITCH_TILE_CACHE_LIMIT} from './terrain-3d.mjs?v=20261126-canvas-basemap-sync-1';
+import {installKeyboardPan} from './keyboard-pan.mjs?v=20261126-canvas-basemap-sync-1';
+import {annotateLayers, layerVisibility, shouldLocalizeLayer, installHybridRailCasings} from './layer-semantics.mjs?v=20261126-canvas-basemap-sync-1';
+import {createPowerFacilityLoader, electricitySignalRows, POWER_FACILITY_EXPLANATION} from './power-facilities.mjs?v=20261126-canvas-basemap-sync-1';
+import {serviceFrequencyPaint, nearestServiceFeature, frequencyAvailability, frequencyAttribution, selectedFrequencyProfile, FREQUENCY_LABELS, HOURLY_PROFILES, installFrequencyExpiry} from './service-frequency.mjs?v=20261126-canvas-basemap-sync-1';
+import {installWatchGesture} from './watch-map.mjs?v=20261126-canvas-basemap-sync-1';
+import {createRailProviderRecovery, createSourceFailures} from './rail-provider-recovery.mjs?v=20261126-canvas-basemap-sync-1';
+import {createEnergyNetworkProtocol} from './energy-network.mjs?v=20261126-canvas-basemap-sync-1';
+import {createBundleReader} from './tile-bundles.mjs?v=20261126-canvas-basemap-sync-1';
+import {createReferenceReader} from './mainline-reference.mjs?v=20261126-canvas-basemap-sync-1';
+import {addStationFallbackLayers, createStationFallbackState, createRailReferenceState, createReferenceRefresh, stationFallbackFilter, stationFallbackNamesEnabled, stationFallbackMarkersEnabled, shouldRefreshCuratedStationSource} from './station-fallback.mjs?v=20261126-canvas-basemap-sync-1';
+import {installWorldStationLifecycle, prepareWorldStationOverlay, createStationViewPaint, WORLD_STATION_SOURCE, WORLD_STATION_DOTS, WORLD_STATION_SUPERSEDED_DOTS} from './station-world.mjs?v=20261126-canvas-basemap-sync-1';
+import {loadImageryConfig, applyImageryConfig, createImageryProtocol, installImageryAttribution, PROVIDER_ATTRIBUTION} from './imagery.mjs?v=20261126-canvas-basemap-sync-1';
+import {createSharedTileProtocols} from './shared-tile-protocols.mjs?v=20261126-canvas-basemap-sync-1';
 
 const $ = id => document.getElementById(id);
 $('help-power').textContent = POWER_FACILITY_EXPLANATION;
@@ -45,7 +45,8 @@ document.body.dataset.appStarted = 'true';
 installPwaInstall({window, document});
 // Installable as an app (manifest.webmanifest); the service worker keeps the
 // app's own files for opening without a connection.
-if ('serviceWorker' in navigator && location.protocol === 'https:') navigator.serviceWorker.register(new URL('sw.js', import.meta.url)).catch(() => {});
+const atlasWorker = 'serviceWorker' in navigator && location.protocol === 'https:' ? navigator.serviceWorker : null;
+if (atlasWorker) atlasWorker.register(new URL('sw.js', import.meta.url)).catch(() => {});
 // Display settings are remembered in a cookie, not the address; settings in a
 // shared link apply once and are then saved and removed from the address.
 const SETTINGS_COOKIE = 'atlas_settings', LANGUAGE_COOKIE = 'atlas_language';
@@ -72,10 +73,18 @@ function captureViewHash() {
   return linkedViewHash;
 }
 addEventListener('hashchange', captureViewHash);
+// In staged mode the recorded zoom may have come from either renderer.
+function writeView(view, detail) {
+  const tagged = stagedFlatEntry && (settings.detail > 0 || rememberedView.d != null);
+  try {
+    localStorage.setItem(VIEW_STORE, JSON.stringify(tagged ? {...view,d:detail} : view));
+    return true;
+  } catch {return false;}
+}
 function saveView() {
-  if (!map) return;
+  if (!map) return false;
   const c = map.getCenter();
-  try { localStorage.setItem(VIEW_STORE, JSON.stringify({c: [+c.lng.toFixed(5), +c.lat.toFixed(5)], z: +map.getZoom().toFixed(2), b: +map.getBearing().toFixed(1), p: +map.getPitch().toFixed(1), g: onGlobe(), t: terrain3DSelected})); } catch {}
+  return writeView({c: [+c.lng.toFixed(5), +c.lat.toFixed(5)], z: +map.getZoom().toFixed(2), b: +map.getBearing().toFixed(1), p: +map.getPitch().toFixed(1), g: onGlobe(), t: terrain3DSelected},settings.detail);
 }
 const readCookie = name => { try { return decodeURIComponent(document.cookie.match(new RegExp(`(?:^|; )${name}=([^;]*)`))?.[1] || ''); } catch { return ''; } };
 const writeCookie = (name, value) => { try { document.cookie = `${name}=${encodeURIComponent(value)}; max-age=31536000; path=/; SameSite=Lax`; } catch {} };
@@ -92,7 +101,7 @@ let railRecovery, stationFailures, railReferenceFailures, wakeRailRecovery = () 
 let stationWorldActive = false, stationWorldLifecycle;
 const stationViewPaint = createStationViewPaint();
 let map, ready = false, currentFeature, searchController, searchPausedUntil = 0, dem, scale, styleLanguage, pendingView, clickable = [], hoverFrame, drawing, measuring;
-const assetVersion = new URL(import.meta.url).searchParams.get('v') || '20261125-basemap-bootstrap-1';
+const assetVersion = new URL(import.meta.url).searchParams.get('v') || '20261126-canvas-basemap-sync-1';
 // An old active worker can save this new page before its replacement has
 // installed. If that update is interrupted, only old first-party/CDN copies
 // may be available offline. Read exact saved responses without contacting the
@@ -165,19 +174,99 @@ function restoreCachedMapStyle() {
     const saved = await cachedLegacyLibrary('maplibre-css');
     if (!saved || mapStyleReady(link)) return;
     const style = document.createElement('style');
+    style.dataset.cachedMaplibre='';
     style.textContent = await saved.text();
     link.after(style);
   })();
 }
-// The link's error may precede module execution, so check its sheet now as
-// well as listening for a later failure. Both copies have the same pinned
-// version; a slow successful first-party link can safely finish afterwards.
-$('maplibre-css')?.addEventListener('error', () => restoreCachedMapStyle().catch(() => {}), {once: true});
-restoreCachedMapStyle().catch(() => {});
-const maplibreLibrary=loadScript(new URL('vendor/maplibre-gl-5.24.0-atlas.4.js', import.meta.url).href, 'maplibregl', 'maplibre-js');
+// The entry document enables renderer selection. Removing the marker is a
+// rollback to the previous WebGL-only startup without changing preferences.
+const stagedFlatEntry = document.documentElement.dataset.flatEntry === 'staged';
+const RENDERER_STORE = 'atlas_disable_webgl';
+const RENDERER_WORK_HANDOFF = 'atlas_renderer_work_v1';
+let cancelSelectionRestore;
+let explicitFlat = false;
+try { explicitFlat = stagedFlatEntry && localStorage.getItem(RENDERER_STORE) === '1'; } catch {}
+function webglAvailable() {
+  try {
+    const probe = document.createElement('canvas');
+    const gl = probe.getContext('webgl2') || probe.getContext('webgl');
+    if (!gl) return false;
+    gl.getExtension('WEBGL_lose_context')?.loseContext();
+    return true;
+  } catch {return false;}
+}
+let useFlat = stagedFlatEntry && (explicitFlat || !webglAvailable());
+let webglStartupFailure = '';
+if (stagedFlatEntry) {
+  $('flat-preview-preference').hidden=false;
+  const toggle=$('disable-webgl');
+  toggle.checked=explicitFlat;
+  toggle.addEventListener('change',()=>{
+    const drawingDraft = drawing && (drawing.draft.length > 0 || drawing.extending) ? drawing.rendererDraft() : null;
+    const measurement = measuring?.rendererMeasurement();
+    const selection = !$('details').hidden ? rendererSelection(currentFeature) : null;
+    const transferring = drawingDraft || measurement || selection;
+    try {
+      if (transferring) sessionStorage.setItem(RENDERER_WORK_HANDOFF, JSON.stringify({drawing:drawingDraft,measurement,selection}));
+    } catch {
+      if(drawingDraft) $('draw-status').textContent='The browser could not keep this drawing across a renderer switch. Finish the drawing before switching.';
+      else if(measurement) $('measure-status').textContent='The browser could not keep this measurement across a renderer switch. Clear the measurement before switching.';
+      else status.textContent='The browser could not keep this selection across a renderer switch.';
+      toggle.checked=explicitFlat;return;
+    }
+    try {localStorage.setItem(RENDERER_STORE,toggle.checked?'1':'0');}
+    catch {
+      if(transferring)try{sessionStorage.removeItem(RENDERER_WORK_HANDOFF);}catch{}
+      status.textContent='The browser could not save the WebGL preference.';
+      toggle.checked=explicitFlat;return;
+    }
+    // Transfer the displayed camera, rather than reapplying an old link when
+    // the staged renderer has already clamped or flattened it.
+    const viewSaved = useFlat && flatCurrentView ? writeView(flatCurrentView,0) : saveView();
+    if(viewSaved && parseViewHash(location.hash)){
+      const url=new URL(location.href);url.hash='';
+      history.replaceState(history.state,'',url);
+    }
+    location.reload();
+  });
+}
+function loadStagedWebGLStyle() {
+  const link=$('maplibre-css');
+  if(!link?.dataset.href)return Promise.reject(new Error('WebGL stylesheet unavailable'));
+  return new Promise((resolve,reject)=>{
+    link.addEventListener('load',resolve,{once:true});
+    link.addEventListener('error',reject,{once:true});
+    link.href=link.dataset.href;
+  }).catch(async error=>{
+    await restoreCachedMapStyle();
+    if(!mapStyleReady(link)&&!link.nextElementSibling?.matches('style[data-cached-maplibre]'))throw error;
+  });
+}
+let webglLibraries;
+if (!useFlat) {
+  const renderer=loadScript(new URL('vendor/maplibre-gl-5.24.0-atlas.4.js', import.meta.url).href, 'maplibregl', 'maplibre-js');
+  if(stagedFlatEntry){
+    // This failure is specific to the renderer pair. Do not catch failures
+    // of PMTiles, the common style or any map-data request as WebGL errors.
+    webglLibraries=Promise.allSettled([renderer,loadStagedWebGLStyle()]).then(results=>{
+      if(results.every(result=>result.status==='fulfilled')&&window.maplibregl)return;
+      $('maplibre-css')?.removeAttribute('href');
+      document.querySelector('style[data-cached-maplibre]')?.remove();
+      webglStartupFailure='the WebGL renderer files could not load';
+      useFlat=true;
+    });
+  }else{
+    webglLibraries=renderer;
+    const link=$('maplibre-css');
+    link?.addEventListener('error', () => restoreCachedMapStyle().catch(() => {}), {once:true});
+    if (link?.dataset.href) link.href=link.dataset.href;
+    restoreCachedMapStyle().catch(() => {});
+  }
+}
 const pmtilesLibrary=loadScript(new URL('vendor/pmtiles-4.2.1.js', import.meta.url).href, 'pmtiles', 'pmtiles-js');
 const libraries = Promise.all([
-  maplibreLibrary, pmtilesLibrary,
+  webglLibraries, pmtilesLibrary,
   loadScript(new URL(`vendor/maplibre-contour.js?v=${assetVersion}`, import.meta.url).href, 'mlcontour'),
 ]);
 const labels = import(`./vendor/tile-labels.js?v=${assetVersion}`);
@@ -211,7 +300,8 @@ const rareHanFonts=createRareHanFonts({root:new URL('fonts/rare-han-v1/', import
 // arrives after its glyphs were drawn without it drops the cached
 // glyphs and redraws the labels, like a rare Han slice.
 let worldGlyphFallback;
-const worldFonts=createWorldFonts({root:new URL('fonts/world-v1/', import.meta.url),fetcher:(...args)=>fetch(...args),FontFace:window.FontFace,fonts:document.fonts,onLoad:keys=>{worldGlyphFallback?.invalidate(keys);refreshCjkFont();}});
+let refreshFlatLabels, renameFlatSelection;
+const worldFonts=createWorldFonts({root:new URL('fonts/world-v1/', import.meta.url),fetcher:(...args)=>fetch(...args),FontFace:window.FontFace,fonts:document.fonts,onLoad:keys=>{worldGlyphFallback?.invalidate(keys);refreshFlatLabels?.();refreshCjkFont();}});
 // The packaged font when loaded, else the installed font chosen by probing,
 // else the script's candidate list for the system to resolve.
 // Rare Han slices (rare-han.mjs) fill characters the Han font lacks; they
@@ -235,7 +325,7 @@ function cjkMeasure(){
   })().catch(()=>null);
   return probeMeasure;
 }
-function refreshCjkFont(){updateDetailGlyphs();if(ready)reloadLanguage();else if(map)cjkFontRefresh=true;}
+function refreshCjkFont(){updateDetailGlyphs();refreshFlatLabels?.();if(ready)reloadLanguage();else if(map)cjkFontRefresh=true;}
 function ensureCjkChoice(script){
   if(cjkChoices.has(script))return;
   cjkChoices.set(script,null);
@@ -246,15 +336,15 @@ function ensureCjkChoice(script){
     if(measure)await Promise.all(candidates.map(f=>document.fonts.load?.(`32px "${f}"`,Object.values(PROBE_SETS).join('')).catch(()=>{})));
     const choice=measure?chooseCjkFont(candidates,measure):null;
     cjkChoices.set(script,choice);
-    if(choice?.family&&cjkScript(settings.language)===script)refreshCjkFont();
+    if((choice?.family||useFlat)&&cjkScript(settings.language)===script)refreshCjkFont();
   });
 }
 // The packaged Chinese font is fetched only when Han labels or feature
 // details are shown and the installed font misses some character set. Japanese
 // and Korean keep their installed fonts: the packaged ones are Chinese designs.
-function loadCjkFont(script){
+function loadCjkFont(script,allowUnnamedFallback=false){
   const choice=cjkChoices.get(script);
-  if(!['zh-Hant','zh-Hans'].includes(script)||!choice?.family||choice.complete||!window.FontFace||!document.fonts)return;
+  if(!['zh-Hant','zh-Hans'].includes(script)||!choice||(!choice.family&&!allowUnnamedFallback)||choice.complete||!window.FontFace||!document.fonts)return;
   if(cjkFontLoads.has(script)||Date.now()<(cjkFontFailures.get(script)?.until??0))return;
   const code=script==='zh-Hant'?'tc':'sc',face=new FontFace(bundledCjkFamily(script),`url("${new URL(`fonts/atlas-cjk-${code}-v1.woff2`,import.meta.url).href}")`);
   document.fonts.add(face);
@@ -432,7 +522,7 @@ const {showAerialwayDetails, showRailwayPointDetails, showPowerFacilityDetails, 
 // Power, train control, gauge and loading gauge legends name exactly what
 // is drawn in the current view, most common first: systems are regional,
 // and a fixed list would be long and mostly irrelevant.
-let inView = [], legendTimer;
+let inView = [], legendTimer, flatLegendFeatures = [];
 // Waits for the view's tiles rather than map idle, which any slow tile
 // (e.g. relief) can hold back.
 function scheduleLegend() {
@@ -466,13 +556,18 @@ const IN_VIEW = {
 };
 const SERVICE_ORDER = {rail:0,commuter: 0, subway: 1, monorail: 2, light_rail: 3, tram: 4,funicular:5}, SERVICE_UNCOLOURED = '#5d6b73';
 const SERVICE_KINDS = {rail:'Rail',commuter: 'Commuter rail', subway: 'Metro', monorail: 'Monorail', light_rail: 'Light rail', tram: 'Tram',funicular:'Funicular'};
+function inViewLegendLayers(mode) {
+  // Aerialways and escalators carry their own owner, so they join the Owner list.
+  return mode === 'service' ? ['service-routes'] : [`${mode}-branch-overview`, `${mode}-overview`, `${mode}-tracks`, `${mode}-metro-overview`, ...Object.keys(VIEW_LINE_LAYERS)];
+}
 function updateInView() {
   const describe = IN_VIEW[settings.mode];
-  if (!ready || !describe) return;
-  // Aerialways and escalators carry their own owner, so they join the Owner list.
-  const layers = settings.mode === 'service' ? ['service-routes'] : [`${settings.mode}-branch-overview`, `${settings.mode}-overview`, `${settings.mode}-tracks`, `${settings.mode}-metro-overview`, ...Object.keys(VIEW_LINE_LAYERS)].filter(id => map.getLayer(id));
+  if ((!ready && !useFlat) || !describe) return;
+  const features = useFlat ? flatLegendFeatures : map.queryRenderedFeatures({
+    layers:inViewLegendLayers(settings.mode).filter(id=>map.getLayer(id)),
+  });
   const counts = new Map();
-  for (const f of map.queryRenderedFeatures({layers})) {
+  for (const f of features) {
     const described = describe(f.properties);
     if (!described) continue;
     for (const row of Array.isArray(described[0]) ? described : [described]) {
@@ -491,6 +586,27 @@ function updateInView() {
 // The same drawing as on the map: a neutral outlined area or a plain dot,
 // with its faint dashed planned/former form beside it when that is shown.
 // A position within a facility's extent (points, lines and areas alike).
+function makePowerLoaders(adapter,active,{glyphs,reportError=()=>{}}={}) {
+  const source=(id,file,zoom,message,options)=>createPowerFacilityLoader(adapter,{
+    sourceId:id,url:new URL(file,import.meta.url),active:()=>active(zoom),
+    onError(error){reportError(id);console.warn(message,error.message);},...options,
+  });
+  const language=()=>settings.language;
+  return [
+    source('electricFacilities','./data/traction/power/power-facilities.geojson.gz',10,'Railway energy supplies unavailable:',{
+      language,glyphs,localize:(data,lang)=>({...data,features:data.features.map(f=>{
+        const properties={...f.properties,...locate(...shapeCenter(f.geometry))};
+        return {...f,properties:{...properties,atlas_name:chooseName(properties,lang),atlas_language:lang}};
+      })}),
+    }),
+    source('electricMethods','./data/traction/power/power-methods.geojson.gz',10,'Conductor rails and railway charging unavailable:',{
+      language,glyphs,localize:(data,lang)=>({...data,features:data.features.map(f=>
+        ({...f,properties:{...f.properties,atlas_name:chooseName(f.properties,lang)}}))}),
+    }),
+    source('electricSignals','./data/traction/power/electricity-signals.geojson.gz',13,'Electrification signals unavailable:'),
+  ];
+}
+
 function shapeCenter(geometry) {
   if (geometry.type==='Point') return geometry.coordinates;
   const box=[Infinity,Infinity,-Infinity,-Infinity];
@@ -510,14 +626,16 @@ function saveSettings() {
   if (hasView) linkedViewHash = url.hash;
   // Normalize shared links once, not on every pan/zoom. Preserve unrelated
   // query parameters, non-map anchors and the current browser history state.
-  if (hasSettings || hasView) {
+  if (hasSettings || (hasView && !useFlat)) {
     for (const key of SETTING_PARAMS) url.searchParams.delete(key);
     url.searchParams.delete('terrain3d');
-    if (hasView) url.hash = '';
+    if (hasView && !useFlat) url.hash = '';
     history.replaceState(history.state, '', url);
   }
 }
 // Build a link on demand rather than writing each map position into history.
+let flatCurrentView, flatNavigation, flatRefreshStyle, flatSourceContext, pendingFlatNavigation;
+let flatServiceFeatures=[], flatExpiryQueued=false;
 function shareURL() {
   const url = new URL(location.href);
   for (const [key, value] of settingsQuery(settings)) url.searchParams.set(key, value);
@@ -525,6 +643,12 @@ function shareURL() {
   if (map) {
     const {lat, lng} = map.getCenter();
     url.hash = viewHash({zoom: map.getZoom(), lat, lng, bearing: map.getBearing(), pitch: map.getPitch()});
+  } else if (flatCurrentView) {
+    const {c:[lng,lat],z:zoom,b:bearing}=flatCurrentView;
+    url.searchParams.set('terrain3d','0');
+    // Link zoom follows the same convention in both renderers: the chosen
+    // detail offset is encoded, but the displayed ground scale is unchanged.
+    url.hash=viewHash({zoom:zoom+settings.detail,lat,lng,bearing,pitch:0});
   } else if (captureViewHash()) {
     // The share control is available while map libraries are still loading.
     url.hash = linkedViewHash;
@@ -695,6 +819,7 @@ function applySettings() {
     if ((enabled ?? true) && isClickable(layer.id)) clickable.push(layer.id);
   }
   if (ready) { pruneModeTiles(map, previousTileMode, settings.mode); previousTileMode = settings.mode; }
+  else flatRefreshStyle?.();
   // Clear the previous view's values before drawing the legend: if the new
   // view has nothing in view, the in-view list never changes and the legend
   // would keep the old rows.
@@ -707,7 +832,7 @@ function applySettings() {
   frequencyExpiry?.update();
   if (ready) wakeRailRecovery();
 }
-let attribution, attributionStateCleanup, controlLayout, servedBuild;
+let attribution, flatCredits, attributionStateCleanup, controlLayout, servedBuild;
 function codeAttribution() {
   const span=document.createElement('span');span.className='atlas-build';
   span.append(`Build ${assetVersion} · `);
@@ -735,7 +860,7 @@ const INFRASTRUCTURE_POINTS = ['infrastructure-level-crossings','infrastructure-
 // Clickable: stations, tracks, level crossings, inactive lines, and transport
 // and destination points; land-use areas, protected, heritage and other
 // planning areas, jurisdictions and buildings are drawn for context only.
-const isClickable = id => /^energy-(?:overview|context|detail)(?:-former)?-(?:areas|civil-outlines|rail-outlines|points|badges|(?:grid|cable|traction|fuel|hydrogen|water|coal|other)-lines)$/.test(id) || /^aerialway-(?:cableway|lift)-cable$/.test(id) || /^electrification-(?:(?:former-)?(?:conductor-rails|fourth-rails|ground-supply|inductive-supply|linear-motors|rack-traction|cable-traction|provider-rack|provider-cable|trolley-contact|rigid-contact|(?:steam|maglev|battery|hydrogen)-propulsion|dual-voltage-(?:primary|secondary)|charging-(?:areas|outlines|points)|signal-points)|catenary-(?:masts|portals|references))$/.test(id) || id.startsWith('platform-') || INFRASTRUCTURE_POINTS.includes(id) || /^electrification-(substation-(areas|edges)|(?:former-)?supply-(areas|outlines|points))$/.test(id) || contextLayerInteractive(id) || id.startsWith('station-') || (id.startsWith('inactive-') && !id.includes('bridge')) || /^(speed|infrastructure|electrification|control|gauge|loading|axle|owner|service)-(tracks|overview|branch-overview|metro-overview)$/.test(id) || /^control-(tracks|overview|branch-overview|metro-overview)-system-[23]$/.test(id) || id === 'service-routes';
+const isClickable = id => /^energy-(?:overview|context|detail)(?:-former)?-(?:areas|civil-outlines|rail-outlines|points|badges|(?:grid|cable|traction|fuel|hydrogen|water|coal|other)-lines)$/.test(id) || /^aerialway-(?:cableway|lift)-cable$/.test(id) || /^electrification-(?:(?:former-)?(?:conductor-rails|fourth-rails|ground-supply|inductive-supply|linear-motors|rack-traction|cable-traction|provider-rack|provider-cable|trolley-contact|rigid-contact|(?:steam|maglev|battery|hydrogen)-propulsion|dual-voltage-(?:primary|secondary)|charging-(?:areas|outlines|points)|(?:former-)?signal-points)|catenary-(?:masts|portals|references))$/.test(id) || id.startsWith('platform-') || INFRASTRUCTURE_POINTS.includes(id) || /^electrification-(substation-(areas|edges)|(?:former-)?supply-(areas|outlines|points))$/.test(id) || contextLayerInteractive(id) || id.startsWith('station-') || (id.startsWith('inactive-') && !id.includes('bridge')) || /^(speed|infrastructure|electrification|control|gauge|loading|axle|owner|service)-(tracks|overview|branch-overview|metro-overview)$/.test(id) || /^control-(tracks|overview|branch-overview|metro-overview)-system-[23]$/.test(id) || id === 'service-routes';
 // A link to the feature's own OpenStreetMap object, or to its location when
 // the tiles do not identify one.
 function osmLink(panel, feature) {
@@ -782,6 +907,7 @@ function stationObject(osmId) {
   return null;
 }
 function showDetails(feature) {
+  cancelSelectionRestore?.();
   cancelProfile();
   platformLengths?.prioritizeEdge(['platformEdges','platformLengths'].includes(feature.source)?feature:null);
   if(['platformEdges','platformLengths','platforms','platformNumbers'].includes(feature.source))feature=platformLengths?.enrich(feature)||feature;
@@ -1097,17 +1223,30 @@ function updateNearbyTransport() {
   if (!target || currentFeature?.geometry?.type !== 'Point') return;
   target.replaceChildren(textNode('h3','Nearby transport'));
   if (!settings.transport) { target.append(textNode('p','Enable “Other transport & interchanges” to see nearby facilities.','small')); return; }
-  if (!ready || map.getZoom() < 14) { target.append(textNode('p','Zoom in closer to list nearby terminals, stops, taxi stands and bike rental.','small')); return; }
-  const features = ['poi','aerodrome_label'].flatMap(sourceLayer=>map.querySourceFeatures('openmaptiles',{sourceLayer}).map(f=>({id:f.id,properties:f.properties,geometry:f.geometry,sourceLayer})));
-  const nearby = nearbyTransport(currentFeature.geometry.coordinates,features,500,map.getZoom());
+  const zoom=useFlat?flatSourceContext?.getZoom():ready?map.getZoom():undefined;
+  if (!(zoom>=14)) { target.append(textNode('p','Zoom in closer to list nearby terminals, stops, taxi stands and bike rental.','small')); return; }
+  const sourceLayers=['poi','aerodrome_label'];
+  const context=useFlat?flatSourceContext.readSourcePoints('openmaptiles',sourceLayers):{
+    state:map.isSourceLoaded('openmaptiles')?'ready':'loading',
+    features:sourceLayers.flatMap(sourceLayer=>map.querySourceFeatures('openmaptiles',{sourceLayer})
+      .map(f=>({id:f.id,properties:f.properties,geometry:f.geometry,sourceLayer}))),
+  };
+  const nearby=nearbyTransport(currentFeature.geometry.coordinates,context.features,500,zoom);
   if (!nearby.length) {
-    target.append(textNode('p',map.isSourceLoaded('openmaptiles') ? 'No nearby transport facility appears in the loaded map data.' : 'Loading nearby transport…','small')); return;
+    const messages={
+      inactive:'Nearby transport data is not loaded in this view.',
+      failed:'Nearby transport data could not be loaded.',
+      ready:'No nearby transport facility appears in the loaded map data.',
+      loading:'Loading nearby transport…',
+    };
+    target.append(textNode('p',messages[context.state],'small')); return;
   }
   const list = document.createElement('ul');list.className='nearby-list';
   for (const {feature,category,distance} of nearby) {
     const item = document.createElement('li'), button = textNode('button',displayName(feature.properties,settings.language) || category.label);
     button.type='button';button.addEventListener('click',()=>{
-      map.easeTo({center:feature.geometry.coordinates,zoom:Math.max(14,map.getZoom())});
+      if(useFlat)flatNavigation?.({center:feature.geometry.coordinates,zoom:Math.max(14,zoom)});
+      else map.easeTo({center:feature.geometry.coordinates,zoom:Math.max(14,map.getZoom())});
       showDetails({...feature,source:'openmaptiles',layer:{id:`context-transport-${category.id}-label`}});
     });
     item.append(button,textNode('span',`${category.label} · ${settings.units === 'imperial' ? Math.round(distance*3.28084/50)*50+' ft' : Math.round(distance/10)*10+' m'}`,'small'));
@@ -1163,6 +1302,7 @@ function fitScale() {
 }
 function applyUnits() {
   fitScale();
+  updateFlatScale();
   if (!ready) return;
   const style = {layers: map.getStyle().layers, sources: {contours: {}, seabedContours: {}, seabedContoursClose: {}}};
   unitStyle(style);
@@ -1261,15 +1401,32 @@ function localizeStyle(style) {
 // without one, as on a touch screen) and the zoom, where More detail adds the
 // scale the map is drawn at. Turned off in the settings.
 const readout = Object.assign(textNode('div', '', 'maplibregl-ctrl map-readout'), {hidden: !settings.readout});
-let readoutPoint = null;
+let readoutPoint = null, flatReadout, flatScale;
+function updateFlatScale() {
+  if (!flatScale) return;
+  const bar = flatSourceContext.scaleBar(settings.units);
+  flatScale.hidden = !bar;
+  if (!bar) return;
+  const label = bar.value + ' ' + bar.unit;
+  const width = bar.width.toFixed(2) + 'px';
+  if (flatScale.textContent !== label) flatScale.textContent = label;
+  if (flatScale.style.width !== width) flatScale.style.width = width;
+}
 function updateReadout() {
-  if (!map || readout.hidden) return;
+  if (readout.hidden) return;
+  if (useFlat) {
+    if (flatReadout) {
+      const [[lng,lat],zoom]=flatReadout;
+      readout.textContent=formatReadout({lng,lat},zoom+settings.detail,settings.detail);
+    }
+    return;
+  }
+  if (!map) return;
   const center=map.getCenter(),zoom=map.getProjection()?.type==='globe'?readoutZoom(map.getZoom(),center.lat):map.getZoom();
   readout.textContent = formatReadout(readoutPoint ? map.unproject(readoutPoint) : center, zoom, settings.detail);
 }
 // Track-count badges (see build-style.mjs): running tracks, a group wholly
 // in tunnels, and all the tracks at a station.
-const TRACK_BADGES = {'track-badge': {edge: '#173e47', fill: '#fffef8'}, 'track-badge-tunnel': {edge: '#7d949c', fill: '#e3eaec'}, 'track-badge-station': {edge: '#c47d12', fill: '#fff3da'}};
 const detailButton = Object.assign(document.createElement('button'), {type:'button', className:'atlas-ctrl', textContent:'⊞'});
 const detailScale = level => 100 / 2 ** level;
 const drawButton = Object.assign(document.createElement('button'), {type:'button', className:'atlas-ctrl', textContent:'✎', title:'Drawing tools'});
@@ -1319,6 +1476,7 @@ function updatePolar() {
 }
 polarButton.addEventListener('click', () => { map.setProjection({type: onGlobe() ? 'mercator' : 'globe'}); updatePolar(); });
 const measureButton = Object.assign(document.createElement('button'), {type:'button', className:'atlas-ctrl', textContent:'📏', title:'Measure'});
+measureButton.setAttribute('aria-label','Measure');
 // Native 3D relief control. Use a genuine vector mountain/bathymetry glyph
 // rather than rendering the literal text "3D" in a MapLibre icon button.
 const terrainButton = Object.assign(document.createElement('button'), {
@@ -1382,9 +1540,18 @@ updateTerrainButton();
 const MIN_ZOOM = 1, MAX_ZOOM = 20;
 function applyDetail(from = settings.detail) {
   const level = settings.detail, next = (level + 1) % (DETAIL_LEVELS + 1);
-  $('map').classList.toggle('detail', level > 0);
-  $('map').classList.toggle('detail-2', level === 2);
+  // The transformed layout belongs to MapLibre, whose camera/pointer/UI
+  // scale is compensated separately. It must never wrap the Canvas camera.
+  $('map').classList.toggle('detail', !useFlat && level > 0);
+  $('map').classList.toggle('detail-2', !useFlat && level === 2);
   detailButton.setAttribute('aria-pressed', String(level > 0));
+  if(useFlat){
+    detailButton.title=`More detail: ${level===0?'normal':level===1?'high':'highest'} tile detail. Click for ${next===0?'normal':next===1?'high':'highest'}.`;
+    detailButton.setAttribute('aria-label',detailButton.title);
+    flatSourceContext?.setDetail(level);
+    updateReadout();
+    return;
+  }
   detailButton.title = `More detail: map drawn at ${detailScale(level)}%. Click for ${next ? `${detailScale(next)}%` : '100% (normal)'}.`;
   detailButton.setAttribute('aria-label', detailButton.title);
   if (!map) return;
@@ -1425,6 +1592,8 @@ function updateDrawing() {
   }
   $('measure-delete').hidden = measuring?.selected === null || measuring?.selected === undefined;
   $('measure-profile').hidden = !measuring?.profileCoordinates();
+  $('measure-finish').hidden = measuring?.mode !== 'distance';
+  $('measure-finish').disabled = !(measuring?.points.length >= 2) || measuring.ended;
   if ($('measure-retry')) $('measure-retry').hidden = !measuring?.canRetryHeights;
   document.querySelectorAll('[data-measure]').forEach(b => b.setAttribute('aria-pressed', String(measuring?.mode === b.dataset.measure)));
 }
@@ -1442,7 +1611,8 @@ drawButton.addEventListener('click', () => openTools('draw-toolbar'));
 measureButton.addEventListener('click', () => openTools('measure-toolbar'));
 $('draw-close').addEventListener('click', () => openTools(null));
 $('measure-close').addEventListener('click', () => openTools(null));
-document.querySelectorAll('[data-measure]').forEach(b => b.addEventListener('click', () => whenMap(() => measuring.setMode(b.dataset.measure))));
+document.querySelectorAll('[data-measure]').forEach(b => b.addEventListener('click', () => measuring?.setMode(b.dataset.measure)));
+$('measure-finish').addEventListener('click', () => measuring?.end());
 $('measure-undo').addEventListener('click', () => measuring?.undo());
 $('measure-clear').addEventListener('click', () => measuring?.clear());
 $('measure-retry')?.addEventListener('click', () => measuring?.retryHeights());
@@ -1463,12 +1633,101 @@ $('node-extend').addEventListener('click', () => {
 });
 $('draw-curved').addEventListener('click', () => drawing?.setCurved(!drawing.curved));
 // Drawing style: colour, line style and width for new drawings.
+function reflectDrawingColor(color) {
+  $('draw-color').value = color;
+  document.querySelectorAll('[data-color]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.color === color)));
+}
 function drawStyle(style) {
   whenMap(() => drawing.setStyle(style));
-  if (style.color) {
-    $('draw-color').value = style.color;
-    document.querySelectorAll('[data-color]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.color === style.color)));
+  if (style.color) reflectDrawingColor(style.color);
+}
+function inspectionIdentity(feature) {
+  const source=feature?.source, sourceLayer=feature?.sourceLayer??feature?.layer?.['source-layer'];
+  if(!feature) return null;
+  const raw=feature.id;
+  const hasID=typeof raw==='number'&&Number.isSafeInteger(raw)||typeof raw==='string'&&raw.length;
+  const osm=hasID ? null : osmObject(feature);
+  const id=hasID ? String(raw) : osm ? `${osm.type}:${osm.id}` : '';
+  const geometry=feature?.geometry?.type?.replace(/^Multi/,'');
+  return typeof source==='string'&&source.length&&source.length<=100&&
+    (sourceLayer===undefined||typeof sourceLayer==='string'&&sourceLayer.length<=100)&&
+    id.length&&id.length<=100&&['Point','LineString','Polygon'].includes(geometry)
+      ? {source,sourceLayer:sourceLayer??'',id,geometry} : null;
+}
+function rendererSelection(feature) {
+  const key=inspectionIdentity(feature);
+  const location=feature?.geometry?.type==='Point'?feature.geometry.coordinates:
+    [feature?.clickLngLat?.lng,feature?.clickLngLat?.lat];
+  const at=Array.isArray(location) ? location.slice(0,2) : null;
+  return key&&at?.length===2&&at.every(Number.isFinite)&&Math.abs(at[0])<=540&&Math.abs(at[1])<=90 ? {key,at} : null;
+}
+function restoreRendererSelection(selection, query) {
+  const {key,at}=selection||{};
+  if (!query||settings.ui==='watch'||!key||!Array.isArray(at)||at.length!==2||
+      !at.every(Number.isFinite)||Math.abs(at[0])>540||Math.abs(at[1])>90) return;
+  const mount=$('map');
+  const cancel=()=>{
+    clearInterval(retry);clearTimeout(deadline);
+    mount.removeEventListener('pointerdown',cancel,true);
+    if(cancelSelectionRestore===cancel)cancelSelectionRestore=null;
+  };
+  // Ask only for hits at the saved location and only while a pending handoff
+  // exists. Re-resolve from painted, selectable features, not saved details.
+  const retry=setInterval(()=>{
+    if(settings.ui==='watch'){cancel();return;}
+    const feature=query(at)?.find(candidate=>{
+      const other=inspectionIdentity(candidate);
+      return other&&other.source===key.source&&other.sourceLayer===key.sourceLayer&&
+        other.id===key.id&&other.geometry===key.geometry;
+    });
+    if (!feature) return;
+    cancel();
+    const [lng,lat]=at;
+    feature.properties=feature.properties?.atlas_han ? feature.properties : {...feature.properties,...locate(lng,lat)};
+    feature.clickLngLat={lng,lat};
+    showDetails(feature);
+    if(useFlat)void renameFlatSelection?.();
+    else renameOpenMajorStation();
+  },125);
+  const deadline=setTimeout(cancel,12000);
+  cancelSelectionRestore=cancel;
+  mount.addEventListener('pointerdown',cancel,{capture:true,once:true});
+}
+function restoreRendererWork(querySelection) {
+  if (!stagedFlatEntry) return;
+  let pending,state;
+  const consume = () => {
+    try { if (sessionStorage.getItem(RENDERER_WORK_HANDOFF) === pending) sessionStorage.removeItem(RENDERER_WORK_HANDOFF); } catch {}
+  };
+  try {
+    pending=sessionStorage.getItem(RENDERER_WORK_HANDOFF);
+    if (pending===null) return;
+    state=JSON.parse(pending);
+  } catch { if (pending) consume(); return; }
+  restoreRendererSelection(state?.selection,querySelection);
+  if (state?.measurement && !state.drawing) {
+    $('measure-toolbar').hidden=false;
+    if(!measuring.restoreRendererMeasurement(state.measurement)){
+      $('measure-status').textContent='The measurement could not be resumed.';
+      updateDrawing();
+    }
+    consume();
+    return;
   }
+  if (!state?.drawing) {consume();return;}
+  $('draw-toolbar').hidden=false;
+  if(!drawing.restoreRendererDraft(state.drawing)){
+    if (!drawing.recoverRendererLine(state.drawing)) {
+      $('draw-status').textContent='The unfinished drawing could not be resumed. Saved drawings remain unchanged.';
+      updateDrawing();
+      return;
+    }
+    $('draw-status').textContent='The original line could not be identified. Finish to save the recovered draft as a new line. Saved drawings remain unchanged.';
+  }
+  consume();
+  reflectDrawingColor(drawing.style.color);
+  $('draw-dash').value=drawing.style.dash;
+  $('draw-width').value=String(drawing.style.width);
 }
 document.querySelectorAll('[data-color]').forEach(b => { b.style.setProperty('--c', b.dataset.color); b.addEventListener('click', () => drawStyle({color: b.dataset.color})); });
 $('draw-color').addEventListener('input', () => drawStyle({color: $('draw-color').value}));
@@ -1500,7 +1759,8 @@ $('draw-file').addEventListener('change', async () => {
   } catch { $('draw-status').textContent = 'That file is not valid GeoJSON.'; }
 });
 addEventListener('keydown', event => {
-  if (/^(INPUT|SELECT|TEXTAREA)$/.test(event.target.tagName)) return;
+  if (/^(INPUT|SELECT|TEXTAREA)$/.test(event.target.tagName) ||
+      event.target.closest?.('.atlas-flat-compass, .atlas-flat-zoom-button, .atlas-flat-location')) return;
   if (measuring?.active) { if (event.key === 'Enter') measuring.end(); if (event.key === 'Escape') measuring.clear(); return; }
   if (!drawing?.active) return;
   if (event.key === 'Enter') drawing.finish();
@@ -1570,11 +1830,11 @@ async function initialize() {
   const {installLabelProtocols, localizeTile, tileTextBlocks} = labelCode;
   locate = labelCode.locate;
   servedBuild = labelCode.buildInfo;
-  if (!window.maplibregl || !window.pmtiles) throw new Error('Map libraries could not load. Check your connection and reload.');
+  if ((!useFlat && !window.maplibregl) || !window.pmtiles) throw new Error('Map libraries could not load. Check your connection and reload.');
   // MapLibre 5 has no top-level supported() export. The Map constructor checks
   // WebGL itself; initialization errors are caught by the handler below.
   // Register providers once; MapLibre receives the same handlers the flat renderer can read.
-  const tileProtocols = createSharedTileProtocols({forward: maplibregl.addProtocol.bind(maplibregl)});
+  const tileProtocols = createSharedTileProtocols(useFlat ? {} : {forward: maplibregl.addProtocol.bind(maplibregl)});
   const protocol = new pmtiles.Protocol();
   protocol.tile = shareArchiveRequests(protocol.tile.bind(protocol));
   tileProtocols.addProtocol('pmtiles', protocol.tile);
@@ -1591,15 +1851,16 @@ async function initialize() {
   }));
   // Reuse the renderer's rail provider protocol: it resolves the published
   // composite tile path, validates vector data and shares the request cache.
-  const edgeGeometryFor=tileURL=>createPlatformTileGeometry({
-    zoom:17,tileURL,
+  const platformGeometryFor=(tileURL,source,zoom)=>createPlatformTileGeometry({
+    zoom,tileURL,
     fetcher:async(url,{signal})=>{
       const protocolURL=url.startsWith('atlasrail://')||url.startsWith('atlastext://')?url:'atlasrail://'+url;
       const {data}=await tileProtocols.read({url:protocolURL,type:'arrayBuffer'},{signal});
       return {ok:true,arrayBuffer:async()=>data};
     },
-    decode:data=>labelCode.platformTilePieces(data,'standard_railway_platform_edges'),
+    decode:data=>labelCode.platformTilePieces(data,source),
   });
+  const edgeGeometryFor=tileURL=>platformGeometryFor(tileURL,'standard_railway_platform_edges',17);
   stationTileFor=labelProtocols?.stationTile||null;
   if(ready)updateMajorStations();
   // The contour worker with the terrain tiles' bad pixels repaired
@@ -1663,6 +1924,12 @@ async function initialize() {
   // Parsing/rendering its GeoJSON in MapLibre remains deferred to the overview.
   majorStationData=style.sources.stationMajor.data;
   style.sources.stationMajor.data={type:'FeatureCollection',features:[]};
+  // The tile painter and the water mask must share the same absolute archive
+  // key. A relative local PMTiles source is supported, but the timed range
+  // source needs an absolute URL to identify its origin.
+  for (const source of Object.values(style.sources)) {
+    if (source.url?.startsWith('pmtiles://data/')) source.url = 'pmtiles://' + new URL(source.url.slice(10), styleURL).href;
+  }
   const waterArchive = style.sources.openmaptiles.url;
   const waterArchiveKey = waterArchive.replace(/^pmtiles:\/\//,'');
   if (waterArchiveKey !== waterArchive && !protocol.tiles.has(waterArchiveKey)) protocol.tiles.set(waterArchiveKey, basemapArchive(waterArchiveKey));
@@ -1684,27 +1951,36 @@ async function initialize() {
     waterTile: readWaterTile, readTile: readWater,
     createWorker: () => new Worker(new URL(`vendor/terrain-3d-worker.js?v=${assetVersion}`, import.meta.url)),
   });
-  for (const source of Object.values(style.sources)) {
-    if (source.url?.startsWith('pmtiles://data/')) source.url = 'pmtiles://' + new URL(source.url.slice(10), styleURL).href;
-  }
+  const flatTemplate=stagedFlatEntry?structuredClone(style):null;
   // Apply language before constructing the map, avoiding an initial duplicate
   // station-tile download in the wrong language.
   // This also sets the contour sources (unitStyle). Relief and all contours
   // share one elevation loader and tile cache.
   localizeStyle(style);
   style.sources.relief.tiles = [dem.sharedDemProtocolUrl];
-  // Hidden sources must stay hidden before MapLibre starts its first requests.
-  for (const layer of style.layers) {
-    const visible=isNeutralRailReference(layer) ? false : layerVisibility(layer, settings);
-    // Station fallback names are used only after the ORM station source fails.
-    // Avoid flashing fallback names during the first frame of a healthy load.
-    const enabled=layer.id.startsWith('station-') && layer.id.includes('-fallback-')?false:visible;
-    if(enabled!==undefined)(layer.layout ||= {}).visibility=enabled?'visible':'none';
-    if (isLowZoomStationLayer(layer.id)) (layer.paint ||= {})['text-color'] = lowZoomStationTextColor();
-  }
+  // Resolve the same initial visibility policy for both renderers. Canvas
+  // can recompute it from source when a setting changes without remounting.
+  const applyInitialVisibility=(style,canvas=false)=>{
+    for (const layer of style.layers) {
+      const visible=isNeutralRailReference(layer)&&!canvas ? false : layerVisibility(layer, settings);
+      // Station fallback names are used only after the ORM station source fails.
+      // Avoid flashing fallback names during the first frame of a healthy load.
+      const independent=['station-basemap-fallback-dots','station-basemap-fallback-names','station-curated-fallback-dots'].includes(layer.id);
+      const superseded=canvas&&stationWorldActive&&WORLD_STATION_SUPERSEDED_DOTS.includes(layer.id);
+      const enabled=superseded ? false : layer.id.startsWith('station-') && layer.id.includes('-fallback-')
+        ?canvas&&independent&&settings.stations&&settings.background!=='satellite':visible;
+      if(enabled!==undefined)(layer.layout ||= {}).visibility=enabled?'visible':'none';
+      if (isLowZoomStationLayer(layer.id)) (layer.paint ||= {})['text-color'] = lowZoomStationTextColor();
+    }
+  };
+  applyInitialVisibility(style);
   // Reopen where the last visit ended, unless the link gives a position; start
   // on the globe (or as last left) so the first frame is not the flat map.
-  const linkedView = parseViewHash(captureViewHash()), linked = Boolean(linkedView), start = linked ? {} : rememberedView;
+  const linkedView = parseViewHash(captureViewHash()), linked = Boolean(linkedView);
+  const savedDetail=detailLevel(rememberedView.d??remembered.detail);
+  const logicalSavedZoom=Number.isFinite(rememberedView.z) ? rememberedView.z-savedDetail : undefined;
+  const start = linked ? {} : stagedFlatEntry && logicalSavedZoom!==undefined
+    ? {...rememberedView,z:logicalSavedZoom+settings.detail} : rememberedView;
   if (linked && linkedTerrainMode === null && terrain3DSelectedForPitch(linkedView.pitch))
     terrain3DSelected = true;
   const startZoom = linked ? readoutZoom(linkedView.zoom, linkedView.center[1]) : Number.isFinite(start.z) ? start.z : 1.8;
@@ -1723,12 +1999,391 @@ async function initialize() {
     const paint=stationViewPaint(layer,settings.mode,Number.isFinite(start.z)?start.z:1.8);
     if(paint)Object.assign(layer.paint,paint);
   }
-  map = new maplibregl.Map({
-    container: 'map', style, localIdeographFontFamily: cjkFont(settings.language), pixelRatio: devicePixelRatio / 2 ** settings.detail,
-    center: validCenter ? start.c : [15,23], zoom: Number.isFinite(start.z) ? start.z : 1.8, bearing: Number.isFinite(start.b) ? start.b : 0, pitch: Number.isFinite(start.p) ? start.p : 0, hash: false, minZoom: MIN_ZOOM + settings.detail, maxZoom: MAX_ZOOM + settings.detail,
-    maxPitch: TERRAIN_3D_MAX_PITCH, maxTileCacheSize: HIGH_PITCH_TILE_CACHE_LIMIT,
-    renderWorldCopies: true, attributionControl: false,
-  });
+  if (!useFlat) {
+    // MapLibre adds DOM and a scroll handler before its actual context
+    // request. Keep a failed staged attempt off the shared map element.
+    const container = stagedFlatEntry ? document.createElement('div') : 'map';
+    if (stagedFlatEntry) {
+      Object.assign(container.style,{position:'absolute',inset:'0'});
+      $('map').append(container);
+    }
+    try {
+      map = new maplibregl.Map({
+        container, style, localIdeographFontFamily: cjkFont(settings.language), pixelRatio: devicePixelRatio / 2 ** settings.detail,
+        center: validCenter ? start.c : [15,23], zoom: Number.isFinite(start.z) ? start.z : 1.8, bearing: Number.isFinite(start.b) ? start.b : 0, pitch: Number.isFinite(start.p) ? start.p : 0, hash: false, minZoom: MIN_ZOOM + settings.detail, maxZoom: MAX_ZOOM + settings.detail,
+        maxPitch: TERRAIN_3D_MAX_PITCH, maxTileCacheSize: HIGH_PITCH_TILE_CACHE_LIMIT,
+        renderWorldCopies: true, attributionControl: false,
+      });
+    } catch (error) {
+      if (!stagedFlatEntry) throw error;
+      container.remove();
+      const failure = error?.message;
+      let detail;
+      try { detail = JSON.parse(failure); } catch {}
+      if (failure !== 'Failed to initialize WebGL' && detail?.message !== 'Failed to initialize WebGL') throw error;
+      $('maplibre-css')?.removeAttribute('href');
+      webglStartupFailure = 'the WebGL map could not start';
+      useFlat = true;
+    }
+  }
+  if (useFlat) {
+    const note=$('canvas-mode-note');
+    if(note)note.hidden=false;
+    // Include asynchronous WebGL asset and constructor fallbacks in the reset.
+    applyDetail();
+    applyInitialVisibility(style,true);
+    const {mountFlatMap,connectFlatLocation,appendFlatCredits,canvasMapStatus}=await import(`./vendor/flat-browser.js?v=${assetVersion}`);
+    const requestedView={
+      center:linked?linkedView.center:validCenter?start.c:[15,23],
+      zoom:linked ? startZoom-settings.detail : logicalSavedZoom??startZoom,
+      bearing:linked?linkedView.bearing:Number.isFinite(start.b)?start.b:0,
+    };
+    const compass=textNode('button','','atlas-flat-compass');
+    compass.type='button';
+    compass.title='Reset map to north';
+    compass.setAttribute('aria-label',compass.title);
+    const needle=textNode('span','↑');
+    needle.setAttribute('aria-hidden','true');
+    compass.append(needle);
+    let flatLocation, refreshFlatPower, flatStationOverlay;
+    const stationsLifetime=new AbortController();
+    addEventListener('pagehide',event=>{if(!event.persisted)stationsLifetime.abort();});
+    const creditsBox=textNode('details','','atlas-flat-credit-box');
+    creditsBox.open=settings.attributionOpen;
+    creditsBox.addEventListener('toggle',()=>{
+      if(settings.attributionOpen===creditsBox.open)return;
+      settings.attributionOpen=creditsBox.open;
+      saveSettings();
+    });
+    const creditSummary=textNode('summary','Map credits');
+    flatCredits=textNode('div','','atlas-flat-credit-content');
+    creditsBox.append(creditSummary,flatCredits);
+    const buildCredit=codeAttribution();
+    let creditSignature;
+    const requestedMongolian=new Set();
+    const getMongolianFont=(text,size)=>{
+      const blocks=mongolianBlocks(text);
+      const keys=[...blocks].map(block=>({family:'mongolian',weight:400,block}));
+      const missing=keys.filter(key=>!worldFonts.isLoaded(key));
+      const request=missing.filter(key=>!requestedMongolian.has(key.block));
+      if(request.length){
+        for(const key of request)requestedMongolian.add(key.block);
+        void worldFonts.ensure(new Set(request)).then(()=>refreshFlatLabels?.());
+      }
+      return missing.length?null:`${size}px "Atlas Mongolian"`;
+    };
+    // Canvas measures and paints the same per-language fallback stack as
+    // feature names. Ask for a packaged Chinese font only for real Han text,
+    // including on systems with no usable installed family from the probe.
+    const getCjkFont=text=>{
+      if(!/[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Hangul}\p{Script=Bopomofo}]/u.test(text))return null;
+      const script=cjkScript(settings.language);
+      ensureCjkChoice(script);
+      const blocks=rareHanBlocks(text);
+      if(blocks.size)void rareHanFonts.ensure(blocks);
+      if(/\p{Script=Han}/u.test(text))loadCjkFont(script,true);
+      return cjkFont(settings.language);
+    };
+    // The committed catalogue supplies geometry, not most names. Hydrate only
+    // the hubs visible at their label tier (or explicitly chosen), with the same provider and OSM
+    // identity/alias matching used by the WebGL overview.
+    let curatedLanguage,curatedBatch='',curatedTemplate;
+    const curatedNames=new Map(), curatedPending=new Map();
+    const renderCurated=()=>{
+      flat.setCuratedOverview({...majorStationData,features:majorStationData.features.map(feature=>{
+        const p=curatedNames.get(feature.id);
+        return p?{...feature,properties:{...feature.properties,name:p.name,localized_name:p.localized_name,
+          atlas_name:p.atlas_name,atlas_language:curatedLanguage,atlas_name_source:'provider'}}:feature;
+      })});
+    };
+    const loadCuratedTemplate=()=>curatedTemplate??=(async()=>{
+      const source=style.sources.stations;
+      const meta=source.tiles?.length?source:(await tileProtocols.read(
+        {url:source.url,type:'json'},stationsLifetime)).data;
+      const template=meta?.tiles?.[0]?.replace(/^atlasstation:\/\/[^/]+\//,'');
+      if(!template)throw new Error('No station name tile template');
+      return template;
+    })().catch(error=>{curatedTemplate=null;throw error;});
+    let curatedRecovery=0;
+    async function lookupCuratedName(feature,language){
+      const key=language+'/'+feature.id;
+      const attempt=()=>{
+        const existing=curatedPending.get(key);
+        if(existing)return existing;
+        const entry={recovery:curatedRecovery,promise:(async()=>{
+          stationTileURL ||= await loadCuratedTemplate();
+          if(stationsLifetime.signal.aborted)return null;
+          return majorStationName(feature,language);
+        })().catch(()=>null).finally(()=>curatedPending.delete(key))};
+        curatedPending.set(key,entry);
+        return entry;
+      };
+      const first=attempt(), named=await first.promise;
+      // The online event may arrive while the old offline request is still
+      // failing. Reuse it if it succeeds, but don't count a stale miss as the
+      // recovery attempt. All waiters share the new request too.
+      if(!named&&first.recovery!==curatedRecovery&&language===settings.language&&
+          !stationsLifetime.signal.aborted)return attempt().promise;
+      return named;
+    }
+    renameFlatSelection=async()=>{
+      const open=currentFeature, language=settings.language;
+      if(open?.source!=='stationMajor'||$('details').hidden||!stationTileFor||
+          (open.properties.atlas_language===language&&open.properties.atlas_name))return;
+      const feature=majorStationData?.features?.find(f=>String(f.properties.id)===String(open.properties.id));
+      if(!feature)return;
+      const named=(curatedLanguage===language&&curatedNames.get(feature.id))||
+        await lookupCuratedName(feature,language);
+      if(!named||stationsLifetime.signal.aborted||settings.language!==language||
+          currentFeature!==open||$('details').hidden||
+          (open.properties.atlas_language===language&&open.properties.atlas_name))return;
+      open.properties={...open.properties,name:named.name,localized_name:named.localized_name,
+        atlas_name:named.atlas_name,atlas_language:language,atlas_name_source:'provider'};
+      showDetails(open);
+    };
+    async function requestCuratedOverview(camera){
+      const language=settings.language;
+      if(curatedLanguage!==language){
+        curatedLanguage=language;curatedBatch='';curatedNames.clear();renderCurated();
+      }
+      if(!stationTileFor||!majorStationData?.features?.length)return;
+      const visible=majorStationData.features.filter(feature=>{
+        if((feature.properties.tier??7)>Math.floor(camera.zoom))return false;
+        const [x,y]=camera.project(feature.geometry.coordinates);
+        return x>=-32&&x<=camera.width+32&&y>=-32&&y<=camera.height+32;
+      });
+      const batch=visible.map(f=>f.id).join(',');
+      if(!batch||batch===curatedBatch)return;
+      curatedBatch=batch;
+      const wanted=visible.filter(feature=>!curatedNames.has(feature.id));
+      if(!wanted.length)return;
+      let index=0;
+      const lookup=async()=>{
+        while(index<wanted.length && curatedLanguage===language && curatedBatch===batch && !stationsLifetime.signal.aborted){
+          const feature=wanted[index++];
+          const name=await lookupCuratedName(feature,language);
+          if(name&&language===settings.language&&curatedLanguage===language&&!stationsLifetime.signal.aborted){
+            curatedNames.set(feature.id,name);
+            renderCurated();
+          }
+        }
+      };
+      await Promise.all(Array.from({length:Math.min(4,wanted.length)},lookup));
+    }
+    const flat=mountFlatMap({
+      mount:$('map'),style,styleURL,protocols:tileProtocols,requestedView,initialDetail:settings.detail,
+      curatedStationData:majorStationData,onCuratedOverview:requestCuratedOverview,getMongolianFont,getCjkFont,
+      stationPaint:(layer,zoom)=>stationViewPaint(layer,settings.mode,zoom),
+      readDem:({z,x,y},controller)=>dem.getDemTile(z,x,y,controller),
+      pointSources:{electricSignals:13},
+      shapeSources:['electricFacilities','electricMethods','platformLengths','platformNumbers'],
+      onPlatformFrame:()=>platformLengths?.update(),
+      railTrackLayer:zoom=>`${settings.mode}-${zoom<7?'overview':'tracks'}`,
+      interactiveLayer:isClickable,
+      legendLayers:()=>settings.mode==='service'?new Set(['service-routes']):
+        IN_VIEW[settings.mode]?new Set(inViewLegendLayers(settings.mode)):undefined,
+      onLegendFrame(features) {
+        const service=settings.mode==='service';
+        flatLegendFeatures=service?[]:features;
+        flatServiceFeatures=service?features:[];
+        scheduleLegend();
+        // Applying a style renders immediately. Schedule timer reconciliation
+        // after that frame rather than reentering it from the expiry callback.
+        if(!flatExpiryQueued&&(service||currentFeature?.layer?.id==='service-routes')){
+          flatExpiryQueued=true;
+          queueMicrotask(()=>{flatExpiryQueued=false;frequencyExpiry?.update();});
+        }
+      },
+      imageryCredit(url,tile){
+        if(!url.startsWith('atlasimagery://'))return;
+        const provider=imageryProtocol.providerFor(tile);
+        return provider==='EOX'?eoxAttribution:PROVIDER_ATTRIBUTION[provider];
+      },
+      onCredits(inUse) {
+        const credits=[...new Set(inUse.filter(Boolean))].sort();
+        const signature=JSON.stringify(credits);
+        if(signature===creditSignature)return;
+        creditSignature=signature;
+        appendFlatCredits(flatCredits,[...credits,buildCredit],location.href);
+        creditSummary.textContent=flatCredits.querySelector('a[href="https://www.openstreetmap.org/copyright"]')
+          ? '© OpenStreetMap · Map credits' : 'Map credits';
+      },
+      onCamera({center,zoom,bearing}) {
+        flatCurrentView={c:center,z:zoom,b:bearing,p:0,g:false,t:false};
+        needle.style.transform=`rotate(${-bearing}deg)`;
+        updateFlatScale();
+        refreshFlatPower?.();
+      },
+      onReadout(position,zoom) {flatReadout=[position,zoom];updateReadout();},
+      onDrawingProfile:line=>{if(settings.ui!=='watch')void showProfile(line);},
+      onInspect(hits,[lng,lat]) {
+        if (settings.ui==='watch') return;
+        const feature=hits.sort((a,b)=>featurePickRank(a)-featurePickRank(b)||
+          stationRank(a.properties)-stationRank(b.properties)||a.distance-b.distance)[0];
+        if (!feature) return;
+        feature.properties=feature.properties.atlas_han?feature.properties:{...feature.properties,...locate(lng,lat)};
+        feature.clickLngLat={lng,lat};
+        showDetails(feature);
+        void renameFlatSelection();
+      },
+      onNavigate(view,reason) {
+        if(reason!=='location' && reason!=='rotation') flatLocation?.pause();
+        scheduleNearbyTransport();
+        if(reason!=='link') linkedViewHash='';
+        // Location following changes the live view but does not write position history.
+        if(reason!=='location') writeView(view,0);
+        if (reason!=='link' && parseViewHash(location.hash)) {
+          const url=new URL(location.href);url.hash='';
+          history.replaceState(history.state,'',url);
+        }
+      },
+      onStatus({errors,loading,clamped,railFallback}) {
+        if(flatStationOverlay&&errors.includes(WORLD_STATION_SOURCE)){
+          // A failed bundle should restore established markers instead of
+          // leaving a region blank. Rebuild only after this draw finishes.
+          flatStationOverlay=null;
+          stationWorldActive=false;
+          queueMicrotask(()=>{if(!stationsLifetime.signal.aborted)flatRefreshStyle?.(true);});
+        }
+        scheduleNearbyTransport();
+        status.classList.toggle('error',errors.length>0);
+        const state=canvasMapStatus({errors,loading,clamped,railFallback});
+        status.textContent=webglStartupFailure
+          ? '2D map: '+webglStartupFailure+'; '+state : '2D map: '+state;
+      },
+    });
+    // Network recovery can restore a name at the same view/language. Normal
+    // paints still share a batch and do not poll a successful no-match.
+    addEventListener('online',()=>{
+      curatedRecovery++;
+      curatedBatch='';
+      flat.invalidateLabels();
+      void renameFlatSelection();
+    },{signal:stationsLifetime.signal});
+    refreshFlatLabels=flat.invalidateLabels;
+    platformLengths=createPlatformLengths({
+      ...flat.platformProjection,getZoom:flat.getZoom,getSource:flat.getSource,
+      getLayer:flat.getPlatformLayer,
+      queryRenderedFeatures:({layers})=>flat.platformCandidates(layers),
+    },{
+      active:()=>settings.mode==='infrastructure'&&settings.labels&&settings.background!=='satellite',
+      edgeGeometry:edgeGeometryFor(()=>flat.getTileTemplate('platformEdges')),
+      geometry:platformGeometryFor(()=>flat.getTileTemplate('platforms'),'standard_railway_platforms'),
+      onPlatform:id=>{
+        if(['platforms','platformNumbers'].includes(currentFeature?.source)&&String(currentFeature.properties.id)===id)showDetails(currentFeature);
+      },
+      onLength:(id,length)=>{
+        if(length>0&&['platformEdges','platformLengths'].includes(currentFeature?.source)&&
+          String(osmObject(currentFeature)?.id)===id)showDetails(currentFeature);
+      },
+    });
+    addEventListener('pagehide',event=>{if(!event.persisted)platformLengths.destroy();});
+    const flatPowerLoaders=makePowerLoaders(flat,zoom=>settings.mode==='electrification'&&
+      settings.background!=='satellite'&&flat.getZoom()>=zoom,{
+      reportError(id){flat.getSource(id)?.setError();},
+    });
+    refreshFlatPower=()=>{for(const refresh of flatPowerLoaders)void refresh();};
+    flatNavigation=flat.moveTo;
+    addEventListener('hashchange',()=>{
+      const view=parseViewHash(location.hash);
+      if(!view)return;
+      const zoom=Math.max(MIN_ZOOM,Math.min(MAX_ZOOM,readoutZoom(view.zoom,view.center[1])-settings.detail));
+      flatNavigation({center:view.center,zoom,bearing:view.bearing,reason:'link'});
+    });
+    flatSourceContext=flat;
+    const corner = textNode('div', '', 'atlas-flat-map-tools');
+    readout.classList.add('atlas-flat-readout');
+    flatScale = textNode('div', '', 'atlas-flat-scale');
+    const scaleLabel = textNode('span', 'Map scale', 'sr-only');
+    scaleLabel.id = 'flat-scale-label';
+    flatScale.setAttribute('role', 'group');
+    flatScale.setAttribute('aria-labelledby', scaleLabel.id);
+    corner.append(scaleLabel, flatScale, readout);
+    $('map').append(corner,creditsBox);
+    updateReadout();
+    updateFlatScale();
+    controlLayout = installControlLayout({frame: $('map-frame'), mapElement: $('map'), corner,
+      panel: document.querySelector('.panel'), status, readout, details: $('details')});
+    measuring=new Measure(flat.measurementMap,{
+      units:()=>settings.units,
+      status:text=>{$('measure-status').textContent=text;},
+      changed:updateDrawing,
+      geometryChanged:()=>{if(profileFromMeasure)closeDetails();},
+      heights:(points,options)=>surfaceElevation.heights(points,options),
+    });
+    drawing=new Drawing(flat.drawingMap,{
+      units:()=>settings.units,
+      status:text=>{$('draw-status').textContent=text;},
+      changed:updateDrawing,
+    });
+    drawing.install();
+    flat.connectDrawing(drawing);
+    flat.connectMeasure(measuring);
+    const toolButtons=document.createElement('div');
+    toolButtons.className='atlas-flat-tool-buttons';
+    drawButton.setAttribute('aria-label','Drawing tools');
+    compass.addEventListener('click',flat.resetNorth);
+    toolButtons.append(drawButton,measureButton,compass,detailButton);
+    for (const [symbol,label,delta] of [['+','Zoom in',1],['−','Zoom out',-1]]) {
+      const button=textNode('button',symbol,'atlas-flat-zoom-button');
+      button.type='button';
+      button.title=label;
+      button.setAttribute('aria-label',label);
+      button.addEventListener('click',()=>flat.zoomBy(delta));
+      toolButtons.append(button);
+    }
+    const locateButton=textNode('button','⌾','atlas-flat-location');
+    locateButton.type='button';
+    locateButton.setAttribute('aria-label','My location');
+    const locationStatus=textNode('div','','atlas-flat-location-status');
+    locationStatus.setAttribute('role','status');
+    flatLocation=connectFlatLocation({
+      button:locateButton,status:locationStatus,window,geolocation:navigator.geolocation,
+      showFix:flat.showLocation,followFix:flat.followLocation,
+    });
+    toolButtons.append(locateButton,locationStatus);
+    $('map').append(toolButtons);
+    restoreRendererWork(flat.inspectionAt);
+    const action=pendingDraw;pendingDraw=undefined;action?.();
+    updateDrawing();
+    let applied=JSON.stringify(settings);
+    flatRefreshStyle=(force=false)=>{
+      const signature=JSON.stringify(settings);
+      if(!force&&applied===signature)return;
+      const next=structuredClone(flatTemplate);
+      flatStationOverlay?.installStyle(next);
+      localizeStyle(next);
+      next.sources.relief.tiles=[dem.sharedDemProtocolUrl];
+      applyInitialVisibility(next,true);
+      for(const layer of next.layers){
+        const paint=stationViewPaint(layer,settings.mode,flat.getZoom());
+        if(paint)Object.assign(layer.paint,paint);
+      }
+      flat.setStyle(next);
+      if(force)return; // Timer refresh does not change interactive tools or other datasets.
+      refreshFlatPower();
+      drawing.refresh();
+      if(measuring?.active)measuring.refresh();
+      applied=signature;
+      frequencyExpiry?.update();
+    };
+    void prepareWorldStationOverlay({root:new URL('./data/station-points/',import.meta.url),
+      signal:stationsLifetime.signal}).then(overlay=>{
+      if(!overlay||stationsLifetime.signal.aborted)return;
+      overlay.register(tileProtocols);
+      flatStationOverlay=overlay;
+      stationWorldActive=true;
+      flatRefreshStyle(true);
+    }).catch(error=>{
+      flatStationOverlay=null;stationWorldActive=false;
+      console.warn('Canvas worldwide station snapshot not activated:',error.message);
+    });
+    if(pendingFlatNavigation) {flatNavigation(pendingFlatNavigation);pendingFlatNavigation=null;}
+    frequencyExpiry?.update();
+    refreshFlatPower();
+    return;
+  }
+  void atlasWorker?.ready.then(registration=>registration.active?.postMessage('atlas:cache-webgl')).catch(()=>{});
   installImageryAttribution(map,imageryProtocol,{eoxAttribution,polarImagery:()=>
     ['satellite','hybrid'].includes(settings.background) && Boolean(polarLayer &&
       ['north','south'].some(cap=>polarLayer.visible()[cap] && polarLayer.caps[cap]?.satellite && !polarLayer.caps[cap]?.satelliteFailed))});
@@ -1762,19 +2417,10 @@ async function initialize() {
   // Reset the temporary suppression even if the 2D transition is interrupted
   // before reaching 0°; a later intentional tilt may enter 3D as normal.
   map.on('moveend', () => { terrain3DExitPending = false; });
-  powerFacilities = createPowerFacilityLoader(map, {url:new URL('./data/traction/power/power-facilities.geojson.gz',import.meta.url),
-    active:()=>ready&&settings.mode==='electrification'&&settings.background!=='satellite'&&map.getZoom()>=10,
-    language:()=>settings.language,localize:(data,language)=>({...data,features:data.features.map(f=>{const properties={...f.properties,...locate(...shapeCenter(f.geometry))};return {...f,properties:{...properties,atlas_name:chooseName(properties,language),atlas_language:language}};})}),
+  [powerFacilities,powerMethods,electricitySignals]=makePowerLoaders(map,zoom=>ready&&
+    settings.mode==='electrification'&&settings.background!=='satellite'&&map.getZoom()>=zoom,{
     glyphs:async data=>{const found=new Set();for(const f of data.features)rareHanBlocks(f.properties.atlas_name,found);if(found.size)await rareHanFonts.ensure(found);},
-    fetcher:fetch,onError:error=>console.warn('Railway energy supplies unavailable:',error.message)});
-  powerMethods=createPowerFacilityLoader(map,{sourceId:'electricMethods',url:new URL('./data/traction/power/power-methods.geojson.gz',import.meta.url),
-    active:()=>ready&&settings.mode==='electrification'&&settings.background!=='satellite'&&map.getZoom()>=10,
-    language:()=>settings.language,localize:(data,language)=>({...data,features:data.features.map(f=>({...f,properties:{...f.properties,atlas_name:chooseName(f.properties,language)}}))}),
-    glyphs:async data=>{const found=new Set();for(const f of data.features)rareHanBlocks(f.properties.atlas_name,found);if(found.size)await rareHanFonts.ensure(found);},
-    onError:error=>console.warn('Conductor rails and railway charging unavailable:',error.message)});
-  electricitySignals=createPowerFacilityLoader(map,{sourceId:'electricSignals',url:new URL('./data/traction/power/electricity-signals.geojson.gz',import.meta.url),
-    active:()=>ready&&settings.mode==='electrification'&&settings.background!=='satellite'&&map.getZoom()>=13,
-    onError:error=>console.warn('Electrification signals unavailable:',error.message)});
+  });
   updateAttribution();
   // The globe may be centred beyond 85° (globe-drag.mjs); a view left or
   // linked there is applied again once that is allowed. So is any view
@@ -1899,6 +2545,12 @@ async function initialize() {
   map.on('dblclick', event => {
     if (measuring.mode === 'distance') { event.preventDefault(); measuring.end(); }
     else if (drawing.multiPoint && !drawing.paused) { event.preventDefault(); drawing.finish(); }
+  });
+  restoreRendererWork(at=>{
+    if(!ready||!clickable.length)return [];
+    const p=map.project(at), canvas=map.getCanvas();
+    if(p.x<0||p.x>canvas.clientWidth||p.y<0||p.y>canvas.clientHeight)return [];
+    return map.queryRenderedFeatures([[p.x-7,p.y-7],[p.x+7,p.y+7]],{layers:clickable});
   });
   const action = pendingDraw; pendingDraw = undefined; action?.();
   let recoveryRemoved = false, recoveryStatusPending = false;
@@ -2130,12 +2782,16 @@ function reloadLanguage() {
     ensureCjkChoice(cjkScript(settings.language));
     updateDetailGlyphs();
     if(ready) reloadLanguage();
+    else {
+      flatRefreshStyle?.();
+      void renameFlatSelection?.();
+    }
     saveSettings();
   });
 }
 $('units').addEventListener('change', () => {
   settings.units = $('units').value === 'imperial' ? 'imperial' : 'metric';
-  applyUnits(); updateInView(); renderLegend(); saveSettings(); drawing?.refresh(); measuring?.refresh();
+  applyUnits(); flatRefreshStyle?.(); updateInView(); renderLegend(); saveSettings(); drawing?.refresh(); measuring?.refresh();
   if (profileFromMeasure) closeDetails();
   if (currentFeature) showDetails(currentFeature);
 });
@@ -2171,6 +2827,7 @@ const elevation = createElevation(DEM_URL);
 let surfaceElevation = elevation;
 let profileMarker, profileController, profileRequest = 0, profileFromMeasure = false;
 function cancelProfile() {
+  flatSourceContext?.setProfileMarker?.(null);
   profileFromMeasure = false;
   profileRequest++; profileController?.abort(); profileController = null; profileMarker?.remove();
 }
@@ -2233,13 +2890,15 @@ function profileChart(profile, km, units) {
     const p = profile.reduce((a, b) => Math.abs(b.at - at) < Math.abs(a.at - at) ? b : a);
     cursor.setAttribute('x1', x(p.at)); cursor.setAttribute('x2', x(p.at)); cursor.setAttribute('visibility', 'visible');
     readout.textContent = `${formatLength(p.at, units)} · ${Number.isFinite(p.height) ? `${Math.round(p.height * k)} ${unit}` : 'Height unavailable'}`;
-    profileMarker ||= new maplibregl.Marker({element: textNode('div', '', 'profile-marker')});
-    profileMarker.setLngLat(p.point).addTo(map);
+    if(map){
+      profileMarker ||= new maplibregl.Marker({element: textNode('div', '', 'profile-marker')});
+      profileMarker.setLngLat(p.point).addTo(map);
+    }else flatSourceContext?.setProfileMarker?.(p.point);
   });
-  svg.addEventListener('pointerleave', () => { cursor.setAttribute('visibility', 'hidden'); readout.textContent = ''; profileMarker?.remove(); });
+  svg.addEventListener('pointerleave', () => { cursor.setAttribute('visibility', 'hidden'); readout.textContent = ''; profileMarker?.remove(); flatSourceContext?.setProfileMarker?.(null); });
   return svg;
 }
-function closeDetails() { cancelProfile(); $('details').hidden = true; currentFeature = null; platformLengths?.prioritizeEdge(null); profileMarker?.remove(); frequencyExpiry?.update(); }
+function closeDetails() { cancelSelectionRestore?.(); cancelProfile(); $('details').hidden = true; currentFeature = null; platformLengths?.prioritizeEdge(null); profileMarker?.remove(); frequencyExpiry?.update(); }
 $('details-close').addEventListener('click', closeDetails);
 addEventListener('keydown', event => { if (event.key === 'Escape' && !$('details').hidden && !drawing?.active && !measuring?.active && !document.querySelector('dialog[open]')) closeDetails(); });
 // The data dates are read each time Help opens, so a page left open shows
@@ -2374,11 +3033,16 @@ $('search-form').addEventListener('submit', async e => {
     // neither service finds (stations mapped as areas, partial names).
     // Below zoom 7 the curated principal stations are drawn too.
     // Only what the station layers draw at this zoom (no tram stops at zoom 8).
-    const zoom = ready ? map.getZoom() : 0;
-    const drawn = ready ? drawnStationQueries(map.getStyle().layers, zoom).flatMap(({source, sourceLayer, filter}) =>
-      source === 'stationMajor' ? (majorStationSearchData?.features || []).filter(f => (f.properties?.tier ?? 7) <= zoom)
-        : map.getSource(source) ? map.querySourceFeatures(source, {sourceLayer, filter}) : []) : [];
-    const local = ready ? tileStations(drawn, q, map.getCenter().toArray(), facilities.value?.items || []) : [];
+    const flat=useFlat?flatSourceContext:null;
+    const zoom=flat?flat.getZoom():ready?map.getZoom():0;
+    const drawn=flat
+      ? drawnStationQueries(flat.getLayers(),zoom).flatMap(({source,sourceLayer,filter})=>
+          sourceLayer?flat.readSourcePoints(source,[sourceLayer],filter).features:[])
+      : ready ? drawnStationQueries(map.getStyle().layers, zoom).flatMap(({source, sourceLayer, filter}) =>
+          source === 'stationMajor' ? (majorStationSearchData?.features || []).filter(f => (f.properties?.tier ?? 7) <= zoom)
+            : map.getSource(source) ? map.querySourceFeatures(source,{sourceLayer,filter}) : []) : [];
+    const local = flat||ready
+      ? tileStations(drawn,q,flat?flat.getCenter():map.getCenter().toArray(),facilities.value?.items||[]) : [];
     if (facilities.status === 'rejected' && places.status === 'rejected' && !local.length) throw facilities.reason;
     const {rail, places: other} = searchResults([...(facilities.value?.items || []), ...local], places.value?.items || []);
     const results = $('search-results'); results.replaceChildren();
@@ -2390,6 +3054,19 @@ $('search-form').addEventListener('submit', async e => {
       li.append(button); results.append(li);
     };
     const reduced = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const navigate=(center,zoom,bounds)=>{
+      if(useFlat) {
+        const next={center,zoom,bounds};
+        if(flatNavigation) flatNavigation(next);
+        else pendingFlatNavigation=next; // only the newest selection is relevant
+        return;
+      }
+      whenReady(()=>{
+        const duration=reduced()?0:1000;
+        if(bounds) map.fitBounds(bounds,{maxZoom:15,padding:40,duration});
+        else map.flyTo({center,zoom,duration});
+      });
+    };
     for (const item of rail) {
       try { Object.assign(item, locate(item.longitude,item.latitude)); } catch {}
     }
@@ -2397,7 +3074,7 @@ $('search-form').addEventListener('submit', async e => {
       entry(title, detail, () => {
           const coordinates = [item.longitude, item.latitude];
           // Before the map has loaded, go there as soon as it has.
-          whenReady(() => map.flyTo({ center: coordinates, zoom: 14, duration: reduced() ? 0 : 1000 }));
+          navigate(coordinates,14);
           showDetails({ kind: 'station', properties: item, geometry: { type: 'Point', coordinates } });
         });
     }
@@ -2405,11 +3082,11 @@ $('search-form').addEventListener('submit', async e => {
       const heading = textNode('li', 'Places · Nominatim / © OpenStreetMap contributors', 'search-heading'); heading.setAttribute('role', 'presentation'); results.append(heading);
       for (const item of other) {
         try { Object.assign(item, locate(item.longitude,item.latitude)); } catch {}
-        entry(displayName(item,settings.language) || item.name, [item.place?.replaceAll('_', ' '), item.area].filter(Boolean).join(' · ').slice(0, 90), () => whenReady(() => {
+        entry(displayName(item,settings.language) || item.name, [item.place?.replaceAll('_', ' '), item.area].filter(Boolean).join(' · ').slice(0, 90), () => {
           const [south, north, west, east] = item.boundingbox || [];
-          if ([south, north, west, east].every(Number.isFinite) && north > south) map.fitBounds([[west, south], [east, north]], { maxZoom: 15, padding: 40, duration: reduced() ? 0 : 1000 });
-          else map.flyTo({ center: [item.longitude, item.latitude], zoom: 13, duration: reduced() ? 0 : 1000 });
-        }));
+          const bounds=[south,north,west,east].every(Number.isFinite)&&north>south?[[west,south],[east,north]]:undefined;
+          navigate([item.longitude,item.latitude],13,bounds);
+        });
       }
     }
     const count = rail.length + other.length;
@@ -2428,9 +3105,14 @@ $('search-form').addEventListener('submit', async e => {
   } finally { clearTimeout(timeout); }
 });
 frequencyExpiry=installFrequencyExpiry({
-  active:()=>ready&&document.visibilityState!=='hidden'&&(settings.mode==='service'||currentFeature?.layer?.id==='service-routes'),
-  features:()=>[...map.querySourceFeatures('serviceRoutes',{sourceLayer:'service_routes'}),...(currentFeature?.layer?.id==='service-routes'?[currentFeature]:[])],
+  active:()=>Boolean(useFlat?flatSourceContext:ready)&&document.visibilityState!=='hidden'&&(settings.mode==='service'||currentFeature?.layer?.id==='service-routes'),
+  features:()=>[...(useFlat?flatServiceFeatures:map.querySourceFeatures('serviceRoutes',{sourceLayer:'service_routes'})),...(currentFeature?.layer?.id==='service-routes'?[currentFeature]:[])],
   refresh:()=>{
+    if(useFlat){
+      flatRefreshStyle?.(true);
+      if(currentFeature?.layer?.id==='service-routes')showServiceDetails(currentFeature);
+      return;
+    }
     const p=serviceFrequencyPaint(settings);
     if(map.getStyle().layers.some(l=>l.id==='service-routes'))for(const [key,value] of [['line-width',p.width],['line-offset',p.offset],['line-opacity',p.opacity]])map.setPaintProperty('service-routes',key,value);
     if(map.getStyle().layers.some(l=>l.id==='service-names'))map.setLayoutProperty('service-names','text-offset',p.labelOffset);
@@ -2445,7 +3127,8 @@ addEventListener('pageshow',()=>frequencyExpiry.resume());
 const watchGesture=installWatchGesture($('map'),{active:()=>settings.ui==='watch'&&$('watch-menu').hidden,open:()=>openWatchMenu()});
 function closeWatchMenu() {
   $('watch-menu').hidden=true;$('map-frame').inert=false;
-  const canvas=map?.getCanvas();canvas?.focus?.({preventScroll:true});
+  const canvas=useFlat?$('map').querySelector('canvas.atlas-flat-preview'):map?.getCanvas();
+  canvas?.focus?.({preventScroll:true});
 }
 function syncWatchLayout() {
   const watch=settings.ui==='watch',changed=document.body.dataset.ui!==settings.ui;
@@ -2482,7 +3165,7 @@ function openWatchMenu(page='main') {
     if(page==='layers')for(const [key,label] of [['stations','Stations'],['names','Route names'],['labels','Value labels'],['trackCounts','Track counts'],['inactive','Inactive railways'],['transport','Transport'],['destinations','Destinations'],['constraints','Boundaries'],['relief','Terrain']]){
       const b=button(label,()=>{settings[key]=!settings[key];commit();},scroll);b.setAttribute('aria-pressed',String(settings[key]));
     }else {
-      const credits=attribution?._container?.querySelector('.maplibregl-ctrl-attrib-inner');if(credits)scroll.append(credits.cloneNode(true));
+      const credits=flatCredits||attribution?._container?.querySelector('.maplibregl-ctrl-attrib-inner');if(credits)scroll.append(credits.cloneNode(true));
       else scroll.append(textNode('p','Railway Atlas · OpenStreetMap contributors · Open Railway Styles'));
       if(status.classList.contains('error'))scroll.append(textNode('p',status.textContent));
       scroll.append(textNode('p','Hold the map for controls. Drag to pan; pinch or double tap to zoom.'));
@@ -2496,6 +3179,13 @@ $('watch-layout').addEventListener('change',()=>{settings.ui=$('watch-layout').c
 $('watch-menu').addEventListener('keydown',event=>{
   if(event.key==='Escape'){event.preventDefault();closeWatchMenu();}
   if(event.key==='Tab'){const items=Array.from($('watch-content').querySelectorAll('select,button,a[href]'));const first=items[0],last=items.at(-1);if(event.shiftKey&&document.activeElement===first){event.preventDefault();last?.focus();}else if(!event.shiftKey&&document.activeElement===last){event.preventDefault();first?.focus();}}
+});
+// A native touch release can move focus outside the temporary menu. Still
+// allow Escape to dismiss it when a keyboard is used after the hold.
+document.addEventListener('keydown',event=>{
+  if(event.key==='Escape'&&!event.defaultPrevented&&settings.ui==='watch'&&!$('watch-menu').hidden){
+    event.preventDefault();closeWatchMenu();
+  }
 });
 applySettings();
 initialize().catch(error => {

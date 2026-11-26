@@ -36,19 +36,24 @@ const chunk = (name,body) => {
   length.writeUInt32BE(body.length);crc.writeUInt32BE(crc32(Buffer.concat([type,body])));
   return Buffer.concat([length,type,body,crc]);
 };
-export function depthFixturePng(z = 10, tileX = 0) {
+export function terrariumFixturePng(elevationAt) {
   const size=256,raw=Buffer.alloc(size*(1+size*4));
   for(let y=0;y<size;y++)for(let x=0;x<size;x++){
+    const encoded=elevationAt(x,y,size)+32768,i=y*(1+size*4)+1+x*4;
+    raw[i]=Math.floor(encoded/256);raw[i+1]=encoded%256;raw[i+2]=0;raw[i+3]=255;
+  }
+  const ihdr=Buffer.alloc(13);ihdr.writeUInt32BE(size,0);ihdr.writeUInt32BE(size,4);ihdr[8]=8;ihdr[9]=6;
+  return Buffer.concat([Buffer.from([137,80,78,71,13,10,26,10]),chunk('IHDR',ihdr),chunk('IDAT',deflateSync(raw)),chunk('IEND',Buffer.alloc(0))]);
+}
+export function depthFixturePng(z = 10, tileX = 0) {
+  return terrariumFixturePng((x,y,size)=>{
     // A world-coordinate shelf repeats once per z10 tile. Ancestor tiles
     // therefore contain the matching subdivisions, rather than advertising
     // shallow reference pixels under a deep child that real DEM repair would
     // correctly reject as an impossible pit.
     const phase=((tileX+(x+0.5)/size)*2**(10-z))%1;
-    const elevation=phase<0.5?-20:-4000,encoded=elevation+32768,i=y*(1+size*4)+1+x*4;
-    raw[i]=Math.floor(encoded/256);raw[i+1]=encoded%256;raw[i+2]=0;raw[i+3]=255;
-  }
-  const ihdr=Buffer.alloc(13);ihdr.writeUInt32BE(size,0);ihdr.writeUInt32BE(size,4);ihdr[8]=8;ihdr[9]=6;
-  return Buffer.concat([Buffer.from([137,80,78,71,13,10,26,10]),chunk('IHDR',ihdr),chunk('IDAT',deflateSync(raw)),chunk('IEND',Buffer.alloc(0))]);
+    return phase<0.5?-20:-4000;
+  });
 }
 export async function installBathymetryFixtures(context, style) {
   const archive=style.sources.openmaptiles.url.replace(/^pmtiles:\/\//,''),dem=style.sources.relief.tiles[0];

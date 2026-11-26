@@ -1,0 +1,102 @@
+name: Verify staged Railway Atlas renderer switch
+on:
+  push:
+    branches: [work/canvas-entry-501]
+permissions:
+  contents: read
+jobs:
+  renderer-switch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '26'
+          check-latest: true
+      - name: Verify Node 26 security baseline
+        run: node -e 'const [major,minor,patch]=process.versions.node.split(".").map(Number); if (major !== 26 || minor < 12 || (minor === 12 && patch < 1)) throw new Error("CI requires patched Node 26.12.1+"); console.log(process.version)'
+      - run: npm ci --ignore-scripts --no-audit --no-fund
+      - run: npm run build
+      - run: npx playwright install --with-deps chromium
+      - name: Check shipped entry discovery and WebGL startup
+        run: timeout 110s node scripts/check-startup-preloads-browser.mjs
+      - name: Verify packaged entry separates optional and required assets
+        run: timeout 100s node scripts/check-deployed-fixture-browser.mjs --required-assets-only
+      - name: Verify Watch keyboard focus and native touch hold with WebGL
+        run: timeout 90s node scripts/check-flat-entry-firefox.mjs --chromium-switch --watch-focus
+      - name: Verify flat camera and pointer gesture transforms
+        run: node --test tests/flat-camera.test.mjs tests/flat-gesture.test.mjs
+      - name: Verify native Watch double-tap zoom and rotation in both renderers
+        run: timeout 90s node scripts/check-flat-entry-firefox.mjs --chromium-switch --watch-double-tap
+      - name: Keep drawing controls clear of the desktop sidebar with WebGL
+        run: timeout 90s node scripts/check-flat-entry-firefox.mjs --chromium-switch --toolbar-clearance
+      - name: Preserve map coordinates when switching renderers with More detail
+        run: timeout 100s node scripts/check-flat-entry-firefox.mjs --chromium-switch --detail-state
+      - name: Switch renderers with unfinished work
+        run: timeout 240s node scripts/check-flat-entry-firefox.mjs --chromium-switch
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: canvas-renderer-switch
+          path: browser-review/renderer-switch/
+          if-no-files-found: warn
+
+  canvas-platforms:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '26'
+          check-latest: true
+      - name: Verify Node 26 security baseline
+        run: node -e 'const [major,minor,patch]=process.versions.node.split(".").map(Number); if (major !== 26 || minor < 12 || (minor === 12 && patch < 1)) throw new Error("CI requires patched Node 26.12.1+"); console.log(process.version)'
+      - run: npm ci --ignore-scripts --no-audit --no-fund
+      - run: npm run build
+      - run: npx playwright install --with-deps firefox
+      - name: Exercise native Canvas box zoom, mouse rotation and location heading
+        run: timeout 100s node scripts/check-flat-entry-firefox.mjs --canvas-desktop-parity
+      - name: Install and reload the Canvas PWA offline without requesting WebGL assets
+        run: timeout 100s node scripts/check-flat-offline-firefox.mjs
+      - name: Verify automatic Canvas startup and distinguish shared-data errors
+        run: timeout 90s node scripts/check-flat-entry-firefox.mjs --startup-fallback
+      - name: Keep drawing controls clear of the desktop sidebar without WebGL
+        run: timeout 90s node scripts/check-flat-entry-firefox.mjs --toolbar-clearance
+      - name: Verify point placement and flat share from a WebGL-detail link
+        run: timeout 90s node scripts/check-flat-entry-firefox.mjs --detail-state
+      - name: Verify pointer-anchored Canvas double-click zoom and tool completion
+        run: timeout 90s node scripts/check-flat-entry-firefox.mjs --double-click-zoom
+      - name: Verify worldwide station markers with names off and fallback
+        run: timeout 100s node scripts/check-flat-world-stations-firefox.mjs
+      - name: Verify five public Canvas basemaps and Hybrid rail contrast
+        run: timeout 100s node scripts/check-flat-basemaps-firefox.mjs
+      - name: Verify Canvas platform edge details and labels
+        run: timeout 150s node scripts/check-flat-platform-firefox.mjs
+      - name: Verify a complete platform edge when the browser cannot read the feature API
+        run: timeout 150s node scripts/check-flat-platform-firefox.mjs --tile-fallback
+      - name: Verify that shared-track services have individually selectable routes
+        run: timeout 120s node scripts/check-flat-entry-firefox.mjs --service-overlap
+      - name: Verify polygon platform selection, holes and estimated extent without WebGL
+        run: timeout 150s node scripts/check-flat-platform-firefox.mjs --platform-area
+      - name: Isolate selected edge tile fallback from area feature API failures
+        run: timeout 150s node scripts/check-flat-platform-firefox.mjs --platform-area-and-edge
+      - name: Verify joined vertical Mongolian in Canvas point labels
+        run: timeout 150s node scripts/check-flat-mongolian-firefox.mjs
+      - name: Verify Canvas Terrain paints hillshade and stops DEM traffic when disabled
+        run: timeout 120s node scripts/check-flat-relief-firefox.mjs
+      - name: Verify Canvas terrain contour lines and metric/imperial labels
+        run: timeout 120s node scripts/check-flat-contours-firefox.mjs
+      - name: Check Canvas level crossing marks with WebGL disabled
+        run: timeout 120s node scripts/check-flat-crossings-firefox.mjs
+      - name: Check Canvas conveying directions and track counts without WebGL
+        run: timeout 120s node scripts/check-flat-rail-symbols-firefox.mjs
+      - name: Verify Canvas seabed contour strokes and labels at shelf and close zooms
+        run: |
+          timeout 120s node scripts/check-flat-contours-firefox.mjs --seabed
+          timeout 120s node scripts/check-flat-contours-firefox.mjs --seabed --close
+      - name: Verify Watch restores keyboard focus without WebGL
+        run: timeout 90s node scripts/check-flat-entry-firefox.mjs --watch-focus
+      - name: Verify fixed-camera reconnect, rail inspection and scoped auxiliary status
+        run: timeout 150s node scripts/check-flat-recovery-firefox.mjs

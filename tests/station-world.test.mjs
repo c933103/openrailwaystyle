@@ -150,7 +150,7 @@ test('completed snapshot registers bounded local tile protocol and places statio
  const empty=await protocols[WORLD_STATION_PROTOCOL]({url:WORLD_STATION_PROTOCOL+'://3/0/0'},
    {signal:new AbortController().signal});
  assert.equal(empty.data.byteLength,0);
- assert.ok(seen.some(path=>path.endsWith('/index.json')));
+ assert.equal(seen.filter(path=>path.endsWith('/index.json')).length,1);
  assert.ok(seen.some(path=>path.endsWith('/3/4/4.bundle.gz')));
  await assert.rejects(protocols[WORLD_STATION_PROTOCOL]({url:WORLD_STATION_PROTOCOL+'://7/999/0'},{}),/Invalid/);
  await assert.rejects(protocols[WORLD_STATION_PROTOCOL]({url:WORLD_STATION_PROTOCOL+'://7/7/..'},{}),/Invalid/);
@@ -247,4 +247,23 @@ test('missing ordering anchors fail closed and a later valid style can install t
  assert.equal(warnings.length,1);
  map.layers.set('place_label_city',{id:'place_label_city'});
  await map.fire('style.load');assert.equal(map.calls.length,2);assert.equal(active.at(-1),true);
+});
+
+test('serialized Canvas styles use the exact same source and ordering after a rebuild',async()=>{
+ const overlay=await prepareWorldStationOverlay({root,fetcher:fixtureFetcher()});
+ const parent={sources:{},layers:[
+  {id:'infrastructure-crossing-overview',type:'circle'},
+  {id:'service-routes',type:'line'},
+  {id:'place_label_city',type:'symbol'},
+ ]};
+ const style=structuredClone(parent);
+ assert.equal(overlay.installStyle(style),true);
+ assert.deepEqual(style.layers.map(l=>l.id),['infrastructure-crossing-overview',WORLD_STATION_DOTS,
+  'service-routes','place_label_city']);
+ assert.equal(style.sources[WORLD_STATION_SOURCE].tiles[0],WORLD_STATION_PROTOCOL+'://{z}/{x}/{y}');
+ assert.match(style.sources[WORLD_STATION_SOURCE].attribution,/ODbL/);
+ overlay.installStyle(style);
+ assert.equal(style.layers.filter(layer=>layer.id===WORLD_STATION_DOTS).length,1);
+ assert.deepEqual(parent.sources,{});
+ assert.equal(parent.layers.length,3);
 });

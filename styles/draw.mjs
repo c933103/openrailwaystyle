@@ -216,7 +216,7 @@ export const withPoints = (feature, points) => withNodes(feature, points);
 export const pointTarget = (id, source, filter) => ({id, type:'circle', source, ...(filter ? {filter} : {}),
   paint:{'circle-radius':18, 'circle-color':'#000', 'circle-opacity':0.01}});
 function dragPoints(map, layer, {enabled, move, done, valid = () => true}) {
-  let drag = null, quietUntil = 0;
+  let drag = null, quiet = null;
   const start = (e, touch) => {
     if (!enabled() || (touch ? e.originalEvent.touches?.length > 1 : e.originalEvent.button !== 0)) return;
     const feature = e.features?.[0];
@@ -231,14 +231,14 @@ function dragPoints(map, layer, {enabled, move, done, valid = () => true}) {
     drag.moved = true;
     move(drag.properties, [Number(e.lngLat.lng.toFixed(6)), Number(e.lngLat.lat.toFixed(6))]);
   };
-  const end = () => { if (drag?.moved && valid(drag.properties)) { quietUntil = Date.now() + 700; done(); } drag = null; };
+  const end = () => { if (drag?.moved && valid(drag.properties)) { quiet = {until: Date.now() + 700, properties: drag.properties}; done(); } drag = null; };
   map.on('mousedown', layer, e => start(e, false));
   map.on('touchstart', layer, e => start(e, true));
   map.on('mousemove', moving); map.on('touchmove', moving);
   map.on('mouseup', end); map.on('touchend', end); map.on('touchcancel', end);
   map.on('mouseenter', layer, () => { if (enabled()) map.getCanvas().style.cursor = 'move'; });
   map.on('mouseleave', layer, () => { if (enabled()) map.getCanvas().style.cursor = 'crosshair'; });
-  return () => Date.now() < quietUntil;
+  return () => Boolean(quiet && Date.now() < quiet.until && valid(quiet.properties));
 }
 const EDIT_HINT = ' Click a point to select it; drag a point to move it.';
 const DRAW_EDIT_HINT = EDIT_HINT.slice(0, -1) + '; click or drag the small dot in the middle of a segment to add a point there.';
@@ -253,11 +253,12 @@ export class Drawing {
   constructor(map, {units = () => 'metric', status = () => {}, changed = () => {}} = {}) {
     Object.assign(this, {map, units, status, changed});
     this.features = []; this.draft = []; this.draftCurved = []; this.mode = null; this.paused = false; this.cursor = null; this.next = 1;
-    this.curved = false; this.selected = null; this.extending = null; this.lastAdd = 0;
+    this.curved = false; this.selected = null; this.extending = null; this.lastAdd = 0; this.handleGeneration = 0;
     this.style = {color: COLOR, dash: 'solid', width: 3};
     try { this.add(readDrawing(JSON.parse(localStorage.getItem(STORE) || 'null')), false); } catch {}
     this.dragging = dragPoints(map, 'drawing-handle-targets', {
-      enabled: () => this.mode !== null && !this.paused,
+      enabled: () => this.mode !== null && this.mode !== 'erase' && !this.paused,
+      valid: p => p.generation === this.handleGeneration,
       move: (handle, p) => {
         // Dragging a segment's middle handle inserts a point there, then
         // moves it.
@@ -269,6 +270,56 @@ export class Drawing {
   }
   get active() { return this.mode !== null; }
   get multiPoint() { return this.mode === 'line' || this.mode === 'area'; }
+  // Hand off an unfinished drawing without committing its temporary geometry.
+  // Rendered hover and drag state belongs to the old renderer and is not saved.
+  rendererDraft() {
+    const extension = this.extending && {
+      at:this.extending.at,original:readDrawing(this.extending.feature)[0],
+    };
+    if (extension) {
+      const key = JSON.stringify(extension.original);
+      extension.unambiguous = Boolean(key) &&
+        !this.features.some(feature => JSON.stringify(readDrawing(feature)[0]) === key);
+    }
+    return {mode:this.mode, paused:this.paused, style:{...this.style}, curved:this.curved,
+      points:this.draft.map(p=>[...p]), flags:[...this.draftCurved],
+      selected:this.selected?.drawing===0?this.selected.index:null, extension};
+  }
+  restoreRendererDraft(state) {
+    if (!state || ![null,'point','line','area','erase'].includes(state.mode) ||
+        !Array.isArray(state.points) || !state.points.every(finite) ||
+        !Array.isArray(state.flags) || state.flags.length!==state.points.length ||
+        !state.flags.every(value=>value===0||value===1) ||
+        (state.points.length>0 && !['line','area'].includes(state.mode))) return false;
+    if (state.extension) {
+      const {at,original}=state.extension;
+      if(state.mode!=='line'||state.points.length<2||original?.geometry?.type!=='LineString'||
+          !Number.isSafeInteger(at)||at<0)return false;
+      // Saved GeoJSON has no stable ID. Never adopt an identical line at a
+      // different position, or replace a line with ambiguous saved identity.
+      const key=JSON.stringify(readDrawing(original)[0]);
+      const matches=feature=>key&&JSON.stringify(readDrawing(feature)[0])===key;
+      if(state.extension.unambiguous!==true||!matches(this.features[at])||
+          this.features.some((feature,index)=>index!==at&&matches(feature)))return false;
+      const [feature]=this.features.splice(at,1);
+      const {line_points,curved,measure,drawing,...properties}=feature.properties;
+      this.extending={feature,at,properties};
+    }
+    this.mode=state.mode; this.paused=Boolean(state.paused&&state.mode);this.cursor=null;
+    this.curved=Boolean(state.curved);this.style={...this.style,...drawingStyle(state.style || {})};
+    this.draft=state.points.map(p=>p.slice(0,2)); this.draftCurved=[...state.flags];
+    const index=state.selected;
+    this.selected=Number.isSafeInteger(index)&&index>=0&&index<this.draft.length&&!this.paused ? {drawing:0,index} : null;
+    this.handleGeneration++;
+    if(this.multiPoint&&!this.paused)this.map.doubleClickZoom.disable();else this.map.doubleClickZoom.enable();
+    this.map.getCanvas().style.cursor=this.mode&&!this.paused?'crosshair':'';
+    this.refresh();this.changed();
+    return true;
+  }
+  recoverRendererLine(state) {
+    if (!state?.extension || state.mode !== 'line' || !Array.isArray(state.points) || state.points.length < 2) return false;
+    return this.restoreRendererDraft({...state, extension:null});
+  }
   // Sources and layers are re-added after every style replacement.
   install() {
     const map = this.map;
@@ -306,7 +357,8 @@ export class Drawing {
     // Rendered copies carry an id for erasing and their measurement; saved
     // files carry neither. A line being extended is saved as it was until
     // the extension is finished.
-    const features = !withMeasure && this.extending ? [...this.features, this.extending.feature] : this.features;
+    const features = !withMeasure && this.extending ? [...this.features] : this.features;
+    if (!withMeasure && this.extending) features.splice(this.extending.at, 0, this.extending.feature);
     return {type:'FeatureCollection', features:features.map(({id, ...f}) => withMeasure ? {...f, properties:{...f.properties, drawing:id, measure:measure(f.geometry, units)}} : f)};
   }
   // The shape being drawn, including the pointer position.
@@ -329,7 +381,7 @@ export class Drawing {
   handleCollection() {
     if (!this.mode || this.paused) return {type:'FeatureCollection', features:[]};
     const handle = (coordinates, drawing, index, color, curved) => ({type:'Feature', geometry:{type:'Point', coordinates},
-      properties:{drawing, index, color, curved: curved ? 1 : 0, selected: this.selected?.drawing === drawing && this.selected?.index === index}});
+      properties:{drawing, index, color, generation:this.handleGeneration, curved: curved ? 1 : 0, selected: this.selected?.drawing === drawing && this.selected?.index === index}});
     // On a curve, the middle of the segment's own stretch of the drawn line
     // (curved: the line's curve flags, or none for an area).
     const middles = (drawing, color, points, closed, curved) => {
@@ -337,8 +389,10 @@ export class Drawing {
       const nodes = [], drawn = curved ? buildLine(points, curved, nodes) : [];
       return points.slice(0, closed ? points.length : -1).map((p, i) => {
         const q = points[(i + 1) % points.length], [j, k] = [nodes[i], nodes[i + 1]];
-        const at = curved && k - j >= 2 ? drawn[(j + k) >> 1] : [(p[0] + q[0]) / 2, (p[1] + q[1]) / 2];
-        return {type:'Feature', geometry:{type:'Point', coordinates: at}, properties:{drawing, after: i, mid: 1, color}};
+        const delta = q[0] - p[0];
+        const lng = Math.abs(delta) <= 180 ? (p[0] + q[0]) / 2 : p[0] + ((delta % 360 + 540) % 360 - 180) / 2;
+        const at = curved && k - j >= 2 ? drawn[(j + k) >> 1] : [lng, (p[1] + q[1]) / 2];
+        return {type:'Feature', geometry:{type:'Point', coordinates: at}, properties:{drawing, after: i, mid: 1, color, generation:this.handleGeneration}};
       });
     };
     return {type:'FeatureCollection', features:[
@@ -451,6 +505,7 @@ export class Drawing {
   setStyle(style) { this.style = {...this.style, ...drawingStyle({...this.style, ...style})}; this.refresh(); }
   setCurved(curved) { this.curved = Boolean(curved); this.refresh(); this.changed(); }
   setMode(mode) {
+    this.handleGeneration++;
     this.finish();
     // Curve is the line tool starting with curve points on.
     if (mode === 'curve') { this.curved = true; mode = 'line'; }
@@ -464,6 +519,7 @@ export class Drawing {
   // Pause input so the map can be moved without leaving the drawing tools or
   // losing a shape in progress.
   setPaused(paused) {
+    this.handleGeneration++;
     this.paused = paused;
     this.cursor = null; this.selected = null;
     if (this.multiPoint && !paused) this.map.doubleClickZoom.disable(); else this.map.doubleClickZoom.enable();
@@ -598,6 +654,28 @@ export class Measure {
   // the previous measurement must not select (or drag) a new point at that index.
   currentHandle({index, generation} = {}) {
     return generation === this.handleGeneration && Number.isInteger(index) && index >= 0 && index < this.points.length;
+  }
+  // Transfer input geometry, not an old renderer's pointer or terrain request.
+  rendererMeasurement() {
+    if (!this.points.length && !this.spot) return null;
+    return {mode:this.mode, points:this.points.map(p=>[...p]), ended:this.ended,
+      selected:this.selected, spot:this.spot ? [...this.spot.point] : null};
+  }
+  restoreRendererMeasurement(state) {
+    if (!state || !['distance','radius','elevation'].includes(state.mode) ||
+        !Array.isArray(state.points) || !state.points.every(finite) ||
+        (state.mode==='elevation' ? !finite(state.spot)||state.points.length>0
+          : state.spot!==null||state.points.length===0)) return false;
+    this.spot?.controller?.abort();this.spot=null;this.climb?.controller?.abort();this.climb=null;
+    this.mode=state.mode;this.cursor=null;this.lastAdd=0;this.handleGeneration++;
+    this.points=state.points.map(p=>p.slice(0,2));
+    this.ended=state.mode==='distance'&&this.points.length>=2&&state.ended===true;
+    this.selected=Number.isInteger(state.selected)&&state.selected>=0&&state.selected<this.points.length ? state.selected : null;
+    if(this.mode==='distance')this.map.doubleClickZoom.disable();else this.map.doubleClickZoom.enable();
+    this.map.getCanvas().style.cursor='crosshair';
+    if(this.mode==='elevation')this.tap(state.spot.slice(0,2));
+    else {this.geometryChanged();this.refresh();this.changed();}
+    return true;
   }
   // Use the actual measured polyline or the fitted, visible curve arc.
   // A radius is not a straight chord through the three control points.

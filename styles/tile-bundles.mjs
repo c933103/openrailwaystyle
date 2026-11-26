@@ -67,8 +67,10 @@ const gunzip = async data => {
 // them, so a bundle request is not cancelled with one tile's request; the
 // last `keep` bundles stay decoded. A failed index or bundle is fetched
 // again by the next tile that needs it.
-export function createBundleReader({root, fetcher = fetch, keep = 24, decompress = gunzip}) {
-  let index;
+export function createBundleReader({root, fetcher = fetch, keep = 24, decompress = gunzip, validatedBundleIndex}) {
+  let index=validatedBundleIndex
+    ? Promise.resolve({zoom:validatedBundleIndex.zoom,bundles:new Set(validatedBundleIndex.bundles)})
+    : undefined;
   const bundles = new Map();
   const url = path => new URL(path, root).href;
   const readIndex = () => index ||= fetcher(url('index.json')).then(async response => {

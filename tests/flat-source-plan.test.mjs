@@ -27,3 +27,22 @@ test('bounds and availability filter requests before one canonical plan entry se
   assert.ok(planFlatSourceTiles(at(10,[7.44,46.94]),{type:'raster',bounds:[6,45,9,48]}).length);
   assert.throws(()=>planFlatSourceTiles(at(10),{type:'raster',bounds:[0,0,30]}),RangeError);
 });
+
+test('More detail plans higher levels without moving the geographic camera or exceeding source limits',()=>{
+  const camera=at(10.25,[121.56,25.04]), before=camera.unproject([375,250]);
+  for(const [source,expected] of [[{type:'vector'},[10,11,12]],[{type:'raster',tileSize:256},[11,12,13]],
+      [{type:'raster-dem',maxzoom:11},[10,11,11]],[{type:'vector',minzoom:12},[undefined,undefined,12]]]){
+    const observed=[0,1,2].map(detail=>planFlatSourceTiles(camera,source,512,detail)[0]?.canonical.z);
+    assert.deepEqual(observed,expected);
+  }
+  assert.deepEqual(camera.unproject([375,250]),before);
+});
+test('More detail falls back within the existing per-source tile cap at a wide rotated viewport',()=>{
+  const camera=flatCamera({zoom:10.1,center:[120,25],width:4300,height:2800,bearing:42});
+  const base=planFlatSourceTiles(camera,{type:'vector'},200,0);
+  const high=planFlatSourceTiles(camera,{type:'vector'},200,2);
+  assert.ok(base.length>0&&high.length>=base.length);
+  assert.ok(high.reduce((n,entry)=>n+entry.copies.length,0)<=200);
+  assert.ok(high[0].canonical.z<12);
+  assert.deepEqual(planFlatSourceTiles(camera,{type:'vector',minzoom:12},200,2),[]);
+});
