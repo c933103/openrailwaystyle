@@ -12,7 +12,7 @@
 # The site uses
 # one only when scripts/data-sources.json (or the DATA_SOURCES override)
 # selects it (scripts/data-source.mjs); the Overpass branches are never written here.
-# Run by hand only.
+# Invoked by hand or by the trusted extract rollout.
 name: Assemble Geofabrik region extracts
 on:
   workflow_dispatch:
@@ -25,6 +25,8 @@ jobs:
   assemble:
     runs-on: ubuntu-latest
     timeout-minutes: 120
+    outputs:
+      refresh_pages: ${{ steps.pages_handoff.outputs.deploy }}
     # Only the publication of the extract builds writes, on main.
     permissions:
       contents: write
@@ -37,6 +39,13 @@ jobs:
       - name: Verify Node 26 security baseline
         run: node -e 'const [major,minor,patch]=process.versions.node.split(".").map(Number); if (major !== 26 || minor < 12 || (minor === 12 && patch < 1)) throw new Error("CI requires patched Node 26.12.1+"); console.log(process.version)'
       - run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Record selected extract watermarks before publishing
+        if: github.ref == 'refs/heads/main'
+        id: pages_baseline
+        env:
+          GH_TOKEN: ${{ github.token }}
+          DATA_SOURCES: ${{ vars.DATA_SOURCES }}
+        run: node scripts/extract-pages-handoff.mjs before
       - name: Install osmium
         run: |
           sudo apt-get update -qq
@@ -388,6 +397,14 @@ jobs:
           if ! git push --force origin HEAD:lifecycle-extract-data; then
             test "$(git ls-remote origin refs/heads/lifecycle-extract-data | cut -f1)" = "$(git rev-parse HEAD)"
           fi
+      - name: Check for advanced complete selected extracts
+        if: github.ref == 'refs/heads/main'
+        id: pages_handoff
+        env:
+          GH_TOKEN: ${{ github.token }}
+          DATA_SOURCES: ${{ vars.DATA_SOURCES }}
+          PREVIOUS_WATERMARKS: ${{ steps.pages_baseline.outputs.watermarks }}
+        run: node scripts/extract-pages-handoff.mjs after
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -412,3 +429,19 @@ jobs:
             lifecycle-extract/source.json
           if-no-files-found: ignore
           retention-days: 30
+
+  refresh-pages:
+    # Use the normal main-only deployment checks, not direct publication here.
+    # This job alone may dispatch, and can be retried without building extracts.
+    if: github.ref == 'refs/heads/main' && needs.assemble.outputs.refresh_pages == 'true'
+    needs: assemble
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      actions: write
+    steps:
+      - name: Dispatch the normal Pages workflow on main
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: gh workflow run site.yml --ref main

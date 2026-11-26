@@ -223,6 +223,8 @@ How the choice is made:
 3. Nothing needs undoing: the input applies to that run only. A drill on a dataset not set to `extract`, or on an unknown one, stops the run, because it would show nothing.
 4. Record the run on #330.
 
+**From assembly to the live site.** A successful main-branch assembly compares the complete OSM timestamps of the selected extract branches before and after publication, including the repository override. Only an advance (or a first complete snapshot) asks the existing main Pages workflow to build, validate and deploy. Equal or older timestamps, incomplete markers and non-main assemblies do not request publication. The separate dispatch job can be retried if it fails; inspect the Pages workflow before retrying an uncertain dispatch. Follow a scheduled refresh through the assembled input, the exact Pages artifact and the deployed checks before considering it operational. This does not replace the Overpass fallback or the existing source of polar-cap updates.
+
 ## Railway lifecycle snapshot
 
 The maintenance build (`.github/workflows/snapshot.yml`) extracts disjoint world regions sequentially, subdivides dense regions when necessary, deduplicates OSM way IDs, retains name translations, and produces a PMTiles archive plus an ODbL GeoJSON database. It refuses to publish an incomplete extraction and checks the north–south extent of 남부내륙선.
