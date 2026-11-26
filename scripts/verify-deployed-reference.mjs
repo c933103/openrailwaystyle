@@ -9,7 +9,7 @@ const sha256=bytes=>createHash('sha256').update(bytes).digest('hex');
 const sleep=ms=>new Promise(resolve=>setTimeout(resolve,ms));
 export const DEPLOYED_REFERENCE_LIMITS=Object.freeze({attempts:12,requestTimeoutMs:20000,retryDelayMs:5000});
 
-async function boundedBody(response,limit,signal){
+export async function boundedBody(response,limit,signal){
  if(!response.body)return Buffer.alloc(0);
  const reader=response.body.getReader(),chunks=[];let received=0,abort;
  const interrupted=new Promise((_,reject)=>{
@@ -23,7 +23,7 @@ async function boundedBody(response,limit,signal){
    signal.throwIfAborted();
    if(done)return Buffer.concat(chunks);
    received+=value.byteLength;
-   if(received>limit)throw Error(`Deployed manifest body exceeds expected ${limit} bytes`);
+   if(received>limit)throw Error(`Deployed response body exceeds expected ${limit} bytes`);
    chunks.push(Buffer.from(value));
   }
  }catch(error){
