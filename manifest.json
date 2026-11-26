@@ -1,0 +1,22 @@
+{
+  "generated": "2026-11-26T18:47:59.276Z",
+  "osmBase": "2026-11-15T21:22:28Z",
+  "update": "full",
+  "features": 16004,
+  "tiles": 557,
+  "source": "OpenStreetMap via the Geofabrik extracts",
+  "query": "[out:json][timeout:600][maxsize:536870912];(way[embedded=yes];way[embedded_rails];);out tags geom;",
+  "license": "ODbL-1.0",
+  "description": "Explicit OSM embedded / embedded_rails tags. Not inferred from tram type or proximity. Missing tags imply unknown coverage.",
+  "complete": true,
+  "oldestSource": "2026-11-15T21:22:28Z",
+  "newestSource": "2026-11-24T23:34:58Z",
+  "extract": {
+    "index": "20261126T161713Z-45852008906",
+    "regions": 175,
+    "missingRegions": [],
+    "read": 65698635,
+    "kept": 17159,
+    "waysWithoutGeometry": 0
+  }
+}
