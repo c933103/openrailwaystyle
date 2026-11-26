@@ -300,7 +300,7 @@ const rareHanFonts=createRareHanFonts({root:new URL('fonts/rare-han-v1/', import
 // arrives after its glyphs were drawn without it drops the cached
 // glyphs and redraws the labels, like a rare Han slice.
 let worldGlyphFallback;
-let refreshFlatLabels;
+let refreshFlatLabels, renameFlatSelection;
 const worldFonts=createWorldFonts({root:new URL('fonts/world-v1/', import.meta.url),fetcher:(...args)=>fetch(...args),FontFace:window.FontFace,fonts:document.fonts,onLoad:keys=>{worldGlyphFallback?.invalidate(keys);refreshFlatLabels?.();refreshCjkFont();}});
 // The packaged font when loaded, else the installed font chosen by probing,
 // else the script's candidate list for the system to resolve.
@@ -1686,7 +1686,8 @@ function restoreRendererSelection(selection, query) {
     feature.properties=feature.properties?.atlas_han ? feature.properties : {...feature.properties,...locate(lng,lat)};
     feature.clickLngLat={lng,lat};
     showDetails(feature);
-    if(!useFlat)renameOpenMajorStation();
+    if(useFlat)void renameFlatSelection?.();
+    else renameOpenMajorStation();
   },125);
   const deadline=setTimeout(cancel,12000);
   cancelSelectionRestore=cancel;
@@ -2084,7 +2085,7 @@ async function initialize() {
       return cjkFont(settings.language);
     };
     // The committed catalogue supplies geometry, not most names. Hydrate only
-    // the hubs visible at their label tier, with the same provider and OSM
+    // the hubs visible at their label tier (or explicitly chosen), with the same provider and OSM
     // identity/alias matching used by the WebGL overview.
     let curatedLanguage,curatedBatch='',curatedTemplate;
     const curatedNames=new Map(), curatedPending=new Map();
@@ -2103,6 +2104,29 @@ async function initialize() {
       if(!template)throw new Error('No station name tile template');
       return template;
     })().catch(error=>{curatedTemplate=null;throw error;});
+    async function lookupCuratedName(feature,language){
+      const key=language+'/'+feature.id;
+      if(!curatedPending.has(key))curatedPending.set(key,(async()=>{
+        stationTileURL ||= await loadCuratedTemplate();
+        if(stationsLifetime.signal.aborted)return null;
+        return majorStationName(feature,language);
+      })().catch(()=>null).finally(()=>curatedPending.delete(key)));
+      return curatedPending.get(key);
+    }
+    renameFlatSelection=async()=>{
+      const open=currentFeature, language=settings.language;
+      if(open?.source!=='stationMajor'||$('details').hidden||!stationTileFor||
+          (open.properties.atlas_language===language&&open.properties.atlas_name))return;
+      const feature=majorStationData?.features?.find(f=>String(f.properties.id)===String(open.properties.id));
+      if(!feature)return;
+      const named=(curatedLanguage===language&&curatedNames.get(feature.id))||
+        await lookupCuratedName(feature,language);
+      if(!named||stationsLifetime.signal.aborted||settings.language!==language||
+          currentFeature!==open||$('details').hidden)return;
+      open.properties={...open.properties,name:named.name,localized_name:named.localized_name,
+        atlas_name:named.atlas_name,atlas_language:language,atlas_name_source:'provider'};
+      showDetails(open);
+    };
     async function requestCuratedOverview(camera){
       const language=settings.language;
       if(curatedLanguage!==language){
@@ -2119,17 +2143,12 @@ async function initialize() {
       curatedBatch=batch;
       const wanted=visible.filter(feature=>!curatedNames.has(feature.id));
       if(!wanted.length)return;
-      try{stationTileURL ||= await loadCuratedTemplate();}
-      catch{return;}
-      if(stationsLifetime.signal.aborted||curatedLanguage!==language||curatedBatch!==batch)return;
       let index=0;
       const lookup=async()=>{
         while(index<wanted.length && curatedLanguage===language && curatedBatch===batch && !stationsLifetime.signal.aborted){
-          const feature=wanted[index++], key=language+'/'+feature.id;
-          if(!curatedPending.has(key))curatedPending.set(key,majorStationName(feature,language)
-            .catch(()=>null).finally(()=>curatedPending.delete(key)));
-          const name=await curatedPending.get(key);
-          if(name&&curatedLanguage===language&&!stationsLifetime.signal.aborted){
+          const feature=wanted[index++];
+          const name=await lookupCuratedName(feature,language);
+          if(name&&language===settings.language&&curatedLanguage===language&&!stationsLifetime.signal.aborted){
             curatedNames.set(feature.id,name);
             renderCurated();
           }
@@ -2191,6 +2210,7 @@ async function initialize() {
         feature.properties=feature.properties.atlas_han?feature.properties:{...feature.properties,...locate(lng,lat)};
         feature.clickLngLat={lng,lat};
         showDetails(feature);
+        void renameFlatSelection();
       },
       onNavigate(view,reason) {
         if(reason!=='location' && reason!=='rotation') flatLocation?.pause();
@@ -2223,6 +2243,7 @@ async function initialize() {
     addEventListener('online',()=>{
       curatedBatch='';
       flat.invalidateLabels();
+      void renameFlatSelection();
     },{signal:stationsLifetime.signal});
     refreshFlatLabels=flat.invalidateLabels;
     platformLengths=createPlatformLengths({
@@ -2746,7 +2767,10 @@ function reloadLanguage() {
     ensureCjkChoice(cjkScript(settings.language));
     updateDetailGlyphs();
     if(ready) reloadLanguage();
-    else flatRefreshStyle?.();
+    else {
+      flatRefreshStyle?.();
+      void renameFlatSelection?.();
+    }
     saveSettings();
   });
 }

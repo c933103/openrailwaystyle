@@ -42,11 +42,16 @@ const server=createServer((req,res)=>{
   const path=new URL(req.url,'http://local').pathname;
   const write=(type,body)=>res.writeHead(200,{'content-type':type,'cache-control':'no-store'}).end(body);
   if(path==='/')return write('text/html',html);
-  if(path==='/world.style.json')return write('application/json',JSON.stringify(style));
+  if(path==='/world.style.json'){
+    if(mode!=='selected-only')return write('application/json',JSON.stringify(style));
+    const selectedStyle=structuredClone(style);
+    selectedStyle.sources.stationMajor.data.features[0].properties.tier=5;
+    return write('application/json',JSON.stringify(selectedStyle));
+  }
   if(path==='/major-stations.geojson')return write('application/json','{"type":"FeatureCollection","features":[]}');
   if(path.startsWith('/data/station-points/')){
     seen.push(path);
-    if(path.endsWith('/manifest.json'))return write('application/json',JSON.stringify(mode==='incomplete'?{...manifest,complete:false}:manifest));
+    if(path.endsWith('/manifest.json'))return write('application/json',JSON.stringify(['incomplete','selected-only'].includes(mode)?{...manifest,complete:false}:manifest));
     if(path.endsWith('/index.json'))return write('application/json',JSON.stringify(index));
     if(path.endsWith('/3/4/3.bundle.gz')&&mode==='complete')return write('application/gzip',bundle);
     return res.writeHead(404).end();
@@ -86,7 +91,7 @@ try{
       body:p.endsWith('/8/133/120')?Buffer.from(bytes('standard_railway_text_stations',46103,curated,[0,0])):Buffer.alloc(0)});
     return route.fulfill({json:{minzoom:8,maxzoom:8,tiles:['https://openrailwaymap.app/standard_railway_text_stations/{z}/{x}/{y}']}});
   });
-  for(const [state,z] of [['complete',4],['complete',3],['incomplete',4],['broken-bundle',4],['reconnect',4]]){
+  for(const [state,z] of [['complete',4],['complete',3],['incomplete',4],['broken-bundle',4],['reconnect',4],['selected-only',4]]){
     mode=state==='reconnect'?'incomplete':state;
     curatedUnavailable=state==='reconnect';
     seen.length=0;curatedRequests.length=0;
@@ -135,6 +140,18 @@ try{
       }
       const canvas=p.locator('canvas.atlas-flat-preview');
       await canvas.waitFor();
+      if(state==='selected-only'){
+        await p.waitForFunction(()=>window.curatedMarker);
+        assert.equal(curatedFinished.length,0,'below the label tier, unselected hubs do not fetch names');
+        await p.mouse.click(384,320);
+        await p.getByRole('heading',{name:curated,exact:true}).waitFor({timeout:5000});
+        await p.locator('#detail-content a[href="https://www.openstreetmap.org/node/46103"]').waitFor();
+        assert.equal(await p.evaluate(label=>window.stationLabels.has(label),curated),false);
+        assert.equal(await p.evaluate(()=>window.glAttempts),0);
+        assert.deepEqual(failures,[]);
+        console.log('Canvas selected an unnamed hub below its label tier and resolved its exact OSM node');
+        continue;
+      }
       if(state==='reconnect'){
         await p.waitForFunction(()=>window.curatedMarker);
         await expectCuratedRequests(5,curatedFinished);
@@ -142,8 +159,12 @@ try{
         const requestsBefore=curatedRequests.length;
         await p.evaluate(()=>new Promise(done=>requestAnimationFrame(()=>requestAnimationFrame(done))));
         assert.equal(curatedRequests.length,requestsBefore,'a stationary viewport must not poll for a missing name');
+        await p.mouse.click(384,320);
+        await p.getByRole('heading',{name:'Unnamed station',exact:true}).waitFor({timeout:5000});
         curatedUnavailable=false;
         await p.evaluate(()=>dispatchEvent(new Event('online')));
+        await p.getByRole('heading',{name:curated,exact:true}).waitFor({timeout:5000});
+        await p.locator('#details-close').click();
       }
       await p.waitForFunction(label=>window.stationLabels.has(label),curated,{timeout:12000}).catch(async error=>{
         console.error('curated overview', JSON.stringify({state,z,curatedRequests,failures,
