@@ -4,6 +4,9 @@ on:
     branches: [work/canvas-entry-501]
     paths:
       - '.github/workflows/canvas-renderer-switch-501.yml'
+      - '.github/workflows/site.yml'
+      - 'scripts/data-source.mjs'
+      - 'scripts/data-sources.json'
       - 'scripts/check-flat-entry-firefox.mjs'
       - 'scripts/check-flat-platform-firefox.mjs'
       - 'scripts/check-flat-mongolian-firefox.mjs'

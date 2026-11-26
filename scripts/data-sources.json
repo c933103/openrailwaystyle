@@ -1,0 +1,13 @@
+{
+  "lifecycle": "overpass",
+  "traction": "overpass",
+  "axle-load": "overpass",
+  "street-running": "overpass",
+  "station-points": "overpass",
+  "crossings": "overpass",
+  "conveying": "overpass",
+  "aerialways": "overpass",
+  "heritage": "overpass",
+  "branch-lines": "overpass",
+  "service-routes": "overpass"
+}

@@ -43,7 +43,7 @@ test('the meter counts each host\'s requests and the bytes read, and the builder
     const c = await fetch('${base}/empty'); if (c.status !== 204) throw new Error('changed status');
   `);
   assert.equal(result.code ?? 0, 0, String(result.stderr));
-  assert.deepEqual(usage, {script: 'build-fixture.mjs', bytes: 100015, requests: 3, unread: 0, unmeasured: 0, hosts: {[host]: {bytes: 100015, requests: 3}}});
+  assert.deepEqual(usage, {script: 'build-fixture.mjs', bytes: 100015, requests: 3, unread: 0, unmeasured: 0, hosts: {[host]: {bytes: 100015, requests: 3, changes: {bytes: 0, requests: 0}}}});
   assert.match(summary, /^`OVERPASS_USAGE \{.*"bytes":100015/);
 });
 
@@ -68,6 +68,40 @@ test('a builder that fetches nothing reports zero; one that exits early still re
   const early = await run(t, `await (await fetch('${base}/json')).text(); process.exit(3);`);
   assert.equal(early.result.code, 3);
   assert.equal(early.usage.bytes, 15);
+});
+
+test('the change updates (augmented-diff queries) are counted apart from full downloads, in every form a builder sends them', async t => {
+  const base = await serve(t), host = new URL(base).host;
+  const adiff = '[out:xml][timeout:180][adiff:"2026-11-20T00:00:00Z"];way[railway=construction](1,2,3,4);out meta;';
+  const full = '[out:json][timeout:180];way[railway=construction](1,2,3,4);out geom;';
+  const {usage, result} = await run(t, `
+    const post = (path, body) => fetch('${base}' + path, {method: 'POST', body});
+    await (await post('/big', new URLSearchParams({data: ${JSON.stringify(adiff)}}))).text();
+    await (await post('/json', new URLSearchParams({data: ${JSON.stringify(full)}}))).text();
+    await (await post('/json', new URLSearchParams({data: ${JSON.stringify(adiff)}}).toString())).text();
+    await (await fetch('${base}/json?data=' + encodeURIComponent(${JSON.stringify(adiff)}))).text();
+    await (await fetch('${base}/json?data=' + encodeURIComponent(${JSON.stringify(full)}))).text();
+    // An augmented diff answered 503 and rejected unread: its declared length counts as a change update's.
+    const busy = await post('/busy', new URLSearchParams({data: ${JSON.stringify(adiff)}})); if (busy.ok) throw new Error('fixture');
+  `);
+  assert.equal(result.code ?? 0, 0, String(result.stderr));
+  assert.deepEqual(usage.hosts[host], {bytes: 100000 + 15 * 4 + 10000, requests: 6, changes: {requests: 4, bytes: 100000 + 15 * 2 + 10000}});
+  assert.deepEqual([usage.unread, usage.unmeasured], [1, 0]);
+});
+
+test('only an Overpass augmented diff counts as a change update', async () => {
+  const {isChangeQuery} = await import(new URL('../scripts/overpass-meter.mjs', import.meta.url).href);
+  assert.equal(isChangeQuery('[out:xml][adiff:"2026-11-20T00:00:00Z","2026-11-21T00:00:00Z"];node(1);out meta;'), true);
+  for (const query of ['[out:json];way[railway](1,2,3,4);out geom;', '[out:xml][diff:"2026-11-20T00:00:00Z"];node(1);out meta;', 'adiff', '']) assert.equal(isChangeQuery(query), false, query);
+  // Every change query the builders make, and the full queries they replace.
+  const {adiffQuery} = await import(new URL('../scripts/overpass-adiff.mjs', import.meta.url).href);
+  const {crossingChangesQuery} = await import(new URL('../scripts/crossing-data.mjs', import.meta.url).href);
+  const {signalChangesQuery, signalQuery} = await import(new URL('../scripts/signals-data.mjs', import.meta.url).href);
+  const since = '2026-11-20T00:00:00Z', until = '2026-11-21T00:00:00Z', box = [1, 2, 3, 4];
+  const full = '[out:json][timeout:180];way[railway=construction](1,2,3,4);out geom;';
+  for (const query of [adiffQuery(full, since), adiffQuery(full, since, until), crossingChangesQuery(box, since), crossingChangesQuery(box, since, until), signalChangesQuery(box, since), signalChangesQuery(box, since, until)])
+    assert.equal(isChangeQuery(query), true, query);
+  for (const query of [full, signalQuery(box)]) assert.equal(isChangeQuery(query), false, query);
 });
 
 test('every builder step of the OSM update workflows loads the meter', () => {
@@ -151,7 +185,7 @@ for (const wallShift of [-3_600_000, 3_600_000]) for (const failure of ['connect
     assert.deepEqual(result.outcomes, [failed, failed, failed, 'skipped', failed, 'skipped', 503, 503,
       failed, failed, 503, failed, failed, failed, 'skipped']);
     assert.deepEqual(result.sent, [0, 0, 0, 60_000, ...Array(8).fill(120_000)]);
-    assert.deepEqual(result.usage.hosts, {'fixture.invalid': {bytes: 0, requests: 12, skipped: 3}});
+    assert.deepEqual(result.usage.hosts, {'fixture.invalid': {bytes: 0, requests: 12, skipped: 3, changes: {bytes: 0, requests: 0}}});
     assert.equal(result.usage.requests, 12);
     assert.equal(result.usage.skipped, 3);
   });
@@ -169,9 +203,9 @@ test('after three unanswered requests in a row a host is not asked again during 
   // builder keeps its data and asks again, as it does in an outage.
   assert.deepEqual(outcomesOf(result), [FAILED, FAILED, FAILED, SKIPPED, SKIPPED, SKIPPED]);
   assert.equal(down.received(), 3, 'only three requests reached the host');
-  assert.deepEqual(usage.hosts[new URL(down.base).host], {bytes: 0, requests: 3, skipped: 3});
+  assert.deepEqual(usage.hosts[new URL(down.base).host], {bytes: 0, requests: 3, skipped: 3, changes: {bytes: 0, requests: 0}});
   assert.equal(usage.skipped, 3);
-  assert.deepEqual(usage.hosts[new URL(other).host], {bytes: 15, requests: 1}, 'another host is not affected');
+  assert.deepEqual(usage.hosts[new URL(other).host], {bytes: 15, requests: 1, changes: {bytes: 0, requests: 0}}, 'another host is not affected');
 });
 
 test('after the cooldown one request goes through; a failure pauses again, an answer (even 503) ends the pause', async t => {
