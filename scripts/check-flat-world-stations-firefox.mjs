@@ -101,16 +101,22 @@ try{
         window.glAttempts=0;
         window.stationLabels=new Set();
         window.curatedMarker=false;
+        window.curatedRadius=0;
         const arc=CanvasRenderingContext2D.prototype.arc;
         CanvasRenderingContext2D.prototype.arc=function(x,y,radius,...args){
-          if(this.canvas.matches?.('canvas.atlas-flat-preview')&&Math.abs(x-384)<2&&Math.abs(y-320)<2&&radius>0)
+          if(this.canvas.matches?.('canvas.atlas-flat-preview')&&Math.abs(x-384)<2&&Math.abs(y-320)<2&&radius>0){
             window.curatedMarker=true;
+            window.curatedRadius=radius;
+          }
           return arc.call(this,x,y,radius,...args);
         };
         const fillText=CanvasRenderingContext2D.prototype.fillText;
-        CanvasRenderingContext2D.prototype.fillText=function(label,...args){
-          if(this.canvas.matches?.('canvas.atlas-flat-preview'))window.stationLabels.add(label);
-          return fillText.call(this,label,...args);
+        CanvasRenderingContext2D.prototype.fillText=function(label,x,y,...args){
+          if(this.canvas.matches?.('canvas.atlas-flat-preview')){
+            window.stationLabels.add(label);
+            if(label==='Curated Hub')window.curatedTextPoint=[x+this.measureText(label).width*.82,y];
+          }
+          return fillText.call(this,label,x,y,...args);
         };
         const get=HTMLCanvasElement.prototype.getContext;
         HTMLCanvasElement.prototype.getContext=function(type,...args){
@@ -145,6 +151,14 @@ try{
           status:await p.locator('#map-status').textContent()}));
         throw error;
       });
+      if(z===4&&state==='complete'){
+        const point=await p.evaluate(()=>window.curatedTextPoint);
+        assert.ok(Math.hypot(point[0]-384,point[1]-320)>12,'label click must not fall within marker hit distance');
+        await p.mouse.click(...point);
+        await p.getByRole('heading',{name:curated,exact:true}).waitFor({timeout:5000});
+        await p.locator('#detail-content a[href="https://www.openstreetmap.org/node/46103"]').waitFor();
+        await p.locator('#details-close').click();
+      }
       if(z===4&&state!=='complete'){
         // A broken snapshot hides the old markers while its manifest is
         // considered valid. Wait for the first restored marker paint.
@@ -204,6 +218,13 @@ try{
       }
       assert.deepEqual(failures,[]);
       assert.equal(await p.evaluate(()=>window.glAttempts),0);
+      if(state==='reconnect'){
+        const initialRadius=await p.evaluate(()=>window.curatedRadius);
+        assert.ok(Math.abs(initialRadius-1.15*.45)<0.001,'initial ring has the z4 railway width');
+        await p.evaluate(hash=>{window.curatedRadius=0;location.hash=hash;},'#5/'+lat+'/9.140625');
+        const expected=(1.15+(1.8-1.15)/3)*.45;
+        await p.waitForFunction(r=>Math.abs(window.curatedRadius-r)<0.001,expected);
+      }
       console.log('Canvas world stations:',state,'z'+z,'painted and opened exact node',expectedID,'with names disabled');
     }finally{await p.close();}
   }

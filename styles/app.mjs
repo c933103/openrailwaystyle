@@ -2128,6 +2128,7 @@ async function initialize() {
     const flat=mountFlatMap({
       mount:$('map'),style,styleURL,protocols:tileProtocols,requestedView,initialDetail:settings.detail,
       curatedStationData:majorStationData,onCuratedOverview:requestCuratedOverview,getMongolianFont,
+      stationPaint:(layer,zoom)=>stationViewPaint(layer,settings.mode,zoom),
       readDem:({z,x,y},controller)=>dem.getDemTile(z,x,y,controller),
       pointSources:{electricSignals:13},
       shapeSources:['electricFacilities','electricMethods','platformLengths','platformNumbers'],

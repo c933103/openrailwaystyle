@@ -36,7 +36,7 @@ export function compileFlatFrame(layers) {
     if (type==='symbol') compiled.label=compileFlatTextLabel(layer);
     return compiled;
   });
-  return function draw(context, camera, sources, {featureState = () => undefined,getIcon,getMongolianFont,onSymbol,allowFeature,layerClip,legendLayers,onLegendFeature} = {}) {
+  return function draw(context, camera, sources, {featureState = () => undefined,getIcon,getMongolianFont,onSymbol,allowFeature,layerClip,legendLayers,onLegendFeature,stationPaint} = {}) {
     const unsupported = [];
     const global = {zoom:camera.zoom};
     const layerDraws = new Map(), labels=[];
@@ -75,6 +75,7 @@ export function compileFlatFrame(layers) {
           labels.push({id,candidates,source,sourceLayer:layer.label.sourceLayer});
           continue;
         } else if (geometry) {
+          const currentStationPaint=type==='circle'&&id.startsWith('station-')?stationPaint?.(layer,camera.zoom):null;
           const observe=type==='line'&&legendLayers?.has(id)&&onLegendFeature;
           const clip=layerClip?.(id);
           if(clip===false)continue;
@@ -93,6 +94,10 @@ export function compileFlatFrame(layers) {
                 if(allowFeature&&!allowFeature(id,feature,tile))continue;
                 const paint = geometry.resolve(global,feature,featureState(source,name,feature.id) ?? {},canonical);
                 if (!paint)continue;
+                if(currentStationPaint){
+                  paint.radius=currentStationPaint['circle-radius'];
+                  paint.strokeWidth=currentStationPaint['circle-stroke-width'];
+                }
                 const count=drawFlatVectorLayer(context,camera,tile,[feature],paint);
                 draws+=count;
                 if(observe&&count&&flatLineIntersectsViewport(camera,tile,feature,

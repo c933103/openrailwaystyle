@@ -343,7 +343,7 @@ export function drawFlatTextLabels(context,camera,groups,{getIcon=()=>null,onSym
           if(!label.ignore)for(const rect of rects)add(rect);
           drawn.push({label,lines,widths,width,x,y,lineHeight,font:context.font,layout});
           textRects=hits;
-          if(layout&&!icon&&label.feature)onSymbol(id,label,hits);
+          if(!icon&&label.feature)onSymbol(id,label,hits);
           break;
         }
         pushIcon(textRects);
