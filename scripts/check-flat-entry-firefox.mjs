@@ -567,9 +567,9 @@ try {
       if(!await page.locator('#share').isVisible())await page.locator('#controls-open').click();
       await page.locator('#share').click();
       const copied=new URL(await page.waitForFunction(()=>window.copiedMap).then(r=>r.jsonValue()));
-      assert.equal(copied.hash,'#8/25.04/121.56');
+      assert.equal(copied.hash,'#10/25.04/121.56');
       assert.equal(copied.searchParams.get('terrain3d'),'0');
-      assert.equal(copied.searchParams.get('detail'),'0');
+      assert.equal(copied.searchParams.get('detail'),'2');
       assert.equal(await page.evaluate(()=>JSON.parse(decodeURIComponent(/(?:^|; )atlas_settings=([^;]+)/.exec(document.cookie)[1])).detail),2);
       if(chromiumSwitch){
         await switchRenderer();
@@ -580,6 +580,15 @@ try {
           return {zoom:map.getZoom(),lng:map.getCenter().lng,lat:map.getCenter().lat};
         });
         assert.ok(Math.abs(restored.zoom-10)<0.02&&Math.abs(restored.lng-121.56)<0.002&&Math.abs(restored.lat-25.04)<0.002);
+      }
+      if(!chromiumSwitch){
+        const recipient=await fresh(false);
+        try{
+          await recipient.page.goto(copied.href);
+          await recipient.page.getByRole('button',{name:/More detail: highest tile detail/}).waitFor();
+          const received=await recipient.page.locator('#map').getAttribute('data-flat-center');
+          assert.deepEqual(received.split(',').map(n=>Number(Number(n).toFixed(5))),[121.56,25.04]);
+        }finally{await recipient.context.close();}
       }
       console.log('Detail state: center drawing and actual flat share correct; setting preserved'+(chromiumSwitch?' across WebGL round trip':' on opening a WebGL link'));
     }finally{await context.close();}

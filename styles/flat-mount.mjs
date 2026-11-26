@@ -24,7 +24,7 @@ const tileLayer = layer => layer.type === 'raster' || flatReliefPaint(layer) || 
   (['fill','line','circle'].includes(layer.type) && layer['source-layer'] != null &&
     layer.paint?.['fill-pattern'] == null && layer.paint?.['line-pattern'] == null);
 
-export function mountFlatMap({mount, style, styleURL, protocols, requestedView, onNavigate, onStatus, interactiveLayer, onInspect, onDrawingProfile, onReadout, onCamera, onCredits, imageryCredit, curatedStationData, railTrackLayer, legendLayers, onLegendFrame, onPlatformFrame, getMongolianFont, readDem, pointSources={}, shapeSources=[]}) {
+export function mountFlatMap({mount, style, styleURL, protocols, requestedView, initialDetail=0, onNavigate, onStatus, interactiveLayer, onInspect, onDrawingProfile, onReadout, onCamera, onCredits, imageryCredit, curatedStationData, railTrackLayer, legendLayers, onLegendFrame, onPlatformFrame, getMongolianFont, readDem, pointSources={}, shapeSources=[]}) {
   const document = mount.ownerDocument, window = document.defaultView;
   const canvas = document.createElement('canvas');
   canvas.className = 'atlas-flat-preview';
@@ -65,6 +65,7 @@ export function mountFlatMap({mount, style, styleURL, protocols, requestedView, 
   const lifetime = new AbortController(), signal = lifetime.signal;
   const pixelRatio = Math.max(1,Math.min(3,window.devicePixelRatio||1));
   let wakeTimer=null, wakeDue=Infinity, recoveryWake=null;
+  let tileDetail=initialDetail;
   let camera, frame = 0, disposed = false, navigated = false, readoutPoint = null, locationFix = null;
   let sourceFrame=new Map(), paintedSymbols=[], measure=null, drawing=null, toolDrag=null;
   let stationFallbackMask=()=>false;
@@ -193,7 +194,7 @@ export function mountFlatMap({mount, style, styleURL, protocols, requestedView, 
       if (entry.error) {errors.add(id);continue;}
       if (!entry.value) continue;
       try {
-        const tiles=planFlatSourceTiles(camera,entry.value);
+        const tiles=planFlatSourceTiles(camera,entry.value,512,tileDetail);
         if (tiles.length) resolvedTilesExpected=true;
         plans.set(id,{revision:entry.value,tiles});
       } catch {errors.add(id);}
@@ -469,7 +470,13 @@ export function mountFlatMap({mount, style, styleURL, protocols, requestedView, 
     if(next.zoom===camera.zoom && next.center.every((n,i)=>n===camera.center[i])) return;
     setCamera(next,true,'location');
   };
-  return {close,invalidateLabels:schedule,moveTo,zoomBy,resetNorth,showLocation,followLocation,setStyle,readSourcePoints,platformCandidates,
+  const setDetail=level=>{
+    if(disposed||level===tileDetail)return;
+    tileDetail=level;
+    if(frame)window.cancelAnimationFrame(frame);
+    render();
+  };
+  return {close,invalidateLabels:schedule,moveTo,zoomBy,setDetail,resetNorth,showLocation,followLocation,setStyle,readSourcePoints,platformCandidates,
     inspectionAt:location=>inspectionHits(camera.project(location)),
     getPlatformLayer:id=>platformLayers.has(id),
     platformProjection:{getContainer:()=>mount,project:lngLat=>{const [x,y]=camera.project(lngLat);return {x,y};},

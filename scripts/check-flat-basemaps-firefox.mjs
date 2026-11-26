@@ -32,6 +32,17 @@ const water=mvt({water:{features:[{type:3,id:10,tags:{class:'lake'},geometry:[
 const rails=mvt({railway_line_high:{features:[{type:2,id:42,tags:{id:'way-42',feature:'rail',usage:'main',name:'Fixture Main Line',osm_type:'way',osm_id:42},geometry:[
   [[700,3050],[3400,3050]],
 ]}]}});
+// Two child zooms from the same ground location, with uniquely styled
+// properties so a request by itself cannot satisfy the visual assertion.
+const detailedRails=new Map([1,2].map(detail=>{
+  const k=2**detail, xx=(x+2300/4096)*k, yy=(y+3050/4096)*k;
+  const localY=Math.round((yy-Math.floor(yy))*4096);
+  const tile=mvt({railway_line_high:{features:[{type:2,id:42,
+    tags:{id:'way-42',feature:'rail',usage:detail===1?'branch':'main',highspeed:detail===2},
+    geometry:[[[50,localY],[4046,localY]]],
+  }]}});
+  return [[z+detail,Math.floor(xx),Math.floor(yy)].join('/'),Buffer.from(tile)];
+}));
 const varint=values=>Buffer.from(values.flatMap(n=>{
   const out=[];while(n>127){out.push(n%128+128);n=Math.floor(n/128);}out.push(n);return out;
 }));
@@ -65,13 +76,17 @@ try{
   // The application requests its normal composite ORM path.
   await context.route(url=>/^\/railway_line_high(?:,[a-z_]+)*\/\d+\/\d+\/\d+$/.test(url.pathname),route=>{
     requests.rail++;
+    const path=new URL(route.request().url()).pathname.split('/').slice(-3).join('/');
     return route.fulfill({contentType:'application/x-protobuf',headers:{'access-control-allow-origin':'*'},
-      body:new URL(route.request().url()).pathname.endsWith('/'+z+'/'+x+'/'+y)?Buffer.from(rails):Buffer.alloc(0)});
+      body:path===[z,x,y].join('/')?Buffer.from(rails):detailedRails.get(path)??Buffer.alloc(0)});
   });
   for(const [host,height] of [['tiles.maps.eox.at',123],['tile.openstreetmap.org',-20],['indianopenmaps.com',63]]){
     const body=terrariumFixturePng(()=>height);
+    const colours=new Map([[z+2,terrariumFixturePng(()=>10)],[z+3,terrariumFixturePng(()=>20)]]);
     await context.route('https://'+host+'/**',route=>{
-      requests.raster++;return route.fulfill({contentType:'image/png',body,headers:{'access-control-allow-origin':'*'}});
+      const level=Number(new URL(route.request().url()).pathname.split('/')[1]);
+      const tile=host==='tile.openstreetmap.org' ? colours.get(level)??body : body;
+      requests.raster++;return route.fulfill({contentType:'image/png',body:tile,headers:{'access-control-allow-origin':'*'}});
     });
   }
   const page=await context.newPage(),errors=[];
@@ -91,7 +106,7 @@ try{
   await canvas.waitFor();
   const {width,height}=await canvas.boundingBox();
   const camera=flatCamera({center:home,zoom:z,width,height});
-  const sample=lngLat(2048,1200),track=lngLat(2048,3050);
+  const sample=lngLat(2048,1200),track=lngLat(2300,3050);
   const coords=[sample,track].map(p=>camera.project(p).map(Math.round));
   async function verify(name,tile,hasRail,{masked=false}={}){
     try {
@@ -132,7 +147,34 @@ try{
   await select('carto');await verify('Carto',[127,236,0],true);
   await select('soviet');await verify('Public historical map',[128,63,0],true,{masked:true});
   await select('map');await verify('Map restored',[191,216,224],true);
+  await select('carto');await verify('Carto normal detail',[127,236,0],true);
+  const setting=page.getByRole('button',{name:/More detail:/});
+  const centre=await page.locator('#map').getAttribute('data-flat-center');
+  const scale=page.getByRole('group',{name:'Map scale'}),scaleText=await scale.innerText(),scaleWidth=(await scale.boundingBox()).width;
+  for(const [label,rgb,raster] of [['high',[0,134,90],[128,10,0]],['highest',[215,25,28],[128,20,0]],['normal',[35,86,182],[127,236,0]]]){
+    await setting.click();
+    assert.match(await setting.getAttribute('aria-label'),new RegExp('More detail: '+label+' tile'));
+    await page.waitForFunction(({coords,rgb,raster})=>{
+      const c=document.querySelector('canvas.atlas-flat-preview'),p=c.getContext('2d');
+      const [x,y]=coords[1],colour=p.getImageData(x-2,y-2,5,5).data;
+      const ground=p.getImageData(...coords[0],1,1).data;
+      return raster.every((v,i)=>v===ground[i])
+        &&colour.some((v,i)=>i%4===0&&v===rgb[0]&&colour[i+1]===rgb[1]&&colour[i+2]===rgb[2]);
+    },{coords,rgb,raster},{timeout:14000});
+    assert.equal(await page.locator('#map').getAttribute('data-flat-center'),centre);
+    assert.equal(await scale.innerText(),scaleText);
+    assert.equal((await scale.boundingBox()).width,scaleWidth);
+  }
+  // Return to high and use exactly the same geographic map centre.
+  await setting.click();await setting.click();
+  await page.getByRole('button',{name:'Drawing tools',exact:true}).click();
+  await page.locator('[data-draw="point"]').click();
+  await page.mouse.click(width/2,height/2);
+  const vertex=await page.waitForFunction(()=>JSON.parse(localStorage.getItem('openrailwayatlas-drawing')||'null')
+    ?.features[0]?.geometry.coordinates,null,{timeout:5000}).then(r=>r.jsonValue());
+  assert.ok(Math.abs(vertex[0]-home[0])<.00001&&Math.abs(vertex[1]-home[1])<.00001,JSON.stringify(vertex));
   assert.deepEqual(await page.evaluate(()=>window.glAttempts),0);
+  console.log('More detail: vector z11–13 and raster z12–14 visibly drive the same ground pixels; scale, centre and saved drawing are unchanged.');
   assert.deepEqual(errors,[]);
 } finally{
   await context?.close();server.close();await rm(profile,{recursive:true,force:true});

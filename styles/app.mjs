@@ -645,8 +645,9 @@ function shareURL() {
   } else if (flatCurrentView) {
     const {c:[lng,lat],z:zoom,b:bearing}=flatCurrentView;
     url.searchParams.set('terrain3d','0');
-    url.searchParams.set('detail','0');
-    url.hash=viewHash({zoom,lat,lng,bearing,pitch:0});
+    // Link zoom follows the same convention in both renderers: the chosen
+    // detail offset is encoded, but the displayed ground scale is unchanged.
+    url.hash=viewHash({zoom:zoom+settings.detail,lat,lng,bearing,pitch:0});
   } else if (captureViewHash()) {
     // The share control is available while map libraries are still loading.
     url.hash = linkedViewHash;
@@ -1415,7 +1416,7 @@ function updateReadout() {
   if (useFlat) {
     if (flatReadout) {
       const [[lng,lat],zoom]=flatReadout;
-      readout.textContent=formatReadout({lng,lat},zoom,0);
+      readout.textContent=formatReadout({lng,lat},zoom+settings.detail,settings.detail);
     }
     return;
   }
@@ -1543,6 +1544,13 @@ function applyDetail(from = settings.detail) {
   $('map').classList.toggle('detail', !useFlat && level > 0);
   $('map').classList.toggle('detail-2', !useFlat && level === 2);
   detailButton.setAttribute('aria-pressed', String(level > 0));
+  if(useFlat){
+    detailButton.title=`More detail: ${level===0?'normal':level===1?'high':'highest'} tile detail. Click for ${next===0?'normal':next===1?'high':'highest'}.`;
+    detailButton.setAttribute('aria-label',detailButton.title);
+    flatSourceContext?.setDetail(level);
+    updateReadout();
+    return;
+  }
   detailButton.title = `More detail: map drawn at ${detailScale(level)}%. Click for ${next ? `${detailScale(next)}%` : '100% (normal)'}.`;
   detailButton.setAttribute('aria-label', detailButton.title);
   if (!map) return;
@@ -2058,7 +2066,7 @@ async function initialize() {
       return missing.length?null:`${size}px "Atlas Mongolian"`;
     };
     const flat=mountFlatMap({
-      mount:$('map'),style,styleURL,protocols:tileProtocols,requestedView,
+      mount:$('map'),style,styleURL,protocols:tileProtocols,requestedView,initialDetail:settings.detail,
       curatedStationData:majorStationData,getMongolianFont,
       readDem:({z,x,y},controller)=>dem.getDemTile(z,x,y,controller),
       pointSources:{electricSignals:13},
@@ -2187,7 +2195,7 @@ async function initialize() {
     toolButtons.className='atlas-flat-tool-buttons';
     drawButton.setAttribute('aria-label','Drawing tools');
     compass.addEventListener('click',flat.resetNorth);
-    toolButtons.append(drawButton,measureButton,compass);
+    toolButtons.append(drawButton,measureButton,compass,detailButton);
     for (const [symbol,label,delta] of [['+','Zoom in',1],['−','Zoom out',-1]]) {
       const button=textNode('button',symbol,'atlas-flat-zoom-button');
       button.type='button';
