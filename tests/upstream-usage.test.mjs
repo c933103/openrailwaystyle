@@ -87,6 +87,17 @@ test('the change updates are summed apart and held against regular use; full dow
   assert.equal(bad.hosts['overpass-api.de'].unsplit, 1);
 });
 
+test('old crossing logs retain known change counts but cannot give an exact regular-use share', () => {
+  const host = 'overpass-api.de';
+  const record = extra => usage({[host]: {bytes: 400, requests: 4, changes: {requests: 2, bytes: 200}}},
+    {script: 'build-crossings.mjs', ...extra});
+  const summary = summarize([{workflow: 'Crossings', records: [record({}), record({changeScope: 'adiff+crossing-rows-v1'})]}]);
+  assert.equal(summary.hosts[host].changeRequests, 4);
+  assert.equal(summary.hosts[host].unsplit, 1);
+  assert.match(usageReport({start: 's', end: 'e', runs: 1, jobs: 1, unread: []}, summary),
+    /4 \+ unknown .*change updates against regular use: unknown/);
+});
+
 test('only the meter lines of a job log are records', () => {
   const log = [
     '2026-11-05T06:00:00.0000000Z ##[group]Run node --import ./scripts/overpass-meter.mjs scripts/build.mjs',
@@ -115,8 +126,8 @@ test('the day totals per host and per workflow, with every job counted once per 
   assert.deepEqual(summary.workflows.map(w => `${w.host} ${w.workflow} ${w.requests} ${w.jobs}`),
     ['download.geofabrik.de Extracts 3 1', 'overpass-api.de Heritage 6 2', 'overpass-api.de Extracts 1 1']);
   const report = usageReport({start: '2026-11-05T05:00:00Z', end: '2026-11-06T05:00:00Z', runs: 4, jobs: 3, unread: [99]}, summary);
-  assert.match(report, /\| overpass-api\.de \| 7 \| 5\.0 \| 0 \+ unknown \(4 records before the split\) \| 0\.00 \+ unknown \(4 records before the split\) \| 2 \| 3 \| everything against one-off use: 0\.1% of queries, 0\.5% of bytes; change updates against regular use: unknown: some records lack the change-update split \|/);
-  assert.match(report, /\| download\.geofabrik\.de \| 3 \| 8000\.0 \| 0 \+ unknown \(1 records before the split\) \| 0\.00 \+ unknown \(1 records before the split\) \| 0 \| 1 \| — \|/);
+  assert.match(report, /\| overpass-api\.de \| 7 \| 5\.0 \| 0 \+ unknown \(4 records without the full split\) \| 0\.00 \+ unknown \(4 records without the full split\) \| 2 \| 3 \| everything against one-off use: 0\.1% of queries, 0\.5% of bytes; change updates against regular use: unknown: some records lack the change-update split \|/);
+  assert.match(report, /\| download\.geofabrik\.de \| 3 \| 8000\.0 \| 0 \+ unknown \(1 records without the full split\) \| 0\.00 \+ unknown \(1 records without the full split\) \| 0 \| 1 \| — \|/);
   assert.match(report, /4 workflow runs; 3 jobs with usage lines; 1 job logs could not be read: 99/);
   assert.deepEqual(GUIDANCE['overpass-api.de'].regular, {requests: 100, bytes: 1e7});
 });

@@ -28,13 +28,15 @@
 // actually sent. The requests not sent are reported as `skipped`.
 // Each host also reports `changes`: the requests, and their bytes, whose
 // Overpass query is an augmented diff ([adiff:…], scripts/overpass-adiff.mjs
-// and crossing-data.mjs), that is, the routine change updates. The rest are
-// full downloads. The daily sum (scripts/upstream-usage.mjs) holds the change
+// and crossing-data.mjs) or a caller-marked crossing row read required by
+// the diff. The marker is local to the request options, not sent upstream.
+// The daily sum (scripts/upstream-usage.mjs) holds the change
 // updates against the wiki's regular-use guidance, which decides #330's
 // freshness option. A record without `changes` comes from the meter before
 // this split.
 import {appendFileSync, writeSync} from 'node:fs';
 import {basename} from 'node:path';
+import {CHANGE_FOLLOW_UP, CHANGE_SCOPE} from './overpass-purpose.mjs';
 
 const original = globalThis.fetch;
 const setting = (name, fallback) => { const n = Number(process.env[name] ?? fallback); return Number.isSafeInteger(n) && n > 0 ? n : fallback; };
@@ -67,7 +69,7 @@ if (typeof original === 'function') {
       throw new TypeError('fetch failed', {cause: new Error(`not sent: ${host} did not answer ${counted.failures} requests in a row; asked again after a ${COOLDOWN_MS / 1000} s pause`)});
     }
     counted.requests++; requests++;
-    const change = isChangeQuery(queryOf(input, init));
+    const change = init?.[CHANGE_FOLLOW_UP] === true || isChangeQuery(queryOf(input, init));
     if (change) counted.changes.requests++;
     let response;
     try { response = await original(input, init); }
@@ -102,7 +104,7 @@ export function overpassUsage() {
   }
   const sorted = [...totals].sort(([a], [b]) => a.localeCompare(b));
   const skipped = sorted.reduce((sum, [, t]) => sum + (t.skipped ?? 0), 0);
-  return {script: basename(process.argv[1] || ''), bytes: sorted.reduce((sum, [, t]) => sum + t.bytes, 0), requests,
+  return {script: basename(process.argv[1] || ''), changeScope: CHANGE_SCOPE, bytes: sorted.reduce((sum, [, t]) => sum + t.bytes, 0), requests,
     unread, unmeasured, ...(skipped ? {skipped} : {}), hosts: Object.fromEntries(sorted)};
 }
 

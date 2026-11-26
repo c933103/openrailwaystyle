@@ -1,3 +1,4 @@
+import * as requestPurpose from '../scripts/overpass-purpose.mjs';
 import * as crossingRequest from '../scripts/crossing-request.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -114,7 +115,7 @@ async function changeRun(t, extra = {}) {
   const since = '2026-10-01T00:00:00Z', roots = crossingData.startRegions();
   await writeFile(join(previous, 'regions.json'), JSON.stringify({version: 3, since, regions: roots.map(r => ({...r, fetched: since})), ...extra, reply: undefined}));
   await writeFile(join(previous, 'crossings.tsv.gz'), zlib.gzipSync('1\t-80\t-170\troad\t\n2\t-80\t-169\troad\t\n'));
-  const SEP = crossingData.SEP, calls = [], sleeps = [];
+  const SEP = crossingData.SEP, calls = [], sleeps = [], purposes = [];
   let elapsed = 0;
   const csv = rows => rows.map(r => r.join(SEP)).join('\n') + `\n${SEP}${SEP}${SEP}minor\n${SEP}${SEP}${SEP}end\n`;
   const source = readFileSync(new URL('../scripts/build-crossings.mjs', import.meta.url), 'utf8');
@@ -124,7 +125,7 @@ async function changeRun(t, extra = {}) {
     URL, URLSearchParams, Buffer, Date: FixedDate, performance:{now:()=>elapsed}, AbortSignal: {timeout: () => undefined},
     console: {log() {}, warn() {}}, setTimeout: (callback, ms) => { sleeps.push(ms); elapsed += ms; callback(); },
     fetch: async (url, request) => {
-      const query = request.body.get('data'); calls.push(query);
+      const query = request.body.get('data'); calls.push(query); purposes.push(request[requestPurpose.CHANGE_FOLLOW_UP]);
       assert.ok(calls.length <= 40);
       // The first region: crossing 1 deleted, a way through crossing 2 changed.
       if (extra.reply) { const answer = extra.reply(query, roots, since); if (answer) return answer; }
@@ -136,7 +137,7 @@ async function changeRun(t, extra = {}) {
     },
   });
   const dependencies = {'node:fs/promises': {...fs, rm: async () => { throw new Error('no output expected'); }}, 'node:zlib': zlib,
-    './crossing-request.mjs': crossingRequest, './crossing-data.mjs': crossingData, './crossing-checkpoint.mjs': checkpoints};
+    './crossing-request.mjs': crossingRequest, './crossing-data.mjs': crossingData, './crossing-checkpoint.mjs': checkpoints, './overpass-purpose.mjs': requestPurpose};
   const module = new vm.SourceTextModule(source, {context, initializeImportMeta: meta => { meta.url = 'file:///fixture/scripts/build-crossings.mjs'; }});
   await module.link(specifier => {
     const values = dependencies[specifier]; assert.ok(values, specifier);
@@ -144,20 +145,22 @@ async function changeRun(t, extra = {}) {
   });
   let error;
   try { await module.evaluate(); } catch (caught) { error = caught; }
-  return {error, calls, roots, since, sleeps};
+  return {error, calls, roots, since, sleeps, purposes};
 }
 
 test('the builder applies a region\'s changes and reads the affected crossings again, with no scheduled full download', async t => {
-  const {error, calls, roots, since} = await changeRun(t, {extraction: crossingData.crossingExtraction()});
+  const {error, calls, roots, since, purposes} = await changeRun(t, {extraction: crossingData.crossingExtraction()});
   // The tiny fixture stops at the worldwide size guard, before any output.
   assert.match(error?.message || '', /Suspiciously few crossings worldwide: 1/, 'crossing 1 removed, crossing 2 kept');
   assert.equal(calls[0], crossingData.crossingChangesQuery(roots[0].box, since, AT));
   assert.equal(calls[1], crossingData.crossingRowsQuery([2, 3], AT), 'the crossings on the changed way, read again');
+  assert.deepEqual(purposes.map((value, index) => value ? index : -1).filter(index => index >= 0), [1]);
   assert.deepEqual(calls.slice(2), roots.slice(1).map(r => crossingData.crossingChangesQuery(r.box, since, AT)), 'every other region\'s changes; nothing downloaded in full');
 });
 
 test('a table made by another query or row code, or kept by the earlier change query, is rebuilt in full once', async t => {
   const other = await changeRun(t, {extraction: 'another'});
+  assert.ok(other.purposes.every(value => value === false), 'full region requests never carry the follow-up marker');
   assert.equal(other.calls[0], crossingData.regionQuery(other.roots[0].box, AT), 'a full download, no change request');
   const legacy = await changeRun(t);
   assert.equal(legacy.calls[0], crossingData.regionQuery(legacy.roots[0].box, AT), 'no recorded extraction: rebuilt, since the earlier changes missed deletions');

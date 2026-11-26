@@ -9,6 +9,7 @@
 import {mkdir, readFile, writeFile, rm} from 'node:fs/promises';
 import {gunzipSync} from 'node:zlib';
 import {inBox, applyChanges, crossingFiles, parseCsv, quarters, readTable, regionQuery, replaceRegion, crossingChangesQuery, crossingChanges, crossingRowsQuery, crossingExtraction, currentCrossingExtraction, startRegions, updateRegionChanges} from './crossing-data.mjs';
+import {CHANGE_FOLLOW_UP} from './overpass-purpose.mjs';
 import {openCrossingCheckpoint} from './crossing-checkpoint.mjs';
 import {crossingResponseText, crossingFailureAction, crossingRetryDelay} from './crossing-request.mjs';
 
@@ -22,7 +23,7 @@ let checkpoint = null, lastObservation;
 // Pinned to the run's database time (startedAt), as every request of the run.
 const overpass = box => request(regionQuery(box, startedAt), parseCsv, rows => `Region ${box.join(',')} ${rows.length} crossings`, box);
 // One query, with retries; null when the query ran out of time or memory.
-async function request(query, parse, describe, box) {
+async function request(query, parse, describe, box, changeFollowUp = false) {
   let delay = requests ? 10000 : 0;
   for (let attempt = 0; attempt < 5; attempt++) {
     if (providerWaitExceeded) throw new Error('Overpass Retry-After exceeds this run’s wait limit; data retained');
@@ -37,7 +38,7 @@ async function request(query, parse, describe, box) {
     let detail = '', status, retryAfter;
     try {
       const requestStartedAt = new Date().toISOString();
-      const response = await fetch(api, {method: 'POST', body: new URLSearchParams({data: query}), signal: AbortSignal.timeout(240000),
+      const response = await fetch(api, {[CHANGE_FOLLOW_UP]: changeFollowUp, method: 'POST', body: new URLSearchParams({data: query}), signal: AbortSignal.timeout(240000),
         headers: {'User-Agent': 'OpenRailwayAtlas-crossings/1.0 (+https://github.com/c933103/openrailwaystyle)'}});
       status = response.status;
       retryAfter = response.headers.get('retry-after');
@@ -111,7 +112,7 @@ async function readCrossings(stage, ids, box, recheck = new Set()) {
   for (let i = 0; i < ids.length; i += 2000) await readGroup(stage, ids.slice(i, i + 2000), box, recheck);
 }
 async function readGroup(stage, ids, box, recheck) {
-  const rows = await request(crossingRowsQuery(ids, startedAt), parseCsv, r => `Crossings ${ids.length} read again, ${r.length} rows`, box);
+  const rows = await request(crossingRowsQuery(ids, startedAt), parseCsv, r => `Crossings ${ids.length} read again, ${r.length} rows`, box, true);
   if (rows) {
     // Only crossings in this region: one elsewhere, reached through a way
     // that also runs here, belongs to its own region's changes and watermark
