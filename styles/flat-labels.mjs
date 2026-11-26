@@ -185,12 +185,12 @@ export function drawFlatTextLabels(context,camera,groups,{getIcon=()=>null,onSym
           onSymbol(id,label,[iconRect,...textRects]);
         };
         context.font=(label.font?.some(name=>/bold/i.test(name))?'bold ':'')+size+'px sans-serif';
-        const pointMongolian=label.angle===undefined&&hasMongolian(text);
-        const layout=pointMongolian?flatMongolianLayout(context,text,size,context.font,
+        const mongolian=hasMongolian(text);
+        const layout=mongolian?flatMongolianLayout(context,text,size,context.font,
           getMongolianFont(text,size),label.maxWidth):null;
         // Don't flash a horizontally rendered Mongolian label while its
         // font loads. Icons and non-Mongolian labels need not wait.
-        if(pointMongolian&&!layout){if(icon){pushIcon();count++;}continue;}
+        if(mongolian&&!layout){if(icon){pushIcon();count++;}continue;}
         const lines=layout?[]:text.split(/\n/).filter(Boolean), widths=lines.map(line=>context.measureText(line).width);
         const width=layout?.width??Math.max(...widths), lineHeight=size*1.2,height=layout?.height??lines.length*lineHeight;
         if(!Number.isFinite(width)||!width){
@@ -199,7 +199,7 @@ export function drawFlatTextLabels(context,camera,groups,{getIcon=()=>null,onSym
         }
         const margin=Math.max(0,haloWidth)+padding;
         const [ox,oy]=label.xOffset??[0,0];
-        if(label.angle!==undefined){
+        if(label.angle!==undefined&&!layout){
           if(width+2*margin>label.length)continue;
           const x=(ox*size)-width/2,y=(oy*size)-height/2;
           const c=Math.cos(label.angle),s=Math.sin(label.angle);
@@ -214,14 +214,20 @@ export function drawFlatTextLabels(context,camera,groups,{getIcon=()=>null,onSym
           count++;
           continue;
         }
-        const anchors=label.variable?.length?label.variable:[label.anchor];
+        const onLine=label.angle!==undefined;
+        const cs=onLine?Math.cos(label.angle):1,sn=onLine?Math.sin(label.angle):0;
+        // Anchor a script-aware block to the selected line span without
+        // tipping vertical columns (or the accompanying horizontal script).
+        // Keep its screen-space extent within that span along the tangent.
+        if(onLine&&Math.abs(cs)*(width+2*margin)+Math.abs(sn)*(height+2*margin)>label.length)continue;
+        const anchors=onLine?['center']:label.variable?.length?label.variable:[label.anchor];
         let textRects;
         for(const anchor of anchors){
           const sideX=anchor?.includes('left')?1:anchor?.includes('right')?-1:0;
           const sideY=anchor?.includes('top')?1:anchor?.includes('bottom')?-1:0;
-          const radial=label.variable?.length?(label.radial??0)*size:0;
-          const x=px+ox*size+(sideX-1)*width/2+sideX*radial;
-          const y=py+oy*size+(sideY-1)*height/2+sideY*radial;
+          const radial=!onLine&&label.variable?.length?(label.radial??0)*size:0;
+          const x=px+(ox*cs-oy*sn)*size+(sideX-1)*width/2+sideX*radial;
+          const y=py+(ox*sn+oy*cs)*size+(sideY-1)*height/2+sideY*radial;
           if(x+width<=0||x>=camera.width||y+height<=0||y>=camera.height) continue;
           const hits=layout?layout.pieces.filter(piece=>piece.text.trim()).map(({rect})=>({
             left:x+rect.left,right:x+rect.right,top:y+rect.top,bottom:y+rect.bottom,
@@ -247,7 +253,7 @@ export function drawFlatTextLabels(context,camera,groups,{getIcon=()=>null,onSym
         context.drawImage(icon,iconRect.left,iconRect.top,iconWidth,iconHeight);
         continue;
       }
-      const rotated=label.angle!==undefined;
+      const rotated=label.angle!==undefined&&!layout;
       if(rotated){context.save();context.translate(label.px,label.py);context.rotate(label.angle);}
       context.font=font;
       context.globalAlpha=alpha*label.opacity;

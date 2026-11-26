@@ -131,3 +131,22 @@ test('labels a densely sampled straight line, not bends, reversals or disjoint r
   assert.equal(draw(ctx,camera,frames).layerDraws.get('relief-labels'),1);
   assert.deepEqual(ctx.draws.filter(l=>l[0]==='fill').map(l=>l[1]),['500 m']);
 });
+
+test('mixed-script line captions stay upright, wait for their font, and respect visible span length',()=>{
+  const word='ᠮᠣᠩᠭᠣᠯ', base={color:'black',halo:'white',haloWidth:0,size:10,opacity:1,padding:0,
+    angle:-Math.PI/4,maxWidth:8,length:120};
+  const labels=[{id:'routes',candidates:[
+    {...base,label:'Монгол '+word,px:60,py:60},
+    {...base,label:'Overlong '+word,px:170,py:140,length:20},
+    {...base,label:'Ordinary',px:150,py:220},
+  ]}];
+  const waiting=context();
+  const baseResult=drawFlatTextLabels(waiting,camera,labels);
+  assert.equal(baseResult.get('routes'),1);
+  assert.deepEqual(waiting.draws.filter(a=>a[0]==='fill').map(a=>a[1]),['Ordinary']);
+  const loaded=context();
+  const out=drawFlatTextLabels(loaded,camera,labels,{getMongolianFont:()=> '10px "Atlas Mongolian"'});
+  assert.equal(out.get('routes'),2);
+  assert.deepEqual(loaded.draws.filter(a=>a[0]==='rotate').map(a=>a[1]),[-Math.PI/4,Math.PI/2]);
+  assert.deepEqual(loaded.draws.filter(a=>a[0]==='fill').map(a=>a[1]),['Ordinary','Монгол ',word]);
+});

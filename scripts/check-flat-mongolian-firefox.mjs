@@ -11,16 +11,21 @@ import {ormVectorFixture} from './orm-vector-fixture.mjs';
 import {flatCamera} from '../styles/flat-camera.mjs';
 
 const word='ᠤᠯᠠᠭᠠᠨᠪᠠᠭᠠᠲᠤᠷ', next='ᠬᠣᠲᠠᠶᠢᠨ', station='Улаанбаатар';
+const route='Төмөр зам';
 const center=[106.908,47.908], width=960,height=640,zoom=10;
 const camera=flatCamera({center,width,height,zoom});
 const point=(id,name,x,y,role)=>({type:'Feature',id,properties:{id:'node-'+id,name,role,feature:'station'},
   geometry:{type:'Point',coordinates:camera.unproject([x,y])}});
+const line=(id,name,vertices,role)=>({type:'Feature',id,properties:{name,role},geometry:{type:'LineString',
+  coordinates:vertices.map(p=>camera.unproject(p))}});
 const index=geojsonvt({type:'FeatureCollection',features:[
   point(566997277,station+' '+word,250,220,'main'),
   point(2,'Дамжин '+word+' '+next,620,220,'wrap'),
   point(3,'Ordinary Latin',240,440,'control'),
   point(4,'Occluded',380,292,'collision'),
   point(5,'Open space',220,320,'collision'),
+  line(6,route+' '+word,[[550,562],[924,472]],'line-mixed'),
+  line(7,'Ordinary route',[[50,603],[430,520]],'line-control'),
 ]},{extent:4096,indexMaxZoom:10});
 const fonts=process.env.ATLAS_MONGOLIAN_TEST_FONT ?? 'tests/fixtures/mongolian-font/mongolian-400-018.woff2';
 const woff=await readFile(fonts);
@@ -30,13 +35,19 @@ const preview=createPreviewServer({root:'styles'});
 const layer=(id,role,x=10)=>({type:'symbol',id,source:'stationScriptFixture','source-layer':'fixture_labels',
   layout:{'text-field':['get','name'],'text-size':20,'text-anchor':'top-left','text-max-width':x,'text-padding':0},
   filter:['==',['get','role'],role],paint:{'text-color':'#27ff7a'}});
+const lineLayer=(id,role)=>{
+  const l=layer(id,role);
+  l.layout['symbol-placement']='line';l.layout['text-anchor']='center';l.layout['text-max-width']=10;
+  return l;
+};
 const server=createServer((req,res)=>{
   const path=new URL(req.url,'http://localhost').pathname;
   if(path==='/')return res.writeHead(200,{'content-type':'text/html'}).end(html);
   if(path==='/world.style.json'){
     const style={...baseStyle,sources:{...baseStyle.sources,stationScriptFixture:{type:'vector',tiles:[origin+'/fixture_labels/{z}/{x}/{y}'],minzoom:10,maxzoom:10}},
       layers:[...baseStyle.layers,layer('station-mixed-fixture','main'),layer('station-wrap-fixture','wrap',6),
-        layer('station-ordinary-fixture','control'),layer('basemap-collision-fixture','collision')]};
+        layer('station-ordinary-fixture','control'),layer('basemap-collision-fixture','collision'),
+        lineLayer('route-mixed-fixture','line-mixed'),lineLayer('route-ordinary-fixture','line-control')]};
     return res.writeHead(200,{'content-type':'application/json'}).end(JSON.stringify(style));
   }
   if(path.startsWith('/fixture_labels/')){
@@ -75,7 +86,7 @@ try{
     CanvasRenderingContext2D.prototype.fillText=function(text,x,y){
       if(this.canvas.classList.contains('atlas-flat-preview')&&this.fillStyle==='#27ff7a'){
         const transform=this.getTransform(),p=transform.transformPoint({x,y}),length=this.measureText(text).width;
-        window.labels.push({text,x:p.x,y:p.y,vertical:transform.b>0.9&&Math.abs(transform.a)<.1,font:this.font,length});
+        window.labels.push({text,x:p.x,y:p.y,vertical:transform.b>0.9&&Math.abs(transform.a)<.1,angle:Math.atan2(transform.b,transform.a),font:this.font,length});
       }
       return draw.call(this,text,x,y);
     };
@@ -85,22 +96,26 @@ try{
   await canvas.waitFor({timeout:15000});
   if(await page.locator('#controls').isVisible())await page.locator('#collapse').click();
   await page.waitForFunction(station=>window.labels.some(x=>x.text.trim()===station&&x.vertical===false),station,{timeout:9000}).catch(async e=>{console.log("state",errors,await page.locator("#map-status").textContent(),await page.evaluate(()=>window.labels));throw e;});
-  const data=await page.evaluate(({station,word})=>{
+  await page.waitForFunction(route=>window.labels.some(x=>x.text.startsWith(route))&&
+    window.labels.some(x=>x.text==='Ordinary route'),route,{timeout:9000});
+  const data=await page.evaluate(({station,word,route})=>{
     const original=window.labels.find(x=>x.text.trim()===station),col=window.labels.find(x=>x.text===word&&x.x<500);
     const c=document.querySelector('canvas.atlas-flat-preview');
     if(!col)return {labels:window.labels,webgl:window.webgl};
     const image=c.getContext('2d').getImageData(0,0,c.width,c.height);
-    const totals=[];
-    for(let y=Math.floor(col.y);y<Math.ceil(col.y+col.length);y++){
+    const inkRows=sample=>{const totals=[];
+    for(let y=Math.floor(sample.y);y<Math.ceil(sample.y+sample.length);y++){
       let n=0;
-      for(let x=Math.floor(col.x-9);x<=Math.ceil(col.x+9);x++){
+      for(let x=Math.floor(sample.x-9);x<=Math.ceil(sample.x+9);x++){
         const i=(y*image.width+x)*4;
         if(image.data[i]<100&&image.data[i+1]>200&&image.data[i+2]>60&&image.data[i+2]<165)n++;
       }
       totals.push(n);
     }
-    return {labels:window.labels,webgl:window.webgl,original,col,cols:totals,loaded:Array.from(document.fonts).some(f=>f.family==='Atlas Mongolian'&&f.status==='loaded')};
-  },{station,word});
+    return totals;};
+    const lineText=window.labels.find(x=>x.text.trim()===route),lineColumn=window.labels.find(x=>x.text===word&&x.x>550&&x.y>350);
+    return {labels:window.labels,webgl:window.webgl,original,col,cols:inkRows(col),lineText,lineColumn,lineInk:lineColumn?inkRows(lineColumn):null,loaded:Array.from(document.fonts).some(f=>f.family==='Atlas Mongolian'&&f.status==='loaded')};
+  },{station,word,route});
   assert.deepEqual(data.webgl,[]);assert.deepEqual(errors,[]);
   assert.ok(data.loaded&&data.col?.vertical&&data.col.font.includes('Atlas Mongolian'),JSON.stringify(data));
   assert.ok(data.original.x<data.col.x&&Math.abs(data.original.y-data.col.y)<18,'Cyrillic is horizontal to the left, aligned near the top');
@@ -108,7 +123,13 @@ try{
   let longest=0,gap=0;
   for(const width of data.cols.slice(4,-4)){gap=width?0:gap+1;longest=Math.max(longest,gap);}
   assert.ok(longest<=2,'The joining spine must not break into detached letter rows: '+JSON.stringify(data.cols));
-  const wraps=data.labels.filter(x=>x.vertical&&x.x>550);
+  assert.ok(data.lineColumn?.vertical&&data.lineText&&Math.abs(data.lineText.angle)<.01&&data.lineText.x<data.lineColumn.x,
+    'A diagonal railway keeps Cyrillic horizontal and Mongolian vertical: '+JSON.stringify(data.labels));
+  let lineGap=0,lineWorst=0;
+  for(const count of data.lineInk.slice(4,-4)){lineGap=count?0:lineGap+1;lineWorst=Math.max(lineWorst,lineGap);}
+  assert.ok(data.lineInk.filter(n=>n>0).length>data.lineInk.length*.8&&lineWorst<=2,'Line caption joining spine must remain connected');
+  assert.ok(data.labels.some(x=>x.text==='Ordinary route'&&x.angle<-.1&&!x.vertical),'ordinary captions still follow the diagonal');
+  const wraps=data.labels.filter(x=>x.vertical&&x.x>550&&x.y<350);
   assert.ok(wraps.length>=2&&wraps.some(x=>x.text.includes(next)),JSON.stringify(data.labels));
   const byX=wraps.slice().sort((a,b)=>a.x-b.x);
   assert.ok(byX.every((p,i)=>i===0||(p.x>byX[i-1].x&&Math.abs(p.y-byX[i-1].y)<6)));
@@ -121,7 +142,7 @@ try{
   assert.match(await page.locator('#detail-content').innerText(),/Улаанбаатар/);
   assert.equal(await page.locator('#detail-content .atlas-mongolian').first().evaluate(x=>getComputedStyle(x).writingMode),'vertical-lr');
   console.log(JSON.stringify({station:word,joinedRows:data.cols.filter(n=>n>0).length,columnRows:data.cols.length,longestGap:longest,
-    columns:byX.map(({x,y,text})=>({x,y,text})),ordinary:true,collision:true,inspector:true}));
+    line:{joinedRows:data.lineInk.filter(n=>n>0).length,columnRows:data.lineInk.length,longestGap:lineWorst},columns:byX.map(({x,y,text})=>({x,y,text})),ordinary:true,collision:true,inspector:true}));
 }finally{
   await browser?.close();
   await rm(profile,{recursive:true,force:true});
