@@ -1,0 +1,64 @@
+{
+  "coverage": "world",
+  "built": "2026-11-26T18:57:18.963Z",
+  "source": "OpenStreetMap via the Geofabrik extracts",
+  "licence": "ODbL-1.0",
+  "parts": [
+    {
+      "bbox": [
+        -90,
+        -180,
+        90,
+        180
+      ],
+      "timestamp": "2026-11-15T21:22:28Z",
+      "features": 777795
+    }
+  ],
+  "features": 777795,
+  "states": {
+    "proposed": 19624,
+    "construction": 42316,
+    "disused": 196574,
+    "abandoned": 445190,
+    "razed": 72953,
+    "demolished": 519,
+    "removed": 619
+  },
+  "regression": {
+    "name": "남부내륙선",
+    "ways": 6,
+    "bbox": [
+      128.0459527,
+      34.8708296,
+      128.5578981,
+      36.1354894
+    ],
+    "ids": [
+      1555331998,
+      1555332000,
+      1555332004,
+      1555332005,
+      1555332006,
+      1575985429
+    ]
+  },
+  "loadingGauges": 209761,
+  "complete": true,
+  "oldestSource": "2026-11-15T21:22:28Z",
+  "newestSource": "2026-11-24T23:34:58Z",
+  "extract": {
+    "index": "20261126T161713Z-45852008906",
+    "regions": 175,
+    "missingRegions": [],
+    "read": 65698635,
+    "kept": 993486,
+    "waysWithoutGeometry": 0
+  },
+  "polar": {
+    "from": "rail-data",
+    "commit": "8b649955d0fa6ac42fe0b0d7be8b8ddc990959f0",
+    "files": 101,
+    "copied": "2026-11-26T18:57:19.158Z"
+  }
+}

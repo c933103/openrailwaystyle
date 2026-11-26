@@ -1,0 +1,8 @@
+{
+  "schema": 1,
+  "dataset": "lifecycle",
+  "source": "extract",
+  "complete": true,
+  "osmTimestamp": "2026-11-15T21:22:28Z",
+  "inputSha256": "286bb0ff3d2c5c44188ae8dd387f48747cff3d7b936615f4e909b6e2cc546816"
+}
