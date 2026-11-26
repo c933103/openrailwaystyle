@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {spawnSync} from 'node:child_process';
-import {extractReadiness} from '../scripts/extract-rollout.mjs';
+import {extractReadiness,targetedRefresh} from '../scripts/extract-rollout.mjs';
 const filter=id=>id.startsWith('gap/')?'gap-v2':'region-v2';
 const complete=()=>({schema:1,generation:'20261117T010203Z-123',missing:[],regions:{a:{region:'a',filter:'region-v2'},'gap/1':{region:'gap/1',filter:'gap-v2'}}});
 test('current regional and gap selections allow assembly only for their completed refresh',()=>{
@@ -36,4 +36,19 @@ test('active same-source or gaps-only runs cannot swallow a needed continuation'
   assert.equal(result.status,0,result.stderr);
   if(expected)assert.ok(result.stdout.includes(`DISPATCH:${expected}`),result.stdout);else assert.ok(!result.stdout.includes('DISPATCH:'),result.stdout);
  }
+});
+
+test('the reviewed 531 request never expands past its two existing working copies',()=>{
+ const request={schema:1,reason:531,sourceDate:'2026-11-24',regionIds:['south-america','australia-oceania']};
+ const current=complete();
+ for(const id of request.regionIds) current.regions[id]={region:id,filter:filter(id),sourceTimestamp:'2026-11-15T21:22:28Z'};
+ assert.deepEqual(targetedRefresh(current,request,filter),{required:true,regionIds:request.regionIds,sourceDate:request.sourceDate});
+ for(const id of request.regionIds) current.regions[id].sourceTimestamp='2026-11-24T20:00:00Z';
+ assert.equal(targetedRefresh(current,request,filter).required,false);
+ assert.throws(()=>targetedRefresh(current,{...request,regionIds:[...request.regionIds,'china']},filter),/not the reviewed/i);
+ assert.throws(()=>targetedRefresh(current,{...request,sourceDate:'2026-11-25'},filter),/not the reviewed/i);
+ delete current.regions['south-america'];
+ assert.throws(()=>targetedRefresh(current,request,filter),/missing or invalid/i);
+ current.regions.a.filter='old';
+ assert.throws(()=>targetedRefresh(current,request,filter),/complete current filter/);
 });

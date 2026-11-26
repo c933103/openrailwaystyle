@@ -8,6 +8,7 @@ on:
       - scripts/lifecycle.mjs
       - scripts/extract-rollout.mjs
       - .github/workflows/extract-rollout.yml
+      - scripts/extract-refresh-requests/531.json
   workflow_run:
     workflows: [Geofabrik region extracts]
     types: [completed]
@@ -32,6 +33,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           ref: main
+          fetch-depth: 2
           persist-credentials: false
       - uses: actions/setup-node@v4
         with:
@@ -43,7 +45,41 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: node scripts/extract-release.mjs load index.json
+      - name: Read the reviewed two-region refresh request
+        if: github.event_name == 'push'
+        id: targeted
+        env:
+          PUSH_BEFORE: ${{ github.event.before }}
+          PUSH_AFTER: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          request=scripts/extract-refresh-requests/531.json
+          # Only this change on trusted main can trigger the refresh. Removal
+          # retires it; later unrelated pushes must not repeat it.
+          [[ "$PUSH_BEFORE" =~ ^[a-f0-9]{40}$ && "$PUSH_AFTER" =~ ^[a-f0-9]{40}$ ]]
+          if ! git cat-file -e "$PUSH_BEFORE^{commit}" 2>/dev/null; then
+            git fetch --no-tags --depth=1 origin "$PUSH_BEFORE"
+          fi
+          if git diff --quiet "$PUSH_BEFORE" "$PUSH_AFTER" -- "$request"; then exit 0; fi
+          echo 'matched=true' >> "$GITHUB_OUTPUT"
+          if ! git cat-file -e "$PUSH_AFTER:$request" 2>/dev/null; then exit 0; fi
+          git show "$PUSH_AFTER:$request" > targeted-request.json
+          node scripts/extract-rollout.mjs targeted index.json targeted-request.json
+      - name: Dispatch only the reviewed two-region acquisition
+        if: steps.targeted.outputs.required == 'true' && github.run_attempt == 1
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          REGION_IDS: ${{ steps.targeted.outputs.region_ids }}
+          SOURCE_DATE: ${{ steps.targeted.outputs.source_date }}
+        run: |
+          set -euo pipefail
+          [[ "$REGION_IDS" == "south-america,australia-oceania" ]]
+          [[ "$SOURCE_DATE" == "2026-11-24" ]]
+          gh workflow run osm-extract.yml --ref main \
+            -f "region_ids=$REGION_IDS" -f "source_date=$SOURCE_DATE" -f gaps_only=false
       - name: Check required continuation
+        if: steps.targeted.outputs.matched != 'true'
         id: readiness
         env:
           EVENT_NAME: ${{ github.event_name }}
