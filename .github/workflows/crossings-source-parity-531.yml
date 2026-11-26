@@ -1,0 +1,26 @@
+name: Compare pinned crossings snapshots for PR 531
+on:
+  push:
+    branches: [evidence/crossings-source-parity-531]
+permissions:
+  contents: read
+jobs:
+  compare:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Compare exact OSM crossing tables without provider requests
+        shell: bash
+        run: |
+          set -euo pipefail
+          OLD=d5388a9c883f62ce636b29a47324a14221a066bc
+          NEW=176dabadeb74996089178c870775fb08b174287a
+          git fetch --quiet --depth=1 --filter=blob:none origin "$OLD" "$NEW"
+          git show "$OLD:crossings.tsv.gz" > "$RUNNER_TEMP/old.tsv.gz"
+          git show "$NEW:crossings.tsv.gz" > "$RUNNER_TEMP/new.tsv.gz"
+          git show "$OLD:regions.json" > "$RUNNER_TEMP/regions.json"
+          git show "$NEW:source.json" > "$RUNNER_TEMP/source.json"
+          python3 scripts/compare-crossings-531.py "$RUNNER_TEMP" | tee "$GITHUB_STEP_SUMMARY"
