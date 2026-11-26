@@ -1,50 +1,86 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {settings} from '../scripts/data-source.mjs';
-import {advancedWatermarks, selectedWatermarks} from '../scripts/extract-pages-handoff.mjs';
+import {inputIdentity, selectedGeneration, lastVerifiedGeneration, verifyStagedCommits} from '../scripts/extract-pages-handoff.mjs';
 
-const OLD = '2026-11-15T21:22:28Z', NEW = '2026-12-15T21:22:28Z';
-const marker = (dataset, osmTimestamp, fields = {}) => JSON.stringify({
-  dataset, source: 'extract', schema: 1, complete: true, osmTimestamp, ...fields,
+const hash = char => char.repeat(64), oid = char => char.repeat(40);
+const day = n => '2026-11-' + n + 'T00:00:00Z';
+const section = (c,n) => ({sha256:hash(c),sourceTimestamp:day(n)});
+const old = {regions:{a:section('a',15),b:section('b',20),c:section('c',24)}, generation:'first'};
+const advanced = {regions:{...old.regions,b:section('d',23)},generation:'second'};
+const read = (id, identity, ref='a') => ({ref:oid(ref),marker:JSON.stringify({schema:1,complete:true,dataset:id,
+  source:'extract', osmTimestamp:day(15), inputSha256:identity})});
+const selected = {lifecycle:{source:'extract'}, 'branch-lines':{source:'overpass'}};
+const gen = async (index, polar='c', builder='e') => (await selectedGeneration(selected,
+  async s => {assert.equal(s,'lifecycle-extract-data');return read('lifecycle', inputIdentity(index,hash(builder),oid(polar)));})).generation;
+const run = (id, conclusion='success') => ({id,head_branch:'main',event:'workflow_dispatch',conclusion,run_attempt:1});
+const deploy = (generation, conclusion='success', published='success', when='01') => ({name:'deploy',conclusion,steps:[
+  {name:'Deploy to GitHub Pages',conclusion:published,started_at:day(when)},
+  ...(generation === undefined ? [] : [{name:'Retain verified extract generation '+generation,conclusion}]),
+]});
+
+test('an interior region and a polar update both change the generation at the same date bounds', async () => {
+  assert.notEqual(await gen(old),await gen(advanced));
+  assert.notEqual(await gen(old),await gen(old,'f'));
+  assert.notEqual(await gen(old),await gen(old,'c','f'));
+  assert.equal(await gen(old),await gen({regions:{c:old.regions.c,b:old.regions.b,a:old.regions.a},generation:'rerun'}));
+  assert.throws(()=>inputIdentity({regions:{a:section('z',15)}},hash('e'),null),/digest/);
 });
 
-test('only selected complete extracts are eligible, including repository overrides', async () => {
-  const chosen = settings({lifecycle: 'extract', 'branch-lines': 'overpass', heritage: 'extract'},
-    {lifecycle: 'overpass', 'branch-lines': 'extract'});
-  const reads = [];
-  const result = await selectedWatermarks(chosen, async branch => {
-    reads.push(branch);
-    return branch === 'branch-lines-extract-data' ? marker('branch-lines', NEW) : marker('heritage', NEW, {complete: false});
-  });
-  assert.deepEqual(reads.sort(), ['branch-lines-extract-data', 'heritage-extract-data']);
-  assert.deepEqual(result, {heritage: null, 'branch-lines': NEW});
+test('a replay compares with actual successful deployment, not with mutable before/after refs', async () => {
+  const held=await gen(advanced), previous=await gen(old);
+  const failed=run(3,'failure'), skipped=run(2), verified=run(1);
+  const history=[failed,skipped,verified];
+  const get=async (id,attempt) => {
+    assert.equal(attempt,1);
+    return id===2?[deploy(held,'skipped','skipped','02')]:id===1?[deploy(previous)]:[];
+  };
+  assert.equal(await lastVerifiedGeneration(history,get),previous);
+  assert.notEqual(await lastVerifiedGeneration(history,get),held);
+  const withAdvance=[run(4),...history];
+  assert.equal(await lastVerifiedGeneration(withAdvance,async (id,attempt)=>id===4?[deploy(held,'success','success','04')]:get(id,attempt)),held);
+  assert.equal(await lastVerifiedGeneration(withAdvance,async (id,attempt)=>id===4?[deploy(undefined,'success','success','04')]:get(id,attempt)),null,
+    'a historic matching receipt cannot mask a newer unbound delivery');
 });
 
-test('first complete and advancing watermarks trigger; equal, regressed or incomplete do not', () => {
-  assert.deepEqual(advancedWatermarks({lifecycle: OLD, 'branch-lines': null}, {lifecycle: NEW, 'branch-lines': OLD}),
-    [{id: 'lifecycle', before: OLD, after: NEW}, {id: 'branch-lines', before: null, after: OLD}]);
-  assert.deepEqual(advancedWatermarks({lifecycle: OLD}, {lifecycle: OLD}), []);
-  assert.deepEqual(advancedWatermarks({lifecycle: NEW}, {lifecycle: OLD}), []);
-  assert.deepEqual(advancedWatermarks({lifecycle: OLD}, {lifecycle: null}), []);
+test('a newer unverified publication invalidates a stale success even across reruns', async () => {
+  const held=await gen(advanced);
+  const runs=[{...run(3,'failure'),run_attempt:2},run(1)];
+  const get=async (id,attempt) => {
+    if (id===3 && attempt===2) return [deploy(undefined,'failure','skipped','04')];
+    if (id===3) return [deploy(undefined,'failure','success','03')];
+    return [deploy(held,'success','success','01')];
+  };
+  assert.equal(await lastVerifiedGeneration(runs,get),null);
 });
 
-test('a missing or wrong marker cannot promote a dataset and transport failures fail closed', async () => {
-  const chosen = {lifecycle: {source: 'extract'}};
-  assert.deepEqual(await selectedWatermarks(chosen, async () => null), {lifecycle: null});
-  assert.deepEqual(await selectedWatermarks(chosen, async () => marker('heritage', NEW)), {lifecycle: null});
-  await assert.rejects(selectedWatermarks(chosen, async () => { throw new Error('429 fixture'); }), /429 fixture/);
+test('source selection alone cannot certify skipped or wrong staging', () => {
+  const expected={crossings:oid('f'),'axle-load':oid('e')};
+  assert.throws(()=>verifyStagedCommits(expected,[['axle-load',oid('e')]]),/crossings/);
+  assert.throws(()=>verifyStagedCommits(expected,[['crossings',oid('f')],['axle-load',oid('a')]]),/axle-load/);
+  assert.throws(()=>verifyStagedCommits(expected,[['crossings',oid('f')],['crossings',oid('f')],['axle-load',oid('e')]]),/crossings/);
+  verifyStagedCommits(expected,[['crossings',oid('f')],['axle-load',oid('e')],['lifecycle',oid('c')]]);
 });
 
-test('handoff measures before and after publication and dispatches only from a successful main assembly', () => {
-  const workflow = readFileSync(new URL('../.github/workflows/osm-assemble.yml', import.meta.url), 'utf8');
-  const before = workflow.indexOf('node scripts/extract-pages-handoff.mjs before');
-  const publish = workflow.lastIndexOf('git push --force origin HEAD:lifecycle-extract-data');
-  const after = workflow.indexOf('node scripts/extract-pages-handoff.mjs after');
-  const dispatch = workflow.indexOf('gh workflow run site.yml --ref main');
-  assert.ok(before >= 0 && before < publish && publish < after && after < dispatch);
-  assert.match(workflow, /if: github.ref == 'refs\/heads\/main' && needs.assemble.outputs.refresh_pages == 'true'\s+needs: assemble/);
-  assert.equal((workflow.match(/actions: write/g) ?? []).length, 1);
-  assert.match(workflow.slice(workflow.indexOf('\n  refresh-pages:')), /permissions:\s+actions: write/);
-  assert.doesNotMatch(workflow, /uses: actions\/deploy-pages/);
+test('selection gates incomplete or missing inputs and binds a legacy complete marker to its exact ref', async () => {
+  assert.deepEqual(await selectedGeneration(selected,async()=>null),{generation:null,commits:{}});
+  assert.equal((await selectedGeneration(selected,async()=>({ref:oid('a'),marker:'{}'}))).generation,null);
+  assert.notEqual((await selectedGeneration(selected,async()=>read('lifecycle',undefined,'a'))).generation,
+    (await selectedGeneration(selected,async()=>read('lifecycle',undefined,'b'))).generation);
+  assert.equal((await selectedGeneration(selected,async()=>read('lifecycle',hash('c'),'a'))).generation,
+    (await selectedGeneration(selected,async()=>read('lifecycle',hash('c'),'b'))).generation);
+});
+
+test('workflows bind a verified delivery and can retry without acquisition', () => {
+  const readWorkflow = name => readFileSync(new URL('../.github/workflows/'+name,import.meta.url),'utf8');
+  const assemble=readWorkflow('osm-assemble.yml'),site=readWorkflow('site.yml');
+  assert.equal((assemble.match(/extract-pages-handoff\.mjs" stamp/g)??[]).length,10);
+  assert.match(assemble,/assemble:\n    if: '!inputs\.pages_only'/);
+  assert.match(assemble,/if: always\(\) && !cancelled\(\) && github\.ref == 'refs\/heads\/main' && \(needs\.assemble\.result == 'success' \|\| inputs\.pages_only\)/);
+  assert.match(assemble,/gh workflow run site\.yml --ref main --field "extract_generation=\$GENERATION"/);
+  assert.equal((site.match(/extract-pages-handoff\.mjs staged/g)??[]).length,11);
+  assert.equal((assemble.match(/Verify Node 26 security baseline/g)??[]).length,2);
+  const positions=['extract-pages-handoff.mjs pin','Choose each dataset','extract-pages-handoff.mjs check','Save reviewable site',
+    'Verify published map with local railway fixture','Retain verified extract generation'].map(x=>site.indexOf(x));
+  assert.ok(positions.every((n,i)=>n>=0 && (i===0 || n>positions[i-1])));
 });
