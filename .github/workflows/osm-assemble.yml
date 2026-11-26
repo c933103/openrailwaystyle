@@ -10,8 +10,8 @@
 # aerialways-extract-data, street-running-extract-data,
 # heritage-extract-data, axle-load-extract-data, lifecycle-extract-data).
 # The site uses
-# one only when the repository variable DATA_SOURCES selects it
-# (scripts/data-source.mjs); the Overpass branches are never written here.
+# one only when scripts/data-sources.json (or the DATA_SOURCES override)
+# selects it (scripts/data-source.mjs); the Overpass branches are never written here.
 # Run by hand only.
 name: Assemble Geofabrik region extracts
 on:
