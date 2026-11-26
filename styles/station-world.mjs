@@ -118,7 +118,7 @@ export async function prepareWorldStationOverlay({
     if(error?.name!=='AbortError')logger.warn?.('Worldwide station snapshot not usable:',error.message);
     return null;
   }
-  const reader=createBundleReader({root,fetcher,keep:16});
+  const reader=createBundleReader({root,fetcher,keep:16,validatedBundleIndex:index});
   return {
     manifest,
     // Only the station snapshots that passed the complete index check can
@@ -130,6 +130,16 @@ export async function prepareWorldStationOverlay({
         const [z,x,y]=key.split('/').map(Number);
         const bytes=await reader.tile(z,x,y,controller?.signal);
         return {data:bytes || new ArrayBuffer(0)};
+      });
+    },
+    // Canvas uses serialized style objects rather than imperative MapLibre
+    // objects. Share the exact same validated source and ordering policy.
+    installStyle(style) {
+      const anchor=id=>style.layers.findIndex(layer=>layer.id===id);
+      return this.install({
+        getSource:id=>style.sources[id],getLayer:id=>style.layers[anchor(id)],
+        addSource:(id,source)=>{style.sources[id]=source;},
+        addLayer:(layer,before)=>style.layers.splice(anchor(before),0,layer),
       });
     },
     install(map) {

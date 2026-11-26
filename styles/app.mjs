@@ -32,7 +32,7 @@ import {createEnergyNetworkProtocol} from './energy-network.mjs?v=20261126-canva
 import {createBundleReader} from './tile-bundles.mjs?v=20261126-canvas-basemap-sync-1';
 import {createReferenceReader} from './mainline-reference.mjs?v=20261126-canvas-basemap-sync-1';
 import {addStationFallbackLayers, createStationFallbackState, createRailReferenceState, createReferenceRefresh, stationFallbackFilter, stationFallbackNamesEnabled, stationFallbackMarkersEnabled, shouldRefreshCuratedStationSource} from './station-fallback.mjs?v=20261126-canvas-basemap-sync-1';
-import {installWorldStationLifecycle, createStationViewPaint, WORLD_STATION_SOURCE, WORLD_STATION_DOTS, WORLD_STATION_SUPERSEDED_DOTS} from './station-world.mjs?v=20261126-canvas-basemap-sync-1';
+import {installWorldStationLifecycle, prepareWorldStationOverlay, createStationViewPaint, WORLD_STATION_SOURCE, WORLD_STATION_DOTS, WORLD_STATION_SUPERSEDED_DOTS} from './station-world.mjs?v=20261126-canvas-basemap-sync-1';
 import {loadImageryConfig, applyImageryConfig, createImageryProtocol, installImageryAttribution, PROVIDER_ATTRIBUTION} from './imagery.mjs?v=20261126-canvas-basemap-sync-1';
 import {createSharedTileProtocols} from './shared-tile-protocols.mjs?v=20261126-canvas-basemap-sync-1';
 
@@ -1964,7 +1964,8 @@ async function initialize() {
       // Station fallback names are used only after the ORM station source fails.
       // Avoid flashing fallback names during the first frame of a healthy load.
       const independent=['station-basemap-fallback-dots','station-basemap-fallback-names','station-curated-fallback-dots'].includes(layer.id);
-      const enabled=layer.id.startsWith('station-') && layer.id.includes('-fallback-')
+      const superseded=canvas&&stationWorldActive&&WORLD_STATION_SUPERSEDED_DOTS.includes(layer.id);
+      const enabled=superseded ? false : layer.id.startsWith('station-') && layer.id.includes('-fallback-')
         ?canvas&&independent&&settings.stations&&settings.background!=='satellite':visible;
       if(enabled!==undefined)(layer.layout ||= {}).visibility=enabled?'visible':'none';
       if (isLowZoomStationLayer(layer.id)) (layer.paint ||= {})['text-color'] = lowZoomStationTextColor();
@@ -2040,7 +2041,9 @@ async function initialize() {
     const needle=textNode('span','↑');
     needle.setAttribute('aria-hidden','true');
     compass.append(needle);
-    let flatLocation, refreshFlatPower;
+    let flatLocation, refreshFlatPower, flatStationOverlay;
+    const stationsLifetime=new AbortController();
+    addEventListener('pagehide',event=>{if(!event.persisted)stationsLifetime.abort();});
     const creditsBox=textNode('details','','atlas-flat-credit-box');
     creditsBox.open=settings.attributionOpen;
     creditsBox.addEventListener('toggle',()=>{
@@ -2131,6 +2134,13 @@ async function initialize() {
         }
       },
       onStatus({errors,loading,clamped,railFallback}) {
+        if(flatStationOverlay&&errors.includes(WORLD_STATION_SOURCE)){
+          // A failed bundle should restore established markers instead of
+          // leaving a region blank. Rebuild only after this draw finishes.
+          flatStationOverlay=null;
+          stationWorldActive=false;
+          queueMicrotask(()=>{if(!stationsLifetime.signal.aborted)flatRefreshStyle?.(true);});
+        }
         scheduleNearbyTransport();
         status.classList.toggle('error',errors.length>0);
         const state=canvasMapStatus({errors,loading,clamped,railFallback});
@@ -2223,6 +2233,7 @@ async function initialize() {
       const signature=JSON.stringify(settings);
       if(!force&&applied===signature)return;
       const next=structuredClone(flatTemplate);
+      flatStationOverlay?.installStyle(next);
       localizeStyle(next);
       next.sources.relief.tiles=[dem.sharedDemProtocolUrl];
       applyInitialVisibility(next,true);
@@ -2238,6 +2249,17 @@ async function initialize() {
       applied=signature;
       frequencyExpiry?.update();
     };
+    void prepareWorldStationOverlay({root:new URL('./data/station-points/',import.meta.url),
+      signal:stationsLifetime.signal}).then(overlay=>{
+      if(!overlay||stationsLifetime.signal.aborted)return;
+      overlay.register(tileProtocols);
+      flatStationOverlay=overlay;
+      stationWorldActive=true;
+      flatRefreshStyle(true);
+    }).catch(error=>{
+      flatStationOverlay=null;stationWorldActive=false;
+      console.warn('Canvas worldwide station snapshot not activated:',error.message);
+    });
     if(pendingFlatNavigation) {flatNavigation(pendingFlatNavigation);pendingFlatNavigation=null;}
     frequencyExpiry?.update();
     refreshFlatPower();
