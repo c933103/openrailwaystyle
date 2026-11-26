@@ -4,6 +4,7 @@ import {execFileSync} from 'node:child_process';
 import {createServer} from 'node:https';
 import {mkdtemp,readFile,rm} from 'node:fs/promises';
 import {tmpdir} from 'node:os';
+import {connect} from 'node:net';
 import {join} from 'node:path';
 import {firefox} from 'playwright';
 import {createPreviewServer} from './serve.mjs';
@@ -78,9 +79,19 @@ try {
   const before=requests.length;
   // Turn off the origin itself. Firefox's DevTools offline emulation can
   // also deny top-level navigation before the Service Worker sees it.
-  const listening=server;
-  await new Promise(done=>{listening.close(done);listening.closeAllConnections();});
+  const listening=server, port=listening.address().port;
+  await new Promise((done,fail)=>{
+    listening.close(error=>error?fail(error):done());listening.closeAllConnections();
+  });
   server=null;
+  await assert.rejects(new Promise((resolve,reject)=>{
+    const socket=connect(port,'127.0.0.1');
+    socket.once('connect',()=>{socket.destroy();resolve();});
+    socket.once('error',reject);
+  }),{code:'ECONNREFUSED'},'verify the origin cannot be reached');
+  await page.reload({waitUntil:'domcontentloaded'});
+  await page.locator('canvas.atlas-flat-preview').waitFor();
+  assert.equal(await page.evaluate(()=>window.glAttempts),0);
   await page.close();
   page=await context.newPage();
   await page.goto(origin);

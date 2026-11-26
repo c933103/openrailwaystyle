@@ -83,7 +83,7 @@ jobs:
       - name: Exercise native Canvas box zoom, mouse rotation and location heading
         run: timeout 100s node scripts/check-flat-entry-firefox.mjs --canvas-desktop-parity
       - name: Install and reload the Canvas PWA with WebGL missing and then offline
-        run: timeout 100s node scripts/check-flat-entry-firefox.mjs --pwa-canvas-offline
+        run: timeout 100s node scripts/check-flat-offline-firefox.mjs
       - name: Verify automatic Canvas startup and distinguish shared-data errors
         run: timeout 90s node scripts/check-flat-entry-firefox.mjs --startup-fallback
       - name: Keep drawing controls clear of the desktop sidebar without WebGL
