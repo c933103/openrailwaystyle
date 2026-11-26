@@ -4,6 +4,11 @@ on:
     branches: [main, fix/atlas-relief, fix/atlas-contours-languages, fix/transport-destinations]
   pull_request:
   workflow_dispatch:
+    inputs:
+      drill:
+        description: 'Fallback drill: JSON list of datasets set to extract whose extract branch this run treats as unusable, e.g. ["street-running"] (docs/data-maintenance.md)'
+        required: false
+        default: ''
 permissions:
   contents: read
 concurrency:
@@ -151,11 +156,14 @@ jobs:
       - name: Install style validator
         run: npm ci --ignore-scripts --no-audit --no-fund
       # Each dataset's branch: its Overpass build, or its extract build when
-      # the repository variable DATA_SOURCES selects it and it is complete
-      # (scripts/data-source.mjs). Overpass is the default and the fallback.
+      # scripts/data-sources.json selects it and it is complete
+      # (scripts/data-source.mjs). Overpass is the fallback. The repository
+      # variable DATA_SOURCES overrides the file for the datasets it names;
+      # the drill input exercises the fallback.
       - name: Choose each dataset's source
         env:
           DATA_SOURCES: ${{ vars.DATA_SOURCES }}
+          DATA_SOURCES_DRILL: ${{ inputs.drill }}
         run: node scripts/data-source.mjs resolve
       - name: Rebuild world style
         run: npm run build

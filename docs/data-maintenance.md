@@ -104,7 +104,8 @@ The site takes each dataset from one branch (`site.yml`, step "Choose each datas
 
 How the choice is made:
 
-- **The setting.** The repository variable `DATA_SOURCES` is a JSON object of dataset → `"overpass"` or `"extract"`, for example `{"heritage":"extract"}`. A dataset not named uses Overpass, and so does every dataset when the variable is unset. A name or value the script does not know fails the deploy, and the last deployment stays.
+- **The setting.** `scripts/data-sources.json` names every dataset with `"overpass"` or `"extract"`. A switch is a reviewed pull request that changes one entry, so the pull request's own `site.yml` run builds and checks the site on the new branch, browser checks included, before anything deploys. Reverting the commit switches back. A file that does not name every dataset, or names one or a source the script does not know, fails the build, and the last deployment stays.
+- **Emergency override.** The repository variable `DATA_SOURCES`, a JSON object for some datasets (for example `{"heritage":"overpass"}`), overrides the file for the datasets it names, so a dataset can go back to Overpass without a commit. Unset, it changes nothing. The step summary says for each dataset whether its setting came from the file or the variable; remove the variable once the file says the same.
 - **The extract build must say it is complete.** A dataset set to `extract` takes its extract branch only when the branch exists and its `source.json` is `{"schema":1, "dataset":"<dataset>", "source":"extract", "complete":true, "osmTimestamp":"<ISO time>"}`.
 - **Fallback.** Otherwise the dataset takes its Overpass branch: when the branch is missing, the lookup fails, or `source.json` is missing or wrong. The step summary names each dataset's branch, and each fallback with its reason.
 - **Format.** Both builds publish the same format, and the staging step's own checks apply to whichever branch is chosen. An extract branch that says it is complete but fails those checks stops the deploy, and the last deployment stays. Checking each dataset's content before switching comes with its extract builder.
@@ -119,7 +120,7 @@ How the choice is made:
 - **Complete assemblies only.** The build refuses an assembly whose report lists missing way nodes.
 - **Whole world, or not complete.** The assembly report carries the index's regions and gap tiles that have no file (`missingRegions`), and those whose file was made with a filter, or gap query, other than the current one (`olderFilter`, judged by the assembling code, not by the index's own list). When either list is not empty, or the report does not say, the build is still published for comparison, but its `source.json` says `complete: false`, so the site's switch keeps the Overpass build.
 - **Dates.** The manifest is dated by the oldest region it was built from (`oldestSource`).
-- **Not used yet.** The site keeps the Overpass build until `DATA_SOURCES` selects `branch-lines`, which is a separate decision after the two builds have been compared.
+- **Not used yet.** The site keeps the Overpass build until `scripts/data-sources.json` selects `branch-lines`, which is a separate decision after the two builds have been compared.
 
 **Urban rail services.** The same workflow then builds them with `scripts/build-extract-service-routes.mjs` and, on `main`, publishes them to `service-routes-extract-data`. The branch lines are published first, so a failed service build does not hold them back.
 - **Same conversion as the Overpass build.** The selection (`isServiceRoute`, and each route's member ways with a track `railway` value, as `serviceView`), the conversion (`tableBuilder`, which `toTable` also uses) and the writer (`service-routes-files.mjs`) are shared. The same elements therefore give byte-identical tiles and table.
@@ -129,7 +130,7 @@ How the choice is made:
   - An element edited after it (it came from a newer region) is not certified as of that time. Its geometry is still drawn, and it is listed under `waysWithUnknownProvenance` in the manifest, as an Overpass element newer than its answer would be.
   - The gap closes as the regions' dates come closer.
 - **Memory.** On germany (51,419 track ways) the table is 188 MB and the peak 928 MB, while tiling. The step runs with a 6 GB heap; the Overpass build tiles a world table of about 275,000 ways within Node's default heap.
-- **Completeness, dates and use** are as for the branch lines: complete only when no region or gap tile is missing, dated by `oldestSource`, and not used until `DATA_SOURCES` selects `service-routes`.
+- **Completeness, dates and use** are as for the branch lines: complete only when no region or gap tile is missing, dated by `oldestSource`, and not used until `scripts/data-sources.json` selects `service-routes`.
 
 **Station points.** Then `scripts/build-extract-station-points.mjs` builds them and, on `main`, publishes them to `station-points-extract-data`.
 - **Same selection, records and tiles.** The selection is the Overpass query's: `railway=station|halt|tram_stop`, or `public_transport=station` with a rail mode. The kept elements (`stationElement`), the records (`stationRecords`) and the tiles (`stationOverviewData`) are the Overpass build's.
@@ -141,7 +142,7 @@ How the choice is made:
   - The exceptions are 28 ways and 2 relations with a node or member edited after Overpass answered.
   - A relation with only relation members has no centre, in Overpass too, and is not a record.
 - **Two reads.** The first reads every tagged object for the stations. The station relations' node and way members are then cut out with `osmium getid --add-referenced`, and only that small file is read with its untagged nodes. The world took about 3 minutes locally.
-- **Completeness, dates and use** are as above; the manifest carries the fields the site checks, with the assembly's regions as the completed ones. It is not used until `DATA_SOURCES` selects `station-points`.
+- **Completeness, dates and use** are as above; the manifest carries the fields the site checks, with the assembly's regions as the completed ones. It is not used until `scripts/data-sources.json` selects `station-points`.
 
 **Level crossings.** Then `scripts/build-extract-crossings.mjs` builds them and, on `main`, publishes them to `crossings-extract-data`.
 - **Same table and files.** The crossings are the `railway=level_crossing` and `railway=crossing` nodes. A crossing is minor when railway ways pass through it and every one is a minor track, the four kinds of `MINOR_TRACKS`; one with no railway way is major, as in the query.
@@ -153,7 +154,7 @@ How the choice is made:
   - 1,227,458 of the 1,231,044 crossings in both are identical.
   - Every crossing only in the extract has a node edited after its region's time.
   - Every differing row but 16 has a node, or a railway way through it, edited after that time. In those 16 the extract has no railway way through the crossing. In 2 of them the ways lost their `railway` tag after that time; for the other 14, no way through the crossing is left in the extract at all.
-- **Completeness, dates and use** are as above. It is not used until `DATA_SOURCES` selects `crossings`.
+- **Completeness, dates and use** are as above. It is not used until `scripts/data-sources.json` selects `crossings`.
 
 **Railway signals, energy supplies and power methods (traction).** Then `scripts/build-extract-traction.mjs` builds the traction dataset and, on `main`, publishes it to `traction-extract-data`, in the `traction-data` layout, except that the power GeoJSON goes out as its gzip copies only (`power/*.geojson.gz`). The site reads only those, and `source.json` requires only those (`TRACTION_FILES`). The extract's expanded power methods are over GitHub's 100 MiB file limit as raw GeoJSON (107.27 MB on 2026-11-25). The publish step also names any file over that limit and stops before the push.
 - **Signals** (`scripts/build-extract-signals.mjs`). The selection is `combinedSignalQuery`'s: `railway=signal` nodes without `railway:signal:direction`, and those with one that have `railway:signal:electricity` other than `no`.
@@ -216,12 +217,11 @@ How the choice is made:
 - **Polar caps.** `rail-data` also carries the polar caps (`polar/`), which this build does not make: their OpenStreetMap features (water, ice shelves, runways, places and Carto detail beyond 85°) are outside the extract filter, and widening it for them would add most of each region's data. So the assembly takes them unchanged from the newest `rail-data` (`snapshot.yml`'s `build-polar.mjs`) and publishes them with the rest. The manifest names them (`polar`: `from`, the `rail-data` `commit`, the number of `files` checked, and when they were `copied`). Every file the two caps' indexes need must be there and nonempty, or the build stops and writes no `source.json`: both indexes, each cap's relief and features, every contour band's and Carto tile the index lists, and the depth and satellite images when the index describes them (the satellite image is optional in `build-polar.mjs`, and must match the SHA-256 in its index). With them, `source.json` is complete when the assembly covers the world. Without them (no `rail-data`, or no caps on it), it stays not complete and lists them under `missing`, and the site keeps `rail-data`. They stay Overpass data. `snapshot.yml` renews them on `rail-data` every four weeks, but this copy changes only when the next extract assembly publishes `lifecycle-extract-data`; until then it keeps the caps of the commit its manifest names.
 - **Checked against `rail-data` of 2026-11-17** (parts from 2026-09-22 to 2026-11-10). The world assembled from the 2026-11-10 index took 191 s and 5.9 GB locally (with the loading-gauge list): 753,645 of 776,329 ways identical. The rest were traced with the assembly's own edit times: a way or one of its nodes edited after the Overpass part that holds it, or an Overpass part newer than the region file. The 2,158 ways only in Overpass that the assembly no longer holds as railway objects lie in parts older than the region files, except 37 in parts newer than them, 35 of which have ids above the extract's highest.
 
-**Fallback drill.**
-1. Set `DATA_SOURCES` to `{"<dataset>":"extract"}` for a dataset with no extract branch, or one whose `source.json` is incomplete.
-2. Run `site.yml` on `main` by hand.
-3. The step summary must show that dataset on its Overpass branch, with the reason, and the deploy must pass with the same data as before.
-4. Remove the variable, or set the dataset back to `"overpass"`.
-5. Record the run on #330.
+**Fallback drill.** It shows that a dataset set to `extract` falls back to its Overpass branch and that the site still builds, without breaking any extract branch.
+1. Run `site.yml` by hand with the `drill` input, a JSON list of datasets set to `extract` in `scripts/data-sources.json` (or by the variable), for example `["street-running"]`. Before the first dataset is switched, run it on a branch whose `scripts/data-sources.json` sets that dataset to `extract`; only `main` deploys.
+2. The step summary must show each drilled dataset on its Overpass branch with the reason `fell back: drill: …`, and the build and browser checks must pass. On `main`, the deploy must pass with that dataset's Overpass data.
+3. Nothing needs undoing: the input applies to that run only. A drill on a dataset not set to `extract`, or on an unknown one, stops the run, because it would show nothing.
+4. Record the run on #330.
 
 ## Railway lifecycle snapshot
 
