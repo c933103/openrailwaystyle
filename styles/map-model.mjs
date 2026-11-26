@@ -272,6 +272,12 @@ export const INFRASTRUCTURE = [
 // dark ticks, sparser ticks for ski and chair lifts. Dashes are in line widths.
 export const AERIALWAY_CABLE = '#808080', AERIALWAY_TICK = '#1f2326';
 // Escalators, moving walkways and elevators (styles/conveying.mjs).
+// Shared colours for the stretched WebGL sprites and Canvas badges.
+export const TRACK_BADGES = {
+  'track-badge': {edge:'#173e47', fill:'#fffef8'},
+  'track-badge-tunnel': {edge:'#7d949c', fill:'#e3eaec'},
+  'track-badge-station': {edge:'#c47d12', fill:'#fff3da'},
+};
 export const CONVEYING_COLOUR = '#4a4f55';
 export const AERIALWAY_KINDS = Object.freeze([
   Object.freeze({id:'cableway', label:'Aerial cableway (cable car, gondola)', subclasses:Object.freeze(['cable_car','gondola','mixed_lift']), tickWidth:3, dash:Object.freeze([0.4/3,13/3])}),

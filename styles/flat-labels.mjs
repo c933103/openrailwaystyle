@@ -1,4 +1,5 @@
 import {flatMongolianLayout} from './flat-mongolian-label.mjs';
+import {TRACK_BADGES} from './map-model.mjs';
 import {hasMongolian} from './mongolian-text.mjs';
 import {featureFilter,latest,normalizePropertyExpression} from '@maplibre/maplibre-gl-style-spec';
 
@@ -9,10 +10,15 @@ const contextPoint = layer => layer.layout?.['symbol-placement'] == null &&
 const crossingMark = layer => layer.id==='infrastructure-crossing-marks' &&
   (layer.layout?.['symbol-placement']??'point')==='point' && layer.layout?.['icon-image']==='crossing-x';
 
+const conveyingMark = layer => ['conveying-arrows','conveying-arrows-back'].includes(layer.id) &&
+  layer.layout?.['symbol-placement']==='line-center' && layer.layout?.['icon-image']==='conveying-arrow';
+const trackBadge = layer => ['infrastructure-track-count','infrastructure-station-tracks'].includes(layer.id) &&
+  (layer.layout?.['symbol-placement']??'point')==='point' && layer.layout?.['icon-text-fit']==='both';
+
 export function flatTextLabel(layer) {
   return layer.type==='symbol' && layer['source-layer']!=null &&
     ['point','line','line-center'].includes(layer.layout?.['symbol-placement']??'point') &&
-    (crossingMark(layer) ||
+    (crossingMark(layer) || conveyingMark(layer) || trackBadge(layer) ||
       layer.layout?.['text-field']!=null && (layer.layout?.['icon-image']==null || contextPoint(layer)));
 }
 const properties={
@@ -28,24 +34,30 @@ export function compileFlatTextLabel(layer) {
   const {filter,needGeometry}=featureFilter(layer.filter);
   if(needGeometry) return null;
   const placement=layer.layout['symbol-placement']??'point';
-  if(crossingMark(layer)){
-    const expression=(section,name)=>{
-      const spec=latest[section+'_symbol'][name];
-      return normalizePropertyExpression(layer[section]?.[name]??spec.default,spec);
-    };
+  const expression=(section,name)=>{
+    const spec=latest[section+'_symbol'][name];
+    return normalizePropertyExpression(layer[section]?.[name]??spec.default,spec);
+  };
+  const isArrow=conveyingMark(layer);
+  if(crossingMark(layer)||isArrow){
     const size=expression('layout','icon-size'),color=expression('paint','icon-color');
     const halo=expression('paint','icon-halo-color'),haloWidth=expression('paint','icon-halo-width');
     const opacity=expression('paint','icon-opacity');
-    return {sourceLayer:layer['source-layer'],placement,
+    const rotation=isArrow?expression('layout','icon-rotate'):null;
+    const offset=isArrow?expression('layout','icon-offset'):null;
+    return {sourceLayer:layer['source-layer'],placement,directed:isArrow,
       resolve(global,feature,canonical,state={}){
-        if(feature.type!==1||!filter(global,feature,canonical))return null;
+        if(feature.type!==(isArrow?2:1)||!filter(global,feature,canonical))return null;
         const resolvedSize=size.evaluate(global,feature,state,canonical);
         const alpha=opacity.evaluate(global,feature,state,canonical);
         if(!(resolvedSize>0)||!(alpha>0))return null;
-        return {crossing:{size:resolvedSize,opacity:alpha,
+        const mark={size:resolvedSize,opacity:alpha,
           color:color.evaluate(global,feature,state,canonical),
           halo:halo.evaluate(global,feature,state,canonical),
-          haloWidth:haloWidth.evaluate(global,feature,state,canonical)}};
+          haloWidth:haloWidth.evaluate(global,feature,state,canonical)};
+        if(!isArrow)return {crossing:mark};
+        return {arrow:{...mark,rotation:rotation.evaluate(global,feature,state,canonical)*Math.PI/180,
+          offset:offset.evaluate(global,feature,state,canonical)}};
       }};
   }
   const usesLegacyTokens=typeof layer.layout['text-field']==='string';
@@ -53,6 +65,9 @@ export function compileFlatTextLabel(layer) {
     const spec=latest[section+'_symbol'][name];
     return [key,normalizePropertyExpression(layer[section]?.[name]??spec.default,spec)];
   });
+  const badgeImage=trackBadge(layer)?expression('layout','icon-image'):null;
+  const badgeFit=badgeImage?expression('layout','icon-text-fit-padding'):null;
+  const badgeCollision=badgeImage?expression('layout','icon-padding'):null;
   const iconName=contextPoint(layer)?layer.layout['icon-image']:null;
   const iconExpressions=iconName?Object.entries({
     iconSize:['layout','icon-size'],iconPadding:['layout','icon-padding'],
@@ -75,6 +90,13 @@ export function compileFlatTextLabel(layer) {
       if(!label&&!iconName)return null;
       if(values.transform==='uppercase')label=label.toUpperCase();
       else if(values.transform==='lowercase')label=label.toLowerCase();
+      if(badgeImage){
+        const image=badgeImage.evaluate(global,feature,state,canonical);
+        const palette=TRACK_BADGES[image?.name??image];
+        if(!palette)return null;
+        return {...values,label,badge:{...palette,fit:badgeFit.evaluate(global,feature,state,canonical),
+          collision:badgeCollision.evaluate(global,feature,state,canonical).values}};
+      }
       const icon=iconName?Object.fromEntries(iconExpressions.map(([k,e])=>[k,e.evaluate(global,feature,state,canonical)])):null;
       return {...values,label,...(icon?{iconName,...icon}:{})};
     },
@@ -87,6 +109,13 @@ export function flatLabelCandidates(compiled,features,tile,camera,global,feature
   const candidates=[];
   for(const feature of features) {
     const {id,extent,paths}=feature;
+    if(compiled.directed){
+      if(feature.type!==2)continue;
+      const label=compiled.resolve(global,feature,canonical,featureState(id)??{});
+      if(label)for(const anchor of directedLineCentres(paths,extent,(u,v)=>[a*u+c*v+tx,b*u+d*v+ty]))
+        candidates.push({...label,...anchor});
+      continue;
+    }
     if(compiled.placement!=='point'){
       if(feature.type!==2&&feature.type!==3)continue;
       const line=flatVisibleSegment(paths,(x,y)=>[a*x+c*y+tx,b*x+d*y+ty],extent,camera);
@@ -109,6 +138,27 @@ export function flatLabelCandidates(compiled,features,tile,camera,global,feature
     }
   }
   return candidates;
+}
+
+// Like line-center in MapLibre, use each original path's arclength
+// midpoint, not a viewport-clipped segment or the upright text angle.
+function* directedLineCentres(paths,extent,project){
+  for(const path of paths){
+    const lengths=path.slice(1).map((p,i)=>Math.hypot(p.x-path[i].x,p.y-path[i].y));
+    let left=lengths.reduce((sum,length)=>sum+length,0)/2;
+    if(!(left>0))continue;
+    for(const [i,length] of lengths.entries()){
+      if(length<=left){left-=length;continue;}
+      const from=path[i],to=path[i+1],t=left/length;
+      const u=(from.x+(to.x-from.x)*t)/extent,v=(from.y+(to.y-from.y)*t)/extent;
+      if(u>=0&&u<1&&v>=0&&v<1){
+        const [px,py]=project(u,v),[x0,y0]=project(from.x/extent,from.y/extent),
+          [x1,y1]=project(to.x/extent,to.y/extent);
+        yield {px,py,heading:Math.atan2(y1-y0,x1-x0)};
+      }
+      break;
+    }
+  }
 }
 
 // Pick a straight on-screen section clipped to the canonical tile and
@@ -191,6 +241,14 @@ export function drawFlatTextLabels(context,camera,groups,{getIcon=()=>null,onSym
       let count=0;
       for(const label of candidates.sort((a,b)=>(a.sort??0)-(b.sort??0))){
         const {label:text,size,px,py,haloWidth,padding=0}=label;
+        if(label.arrow){
+          const {size,offset,haloWidth}=label.arrow;
+          const extent=(8+Math.hypot(...offset))*size+haloWidth;
+          if(px+extent<=0||px-extent>=camera.width||py+extent<=0||py-extent>=camera.height)continue;
+          drawn.push({label,arrow:label.arrow});
+          count++;
+          continue;
+        }
         if(label.crossing){
           const {size,haloWidth}=label.crossing;
           const extent=5*size+haloWidth;
@@ -220,6 +278,19 @@ export function drawFlatTextLabels(context,camera,groups,{getIcon=()=>null,onSym
           onSymbol(id,label,[iconRect,...textRects]);
         };
         context.font=(label.font?.some(name=>/bold/i.test(name))?'bold ':'')+size+'px sans-serif';
+        if(label.badge){
+          const {fit:[top,right,bottom,left],collision:[ct,cr,cb,cl]}=label.badge;
+          const half=context.measureText(text).width/2;
+          const rect={left:px-half-left,right:px+half+right,top:py-size/2-top,bottom:py+size/2+bottom};
+          if(rect.right<=0||rect.left>=camera.width||rect.bottom<=0||rect.top>=camera.height)continue;
+          const block={left:rect.left-Math.max(cl,padding),right:rect.right+Math.max(cr,padding),
+            top:rect.top-Math.max(ct,padding),bottom:rect.bottom+Math.max(cb,padding)};
+          if(!label.allow&&collides(block))continue;
+          if(!label.ignore)add(block);
+          drawn.push({label,badgeRect:rect,font:context.font});
+          count++;
+          continue;
+        }
         const mongolian=hasMongolian(text);
         const layout=mongolian?flatMongolianLayout(context,text,size,context.font,
           getMongolianFont(text,size),label.maxWidth):null;
@@ -282,7 +353,36 @@ export function drawFlatTextLabels(context,camera,groups,{getIcon=()=>null,onSym
     }
     // Placement priority is independent of paint order: accepted labels
     // from a higher-priority group remain on top if overlap is allowed.
-    for(const {label,lines,widths,width,x,y,lineHeight,font,layout,icon,iconRect,iconWidth,iconHeight,crossing} of drawn.reverse()){
+    for(const {label,lines,widths,width,x,y,lineHeight,font,layout,icon,iconRect,iconWidth,iconHeight,crossing,arrow,badgeRect} of drawn.reverse()){
+      if(arrow){
+        const {size,offset:[ox,oy]}=arrow;
+        context.save();
+        context.translate(label.px,label.py);
+        context.rotate(label.heading+arrow.rotation);
+        context.translate(ox*size,oy*size);
+        context.globalAlpha=alpha*arrow.opacity;
+        context.lineCap='round';context.lineJoin='round';
+        context.beginPath();
+        context.moveTo(-2.5*size,-4*size);context.lineTo(2.5*size,0);context.lineTo(-2.5*size,4*size);
+        if(arrow.haloWidth>0){
+          context.strokeStyle=arrow.halo.toString();context.lineWidth=2.2*size+2*arrow.haloWidth;context.stroke();
+        }
+        context.strokeStyle=arrow.color.toString();context.lineWidth=2.2*size;context.stroke();
+        context.restore();
+        continue;
+      }
+      if(badgeRect){
+        const {left,right,top,bottom}=badgeRect;
+        context.save();
+        context.globalAlpha=alpha*label.opacity;
+        context.beginPath();context.roundRect(left,top,right-left,bottom-top,3.5);
+        context.fillStyle=label.badge.fill;context.fill();
+        context.strokeStyle=label.badge.edge;context.lineWidth=1;context.stroke();
+        context.font=font;context.textAlign='center';
+        context.fillStyle=label.color.toString();context.fillText(label.label,label.px,label.py);
+        context.restore();
+        continue;
+      }
       if(crossing){
         // Equivalent to the WebGL distance-field icon's 4px diagonal half
         // span and 2px stroke at sprite pixel ratio 2.

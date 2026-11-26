@@ -171,3 +171,25 @@ test('level-crossing marks use the generated road and foot colours only in the c
     'rgba(255,254,248,1)','rgba(99,51,44,1)']);
   assert.ok(paints[0][1]>paints[1][1],'Distance mark keeps its visible contrasting halo');
 });
+
+test('track-count badges preserve placement and leave another label visible at stations',async()=>{
+  const {readFile}=await import('node:fs/promises');
+  const style=JSON.parse(await readFile(new URL('../styles/world.style.json',import.meta.url),'utf8'));
+  const specs=style.layers.filter(l=>['infrastructure-track-count','infrastructure-station-tracks'].includes(l.id));
+  const badge=(id,position,tracks,extra={})=>({id,type:1,extent:256,paths:[[{x:position,y:55}]],
+    properties:{tracks,...extra}});
+  const same=[badge(11,45,22,{tunnel:true}),badge(12,45,2),badge(13,45,12),badge(14,150,8,{station:true})];
+  const draw=compileFlatFrame([...specs,layer('an-independent-station-name')]);
+  const tiles=new Map([['trackCounts',[{tile:{x:0,y:0,z:0},vector:{layer:()=>same}}]],
+    ['demo',[{tile:{x:0,y:0,z:0},vector:{layer:()=>[{...badge(21,150,1),properties:{name:'Station'}}]}}]]]);
+  const ctx=context();
+  Object.assign(ctx,{beginPath(){},roundRect(){},stroke(){},fill(){}});
+  const prior=draw(ctx,{...camera,zoom:13.999},tiles);
+  assert.ok(specs.every(l=>!prior.layerDraws.has(l.id)));
+  ctx.draws.length=0;
+  const result=draw(ctx,{...camera,zoom:14},tiles);
+  assert.deepEqual(result.unsupported,[]);
+  assert.equal(result.layerDraws.get('infrastructure-track-count'),1);
+  assert.equal(result.layerDraws.get('infrastructure-station-tracks'),1);
+  assert.deepEqual(ctx.draws.filter(d=>d[0]==='fill').map(d=>d[1]).sort(),['12','8','Station']);
+});
