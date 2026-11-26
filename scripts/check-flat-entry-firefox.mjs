@@ -3,6 +3,7 @@ import {createServer} from 'node:http';
 import {createServer as createHttpsServer} from 'node:https';
 import {execFileSync} from 'node:child_process';
 import {tmpdir} from 'node:os';
+import {connect} from 'node:net';
 import {join} from 'node:path';
 import {mkdir,mkdtemp,readFile,rm,writeFile} from 'node:fs/promises';
 import {firefox} from 'playwright';
@@ -684,17 +685,29 @@ try {
         return {flat:files.includes('/vendor/flat-browser.js'),maplibre:files.includes('/vendor/maplibre-gl-5.24.0-atlas.4.js')};
       });
       assert.deepEqual(cache,{flat:true,maplibre:false},'the real worker must install without the missing optional WebGL script');
-      await context.setOffline(true);
+      // Kill the real HTTPS origin. Firefox's automation-level offline flag
+      // can terminate a reload with NS_ERROR_OFFLINE before the installed
+      // worker handles the navigation; navigator.onLine is not origin health.
+      const port=server.address().port;
+      await new Promise((resolve,reject)=>{
+        server.close(error=>error?reject(error):resolve());
+        server.closeAllConnections();
+      });
+      await assert.rejects(new Promise((resolve,reject)=>{
+        const socket=connect(port,'127.0.0.1');
+        socket.once('connect',()=>{socket.destroy();resolve();});
+        socket.once('error',reject);
+      }),{code:'ECONNREFUSED'},'the origin must really be unreachable');
       await p.reload({waitUntil:'domcontentloaded'});
       await canvas.waitFor();
+      assert.equal(await p.evaluate(()=>!!navigator.serviceWorker.controller),true);
       assert.deepEqual(await p.evaluate(()=>window.webglAttempts),[]);
-      assert.equal(await p.evaluate(()=>navigator.onLine),false);
       const marker=()=>p.locator('#map').getAttribute('data-flat-center');
       const before=await marker();
       await canvas.press('ArrowRight');
       assert.notEqual(await marker(),before,'offline Canvas must still handle genuine keyboard navigation');
       assert.equal(await p.evaluate(()=>localStorage.getItem('atlas_disable_webgl')),'1');
-      console.log('Installed worker cached the Canvas shell without WebGL; offline reload and pan passed.');
+      console.log('Installed worker cached the Canvas shell without WebGL; reload and pan passed while the HTTPS origin was shut down.');
     }finally{await context.close();}
   } else if(watchDoubleTap){
     assert.equal(chromiumSwitch,true,'Native touch gate uses Chromium CDP');
