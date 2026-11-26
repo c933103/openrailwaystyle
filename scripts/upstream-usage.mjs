@@ -11,6 +11,7 @@
 // It writes usage.md and usage.json, and the Markdown to the step summary.
 import {appendFile, writeFile} from 'node:fs/promises';
 import {pathToFileURL} from 'node:url';
+import {CHANGE_SCOPE} from './overpass-purpose.mjs';
 
 // overpass-api.de's published guidance (wiki "Overpass API", Public Overpass
 // API instances): one-off use under 10,000 queries and 1 GB a day; regular
@@ -40,8 +41,8 @@ const changesOf = usage => {
 };
 
 // Totals per host, and per workflow and host. `changeRequests` and
-// `changeBytes` are the change updates (augmented diffs); `unsplit` counts
-// the host's records without that split, whose change updates are unknown.
+// `changeBytes` are the measured change updates; `unsplit` counts records
+// with unknown change traffic, including partially measured old crossings.
 export function summarize(jobs) {
   const hosts = new Map(), workflows = new Map();
   // These counters belong to a complete meter record, not to each host.
@@ -53,17 +54,19 @@ export function summarize(jobs) {
       measurement.unmeasuredBodies += record.unmeasured;
     } else measurement.unknownRecords++;
   }
-  const add = (map, key, usage) => {
+  const add = (map, key, usage, oldCrossing) => {
     const total = map.get(key) || {requests: 0, bytes: 0, skipped: 0, jobs: 0, changeRequests: 0, changeBytes: 0, unsplit: 0};
     total.requests += usage.requests || 0; total.bytes += usage.bytes || 0; total.skipped += usage.skipped || 0;
     const changes = changesOf(usage);
-    if (changes) { total.changeRequests += changes.requests; total.changeBytes += changes.bytes; } else total.unsplit++;
+    if (changes) { total.changeRequests += changes.requests; total.changeBytes += changes.bytes; }
+    if (!changes || oldCrossing) total.unsplit++;
     map.set(key, total);
     return total;
   };
   for (const job of jobs) for (const record of job.records) for (const [host, usage] of Object.entries(record.hosts)) {
-    add(hosts, host, usage);
-    add(workflows, `${job.workflow}\u0000${host}`, usage);
+    const oldCrossing = record.script === 'build-crossings.mjs' && record.changeScope !== CHANGE_SCOPE;
+    add(hosts, host, usage, oldCrossing);
+    add(workflows, `${job.workflow}\u0000${host}`, usage, oldCrossing);
   }
   for (const job of jobs) {
     const seen = new Set(job.records.flatMap(r => Object.keys(r.hosts)));
@@ -92,7 +95,7 @@ export function usageReport({start, end, runs, jobs, unread, unfinished = []}, s
     ...(summary.measurement?.unmeasuredBodies ? [`**Incomplete:** ${summary.measurement.unmeasuredBodies} unread responses lacked a declared length; recorded bytes are a lower bound.`, ''] : []),
     `- ${runs} workflow runs; ${jobs} jobs with usage lines${unread.length ? `; ${unread.length} job logs could not be read: ${unread.slice(0, 20).join(', ')}` : ''}`, '',
     '| Host | Requests | MB | Change updates: requests | Change updates: MB | Held back (meter pause) | Jobs | Against the guidance |', '| --- | ---: | ---: | ---: | ---: | ---: | ---: | --- |'];
-  const changeCell = (t, value) => t.unsplit ? `${value} + unknown (${t.unsplit} records before the split)` : String(value);
+  const changeCell = (t, value) => t.unsplit ? `${value} + unknown (${t.unsplit} records without the full split)` : String(value);
   for (const [host, t] of Object.entries(summary.hosts)) {
     const g = GUIDANCE[host];
     const regular = () => t.unsplit ? 'unknown: some records lack the change-update split' : `${(100 * t.changeRequests / g.regular.requests).toFixed(0)}% of queries, ${(100 * t.changeBytes / g.regular.bytes).toFixed(0)}% of bytes`;
@@ -101,7 +104,7 @@ export function usageReport({start, end, runs, jobs, unread, unfinished = []}, s
   }
   lines.push('', '| Workflow | Host | Requests | MB | Change updates: requests | Change updates: MB | Held back | Jobs |', '| --- | --- | ---: | ---: | ---: | ---: | ---: | ---: |');
   for (const w of summary.workflows) lines.push(`| ${w.workflow} | ${w.host} | ${w.requests} | ${(w.bytes / MB).toFixed(1)} | ${changeCell(w, w.changeRequests)} | ${changeCell(w, (w.changeBytes / MB).toFixed(2))} | ${w.skipped} | ${w.jobs} |`);
-  lines.push('', 'Change updates are the requests whose Overpass query is an augmented diff (`[adiff:…]`): the routine updates between full downloads. The wiki\'s regular-use guidance (100 queries and 10 MB a day) is held against them; everything else is full downloads, held against the one-off guidance with the rest. Other routine full queries (a small list fetched on every run) are in the workflow rows.');
+  lines.push('', 'Change updates include augmented diffs (`[adiff:…]`) and their affected crossing row reads. Older crossing records are a measured minimum, not an exact regular-use share. Review weekly crossing runs and the workflow totals separately: full fallback downloads, changed-selection migrations and other scheduled full queries are not included in the change-update share.');
   if (summary.measurement) lines.push('', `Body measurement: ${summary.measurement.unreadBodies} unread responses; ${summary.measurement.unmeasuredBodies} without a declared length; ${summary.measurement.unknownRecords} records with unknown metadata. These record-level counts cannot be assigned to individual hosts. Unread responses with declared lengths retain the meter\'s existing byte estimate.`);
   lines.push('', 'Completeness covers readable, finished jobs and their available meter records; it is not proof that all provider traffic was instrumented. The window selects workflow creation times, not individual request times.');
   return `${lines.join('\n')}\n`;

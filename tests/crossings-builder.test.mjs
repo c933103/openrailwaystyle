@@ -1,3 +1,4 @@
+import * as requestPurpose from '../scripts/overpass-purpose.mjs';
 import * as crossingRequest from '../scripts/crossing-request.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -60,7 +61,7 @@ async function run(reply, {byteLimit, dynamicClock = false, earlyWake = 0} = {})
     'node:fs/promises':Object.fromEntries(['mkdir', 'readFile', 'writeFile', 'rm'].map(name => [name, forbid(name)])),
     'node:zlib':{gzipSync:() => assert.fail('unexpected compression'), gunzipSync:() => assert.fail('unexpected decompression')},
     './crossing-request.mjs': {...crossingRequest, crossingResponseText: (response, usage) => crossingRequest.crossingResponseText(response, usage, byteLimit), crossingRetryDelay: (attempt, header, at) => crossingRequest.crossingRetryDelay(attempt, header, at ?? ClockDate.now())}, './crossing-data.mjs':crossings,
-    './crossing-checkpoint.mjs':checkpoint,
+    './crossing-checkpoint.mjs':checkpoint, './overpass-purpose.mjs':requestPurpose,
   };
   const module = new vm.SourceTextModule(source, {
     context, initializeImportMeta:meta => { meta.url = 'file:///fixture/scripts/build-crossings.mjs'; },
