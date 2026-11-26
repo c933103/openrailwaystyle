@@ -24,6 +24,7 @@ const startupFallback=process.argv.includes('--startup-fallback');
 const detailState=process.argv.includes('--detail-state');
 const toolbarClearance=process.argv.includes('--toolbar-clearance');
 const doubleClickZoom=process.argv.includes('--double-click-zoom');
+const watchDoubleTap=process.argv.includes('--watch-double-tap');
 const style=JSON.parse(await readFile(new URL('world.style.json',root),'utf8'));
 const fixtureRasterBackgrounds=style.layers.filter(layer=>['carto','satellite'].includes(layer.id));
 let fixtureCredits=false;
@@ -486,7 +487,56 @@ try {
     assert.equal(await current.page.locator('canvas.atlas-flat-preview').count(),0);
     await current.context.close();
   }
-  if(doubleClickZoom){
+  if(watchDoubleTap){
+    assert.equal(chromiumSwitch,true,'Native touch gate uses Chromium CDP');
+    for(const off of [false,true]){
+      const {page,context}=await fresh(off,false,false,true);
+      try{
+        await page.goto(origin+'/?ui=watch#9/25.04/121.56');
+        const canvas=page.locator(off?'canvas.atlas-flat-preview':'canvas.maplibregl-canvas');
+        await canvas.waitFor();
+        if(!off)await page.waitForSelector('body[data-map-ready=true]',{state:'attached',timeout:16000});
+        const menu=page.locator('#watch-menu'), box=await canvas.boundingBox();
+        const pt={x:Math.round(box.x+box.width*.62),y:Math.round(box.y+box.height*.61),id:1};
+        assert.equal(await canvas.evaluate((c,p)=>document.elementFromPoint(p.x,p.y)===c,pt),true);
+        const client=await context.newCDPSession(page);
+        const send=(type,touchPoints=[])=>client.send('Input.dispatchTouchEvent',{type,touchPoints});
+        const tap=async()=>{await send('touchStart',[pt]);await send('touchEnd');};
+        const read=async()=>page.evaluate(async ({off,box,pt})=>{
+          if(!off){
+            const {map}=await import(document.querySelector('script[type=module]').src);
+            const anchor=map.unproject([pt.x-box.x,pt.y-box.y]);
+            return {z:map.getZoom(),anchor:[anchor.lng,anchor.lat],moving:map.isMoving()};
+          }
+          const v=JSON.parse(localStorage.getItem('atlas_view'));
+          const current=v.z>=9?v:{z:9,c:[121.56,25.04]};
+          const scale=512*2**current.z, x=pt.x-box.x-box.width/2, y=pt.y-box.y-box.height/2;
+          return {z:current.z,anchor:[current.c[0]+360*x/scale,
+            Math.atan(Math.sinh(Math.asinh(Math.tan(current.c[1]*Math.PI/180))-2*Math.PI*y/scale))*180/Math.PI]};
+        },{off,box,pt});
+        const before=await read();
+        assert.equal(before.z,9);
+        // Browser-native input; do not emit a DOM dblclick or override events.
+        await tap();await tap();
+        await page.waitForTimeout(650);
+        const after=await read();
+        console.log(JSON.stringify({renderer:off?'Canvas':'WebGL',before,after}));
+        assert.ok(Math.abs(after.z-before.z-1)<0.02,(off?'Canvas':'WebGL')+' trusted double tap should add exactly one zoom level');
+        assert.ok(after.anchor.every((v,i)=>Math.abs(v-before.anchor[i])<0.00006),'zoom must keep the off-center geographic anchor');
+        assert.equal(await menu.isHidden(),true);
+        assert.equal(await page.locator('#details').isHidden(),true);
+        if(off)assert.deepEqual(await page.evaluate(()=>window.webglAttempts),[]);
+        await tap();await page.waitForTimeout(450);
+        assert.equal((await read()).z,after.z,'single tap must not zoom');
+        await send('touchStart',[pt]);
+        await menu.waitFor({timeout:2200});
+        await send('touchEnd');
+        await page.keyboard.press('Escape');
+        assert.equal(await menu.isHidden(),true,'touch hold must still open the Watch menu');
+        assert.equal((await read()).z,after.z,'touch hold must not zoom');
+      }finally{await context.close();}
+    }
+  } else if(doubleClickZoom){
     const {context,page}=await fresh(true);
     await page.setViewportSize({width:1200,height:760});
     try{

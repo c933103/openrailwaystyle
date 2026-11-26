@@ -46,6 +46,8 @@ jobs:
       - run: npx playwright install --with-deps chromium
       - name: Verify Watch keyboard focus and native touch hold with WebGL
         run: timeout 90s node scripts/check-flat-entry-firefox.mjs --chromium-switch --watch-focus
+      - name: Verify Watch double-tap zoom in WebGL and Canvas with trusted touch
+        run: timeout 90s node scripts/check-flat-entry-firefox.mjs --chromium-switch --watch-double-tap
       - name: Keep drawing controls clear of the desktop sidebar with WebGL
         run: timeout 90s node scripts/check-flat-entry-firefox.mjs --chromium-switch --toolbar-clearance
       - name: Preserve map coordinates when switching renderers with More detail
