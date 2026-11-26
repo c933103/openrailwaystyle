@@ -23,6 +23,7 @@ const watchFocus=process.argv.includes('--watch-focus');
 const startupFallback=process.argv.includes('--startup-fallback');
 const detailState=process.argv.includes('--detail-state');
 const toolbarClearance=process.argv.includes('--toolbar-clearance');
+const doubleClickZoom=process.argv.includes('--double-click-zoom');
 const style=JSON.parse(await readFile(new URL('world.style.json',root),'utf8'));
 const fixtureRasterBackgrounds=style.layers.filter(layer=>['carto','satellite'].includes(layer.id));
 let fixtureCredits=false;
@@ -485,7 +486,59 @@ try {
     assert.equal(await current.page.locator('canvas.atlas-flat-preview').count(),0);
     await current.context.close();
   }
-  if(toolbarClearance){
+  if(doubleClickZoom){
+    const {context,page}=await fresh(true);
+    await page.setViewportSize({width:1200,height:760});
+    try{
+      await page.goto(origin+'/?detail=1#10/25.04/121.56');
+      const canvas=page.locator('canvas.atlas-flat-preview');
+      await canvas.waitFor();
+      const box=await canvas.boundingBox();
+      const positions=[[.60,.36],[.71,.44],[.66,.51]].map(([x,y])=>[
+        Math.round(box.x+x*box.width),Math.round(box.y+y*box.height)]);
+      for(const at of positions)assert.ok(await page.evaluate(([x,y])=>
+        document.elementFromPoint(x,y)?.matches('canvas.atlas-flat-preview'),at));
+      const view=()=>page.evaluate(()=>JSON.parse(localStorage.getItem('atlas_view')||'null'));
+      const zoom=async expected=>page.waitForFunction(expected=>
+        JSON.parse(localStorage.getItem('atlas_view')||'null')?.z===expected,expected,{timeout:3000});
+      const mercator=lat=>Math.asinh(Math.tan(lat*Math.PI/180));
+      const underPointer=(v,[x,y])=>{
+        const scale=512*2**v.z;
+        return [v.c[0]+360*(x-box.x-box.width/2)/scale,
+          mercator(v.c[1])-2*Math.PI*(y-box.y-box.height/2)/scale];
+      };
+      const at=positions[0];
+      const start={z:9,c:[121.56,25.04]};
+      const anchor=underPointer(start,at);
+      const compare=async expected=>{
+        await zoom(expected);
+        const actual=underPointer(await view(),at);
+        assert.ok(Math.abs(actual[0]-anchor[0])<0.00002&&Math.abs(actual[1]-anchor[1])<0.0000004,
+          'Location under the off-center pointer must stay fixed: '+JSON.stringify({anchor,actual}));
+      };
+      await page.mouse.dblclick(...at);
+      await compare(10);
+      await page.keyboard.down('Shift');
+      await page.mouse.dblclick(...at);
+      await page.keyboard.up('Shift');
+      await compare(9);
+      await page.getByRole('button',{name:'Measure',exact:true}).click();
+      await page.mouse.click(...positions[1]);
+      await page.mouse.dblclick(...positions[2]);
+      await page.waitForFunction(()=>/Distance: .+ over 1 segment\./.test(document.querySelector('#measure-status').textContent));
+      assert.equal((await view()).z,9,'Double-click must finish the distance instead of zooming');
+      await page.locator('#measure-close').click();
+      await page.getByRole('button',{name:'Drawing tools',exact:true}).click();
+      await page.locator('[data-draw="line"]').click();
+      await page.mouse.click(...positions[1]);
+      await page.mouse.dblclick(...positions[2]);
+      const line=await page.waitForFunction(()=>JSON.parse(localStorage.getItem('openrailwayatlas-drawing')||'null')
+        ?.features.find(f=>f.geometry.type==='LineString')?.geometry).then(h=>h.jsonValue());
+      assert.equal(line.coordinates.length,2);
+      assert.equal((await view()).z,9,'Double-click must finish the drawing instead of zooming');
+      console.log('Canvas: double-click +1 / Shift-double-click -1 at fixed geographic anchor; distance and line finished without zoom.');
+    }finally{await context.close();}
+  } else if(toolbarClearance){
     const {context,page}=await fresh(!chromiumSwitch);
     try{
       await page.setViewportSize({width:1100,height:760});

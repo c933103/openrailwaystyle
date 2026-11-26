@@ -354,7 +354,11 @@ export function mountFlatMap({mount, style, styleURL, protocols, requestedView, 
   listen('dblclick',e=>{
     const tool=activeTool();
     if(tool===measure&&tool?.mode==='distance'){e.preventDefault();tool.end();}
-    if(tool===drawing&&tool?.multiPoint){e.preventDefault();tool.finish();}
+    else if(tool===drawing&&tool?.multiPoint){e.preventDefault();tool.finish();}
+    else if(!tool&&e.button===0){
+      e.preventDefault();
+      zoomBy(e.shiftKey?-1:1,localPoint(e));
+    }
   });
   function zoomBy(delta, anchor) {
     if (disposed || gesture.active || toolDrag || !delta) return;

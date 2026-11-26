@@ -76,6 +76,8 @@ jobs:
         run: timeout 90s node scripts/check-flat-entry-firefox.mjs --toolbar-clearance
       - name: Verify point placement and flat share from a WebGL-detail link
         run: timeout 90s node scripts/check-flat-entry-firefox.mjs --detail-state
+      - name: Verify pointer-anchored Canvas double-click zoom and tool completion
+        run: timeout 90s node scripts/check-flat-entry-firefox.mjs --double-click-zoom
       - name: Verify worldwide station markers with names off and fallback
         run: timeout 100s node scripts/check-flat-world-stations-firefox.mjs
       - name: Verify five public Canvas basemaps and Hybrid rail contrast
