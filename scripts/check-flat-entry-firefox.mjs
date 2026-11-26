@@ -20,6 +20,7 @@ const pageSource=standardPage.replace(/<html\b/,'<html data-flat-entry="staged"'
 const chromiumSwitch=process.argv.includes('--chromium-switch');
 const serviceOverlap=process.argv.includes('--service-overlap');
 const watchFocus=process.argv.includes('--watch-focus');
+const startupFallback=process.argv.includes('--startup-fallback');
 const style=JSON.parse(await readFile(new URL('world.style.json',root),'utf8'));
 const fixtureRasterBackgrounds=style.layers.filter(layer=>['carto','satellite'].includes(layer.id));
 let fixtureCredits=false;
@@ -422,7 +423,71 @@ try {
       return {initial,zoomed,recovered,completedEvents:first,cancelledEvents:cancelled};
     } finally {await context.close();}
   }
-  if(watchFocus){
+  async function verifyStartupFallback() {
+    const disabled=await fresh();
+    try {
+      const start=paths.length;
+      await disabled.page.goto(origin);
+      await ready(disabled.page);
+      assert.deepEqual(await disabled.page.evaluate(()=>window.webglAttempts),['webgl2','webgl']);
+      assert.ok(!paths.slice(start).some(path=>path.startsWith('/vendor/maplibre-gl-')),
+        'browsers with no WebGL must not fetch either renderer asset');
+      assert.equal(await disabled.page.evaluate(()=>localStorage.getItem('atlas_disable_webgl')),null);
+    } finally {await disabled.context.close();}
+    // The narrow fault is at the actual MapLibre canvas, not the startup probe.
+    let current=await fresh(false,false,true);
+    const start=paths.length;
+    await current.page.goto(origin);
+    await ready(current.page);
+    assert.deepEqual(await current.page.evaluate(()=>window.webglAttempts),['webgl2','webgl2','webgl']);
+    assert.deepEqual(await current.page.evaluate(()=>window.painterAttributes),
+      {alpha:true,depth:true,stencil:true,premultipliedAlpha:true});
+    assert.equal(await current.page.locator('.maplibregl-canvas-container').count(),0,'no partial map DOM');
+    assert.equal(await current.page.evaluate(()=>localStorage.getItem('atlas_disable_webgl')),null,'automatic fallback is not a user preference');
+    assert.equal(paths.slice(start).filter(path=>path==='/').length,1,'fallback did not reload the page');
+    assert.equal(paths.slice(start).filter(path=>path==='/world.style.json').length,1,'shared initialization did not restart');
+    assert.match(await current.page.locator('#map-status').textContent(),/the WebGL map could not start/);
+    await current.page.locator('canvas.atlas-flat-preview').press('ArrowRight');
+    assert.ok(await current.page.evaluate(()=>JSON.parse(localStorage.getItem('atlas_view')).c[0]>10));
+    await current.context.close();
+
+    for(const missing of ['/vendor/maplibre-gl-5.24.0-atlas.4.js','/vendor/maplibre-gl-5.24.0.css']){
+      missingWebGLAsset=missing;
+      current=await fresh(false,false,true);
+      const start=paths.length;
+      await current.page.goto(origin);
+      await ready(current.page);
+      assert.ok(paths.slice(start).includes(missing));
+      assert.deepEqual(await current.page.evaluate(()=>window.webglAttempts),['webgl2'],'probe passed, but painter was not attempted');
+      assert.match(await current.page.locator('#map-status').textContent(),/the WebGL renderer files could not load/);
+      assert.equal(await current.page.evaluate(()=>localStorage.getItem('atlas_disable_webgl')),null);
+      await current.context.close();
+    }
+    missingWebGLAsset=null;
+
+    failStyle=true;
+    current=await fresh(false,false,true);
+    await current.page.goto(origin);
+    await current.page.getByText('The map style could not load. Reload to try again.').waitFor();
+    assert.deepEqual(await current.page.evaluate(()=>window.webglAttempts),['webgl2'],'broken shared style never attempts the painter');
+    assert.equal(await current.page.locator('canvas.atlas-flat-preview').count(),0);
+    await current.context.close();
+    failStyle=false;
+    activateStaging=false;
+    current=await fresh(true);
+    await current.page.goto(origin);
+    await current.page.getByText('This browser could not start WebGL. Enable graphics acceleration in your browser settings, then reload the map.').waitFor({timeout:15000});
+    assert.ok(paths.some(path=>path.includes('/vendor/maplibre-gl-')&&path.endsWith('.js')));
+    assert.ok(paths.some(path=>path.includes('/vendor/maplibre-gl-')&&path.endsWith('.css')));
+    assert.equal(await current.page.locator('#flat-preview-preference').isVisible(),false);
+    assert.equal(await current.page.locator('canvas.atlas-flat-preview').count(),0);
+    await current.context.close();
+  }
+  if(startupFallback){
+    assert.equal(chromiumSwitch,false,'This gate requires Firefox with WebGL disabled');
+    await verifyStartupFallback();
+    console.log('Firefox startup: no context, refused painter, missing JS, missing CSS, shared style error and non-staged behavior verified');
+  } else if(watchFocus){
     const {page,context}=await fresh(!chromiumSwitch,chromiumSwitch,false,chromiumSwitch);
     try {
       await page.goto(origin+'/?ui=watch');
@@ -1676,53 +1741,7 @@ try {
   assert.ok(Math.abs(localView.c[0])<1e-8&&localView.c[1]<-35&&localView.c[1]>-38);
   await current.context.close();
 
-  // The narrow fault is at the actual MapLibre canvas, not the startup probe.
-  current=await fresh(false,false,true);
-  const start=paths.length;
-  await current.page.goto(origin);
-  await ready(current.page);
-  assert.deepEqual(await current.page.evaluate(()=>window.webglAttempts),['webgl2','webgl2','webgl']);
-  assert.deepEqual(await current.page.evaluate(()=>window.painterAttributes),
-    {alpha:true,depth:true,stencil:true,premultipliedAlpha:true});
-  assert.equal(await current.page.locator('.maplibregl-canvas-container').count(),0,'no partial map DOM');
-  assert.equal(await current.page.evaluate(()=>localStorage.getItem('atlas_disable_webgl')),null,'automatic fallback is not a user preference');
-  assert.equal(paths.slice(start).filter(path=>path==='/world.style.json').length,1,'shared initialization did not restart');
-  assert.match(await current.page.locator('#map-status').textContent(),/the WebGL map could not start/);
-  await current.page.locator('canvas.atlas-flat-preview').press('ArrowRight');
-  assert.ok(await current.page.evaluate(()=>JSON.parse(localStorage.getItem('atlas_view')).c[0]>10));
-  await current.context.close();
-
-  for(const missing of ['/vendor/maplibre-gl-5.24.0-atlas.4.js','/vendor/maplibre-gl-5.24.0.css']){
-    missingWebGLAsset=missing;
-    current=await fresh(false,false,true);
-    const start=paths.length;
-    await current.page.goto(origin);
-    await ready(current.page);
-    assert.ok(paths.slice(start).includes(missing));
-    assert.deepEqual(await current.page.evaluate(()=>window.webglAttempts),['webgl2'],'probe passed, but painter was not attempted');
-    assert.match(await current.page.locator('#map-status').textContent(),/the WebGL renderer files could not load/);
-    assert.equal(await current.page.evaluate(()=>localStorage.getItem('atlas_disable_webgl')),null);
-    await current.context.close();
-  }
-  missingWebGLAsset=null;
-
-  failStyle=true;
-  current=await fresh(false,false,true);
-  await current.page.goto(origin);
-  await current.page.getByText('The map style could not load. Reload to try again.').waitFor();
-  assert.deepEqual(await current.page.evaluate(()=>window.webglAttempts),['webgl2'],'broken shared style never attempts the painter');
-  assert.equal(await current.page.locator('canvas.atlas-flat-preview').count(),0);
-  await current.context.close();
-  failStyle=false;
-  activateStaging=false;
-  current=await fresh(true);
-  await current.page.goto(origin);
-  await current.page.getByText('This browser could not start WebGL. Enable graphics acceleration in your browser settings, then reload the map.').waitFor({timeout:15000});
-  assert.ok(paths.some(path=>path.includes('/vendor/maplibre-gl-')&&path.endsWith('.js')));
-  assert.ok(paths.some(path=>path.includes('/vendor/maplibre-gl-')&&path.endsWith('.css')));
-  assert.equal(await current.page.locator('#flat-preview-preference').isVisible(),false);
-  assert.equal(await current.page.locator('canvas.atlas-flat-preview').count(),0);
-  await current.context.close();
+  await verifyStartupFallback();
   console.log('Firefox real Atlas entry: rails and point/line labels painted with automatic and explicit Canvas, no GL library/CSS, preference persisted, station toggling repainted without remount or rail refetch, rails and stations inspected, search destinations selected, loaded station found despite remote outage and nearby transport and its painted icon opened, drawing created, edited, profiled, restored and round-tripped as GeoJSON, in-progress measurement restored and profiled after renderer preference reload, pan committed, simulated multi-touch zoom and cancellation verified, passive polar view preserved, actual constructor context refusal and separate missing renderer JS/CSS recovered without reloading, and style errors surfaced.');
   }
 } finally {await browser?.close();server.close();}

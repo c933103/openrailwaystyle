@@ -61,6 +61,8 @@ jobs:
       - run: npm ci --ignore-scripts --no-audit --no-fund
       - run: npm run build
       - run: npx playwright install --with-deps firefox
+      - name: Verify automatic Canvas startup and distinguish shared-data errors
+        run: timeout 90s node scripts/check-flat-entry-firefox.mjs --startup-fallback
       - name: Verify Canvas platform edge details and labels
         run: timeout 150s node scripts/check-flat-platform-firefox.mjs
       - name: Verify a complete platform edge when the browser cannot read the feature API
