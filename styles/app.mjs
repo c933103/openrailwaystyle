@@ -2104,14 +2104,27 @@ async function initialize() {
       if(!template)throw new Error('No station name tile template');
       return template;
     })().catch(error=>{curatedTemplate=null;throw error;});
+    let curatedRecovery=0;
     async function lookupCuratedName(feature,language){
       const key=language+'/'+feature.id;
-      if(!curatedPending.has(key))curatedPending.set(key,(async()=>{
-        stationTileURL ||= await loadCuratedTemplate();
-        if(stationsLifetime.signal.aborted)return null;
-        return majorStationName(feature,language);
-      })().catch(()=>null).finally(()=>curatedPending.delete(key)));
-      return curatedPending.get(key);
+      const attempt=()=>{
+        const existing=curatedPending.get(key);
+        if(existing)return existing;
+        const entry={recovery:curatedRecovery,promise:(async()=>{
+          stationTileURL ||= await loadCuratedTemplate();
+          if(stationsLifetime.signal.aborted)return null;
+          return majorStationName(feature,language);
+        })().catch(()=>null).finally(()=>curatedPending.delete(key))};
+        curatedPending.set(key,entry);
+        return entry;
+      };
+      const first=attempt(), named=await first.promise;
+      // The online event may arrive while the old offline request is still
+      // failing. Reuse it if it succeeds, but don't count a stale miss as the
+      // recovery attempt. All waiters share the new request too.
+      if(!named&&first.recovery!==curatedRecovery&&language===settings.language&&
+          !stationsLifetime.signal.aborted)return attempt().promise;
+      return named;
     }
     renameFlatSelection=async()=>{
       const open=currentFeature, language=settings.language;
@@ -2122,7 +2135,8 @@ async function initialize() {
       const named=(curatedLanguage===language&&curatedNames.get(feature.id))||
         await lookupCuratedName(feature,language);
       if(!named||stationsLifetime.signal.aborted||settings.language!==language||
-          currentFeature!==open||$('details').hidden)return;
+          currentFeature!==open||$('details').hidden||
+          (open.properties.atlas_language===language&&open.properties.atlas_name))return;
       open.properties={...open.properties,name:named.name,localized_name:named.localized_name,
         atlas_name:named.atlas_name,atlas_language:language,atlas_name_source:'provider'};
       showDetails(open);
@@ -2241,6 +2255,7 @@ async function initialize() {
     // Network recovery can restore a name at the same view/language. Normal
     // paints still share a batch and do not poll a successful no-match.
     addEventListener('online',()=>{
+      curatedRecovery++;
       curatedBatch='';
       flat.invalidateLabels();
       void renameFlatSelection();
