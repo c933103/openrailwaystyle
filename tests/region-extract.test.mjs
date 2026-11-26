@@ -6,7 +6,7 @@ import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 import {spawnSync} from 'node:child_process';
 import {acquireRegion, checkRegion, DISK_MARGIN, FILTER_HASH, MAX_SIDECAR, TIME_BUDGET_MINUTES, FILTER_RESERVE_MS} from '../scripts/acquire-region-extract.mjs';
-import {extractMatrix, extractReport, regionKey, MAX_RUN_BYTES} from '../scripts/extract-run.mjs';
+import {extractMatrix, extractReport, parseRegionSelection, regionKey, MAX_RUN_BYTES} from '../scripts/extract-run.mjs';
 
 const URL_OF = (id, date = '261101') => `https://download.geofabrik.de/${id}-${date}.osm.pbf`;
 const region = (id, bytes, extra = {}) => ({id, url: URL_OF(id), bytes, sourceDate: '2026-11-01', ...extra});
@@ -445,4 +445,30 @@ for(const mode of ['pending','rejects','throws'])test(`oversized checksum fails 
   assert.equal(cancelled,1);assert.equal(pulls,5);assert.equal(body.locked,false);
   assert.deepEqual(f.calls.map(c=>c.method),['HEAD']);assert.deepEqual(f.commands,[]);assert.deepEqual(readdirSync(dir),[]);
  }finally{clearTimeout(timer);release();await result.catch(()=>{});rmSync(dir,{recursive:true,force:true});}
+});
+
+test('selected regions are validated as exact IDs and cannot silently fall back to all regions', () => {
+  assert.deepEqual(parseRegionSelection(), []);
+  assert.deepEqual(parseRegionSelection('south-america, australia-oceania'), ['south-america', 'australia-oceania']);
+  for (const bad of [' ', 'south-america,', 'usa/*', '../south-america', 'south-america,south-america']) {
+    assert.throws(() => parseRegionSelection(bad), /IDs|repeated/);
+  }
+  assert.throws(() => parseRegionSelection('south-america', true), /cannot be combined/);
+});
+
+test('a selective acquire refresh plans two known existing regions and leaves the rest out of the matrix', () => {
+  const p = plan([region('south-america', 6), region('australia-oceania', 5), region('other', 11)]);
+  const index = {regions: {
+    'south-america': {sourceTimestamp:'2026-10-25T10:00:00Z'}, 'australia-oceania': {}, other: {},
+    'gap/south': {kind:'gap'},
+  }};
+  const regionIds = parseRegionSelection('australia-oceania,south-america');
+  const actual = extractMatrix(p, {index, regionIds, maxJobs:2,maxRunBytes:11});
+  assert.deepEqual(actual.map(row=>row.id), ['south-america','australia-oceania']);
+  assert.equal(actual[0].previous.sourceTimestamp,'2026-10-25T10:00:00Z');
+  assert.throws(() => extractMatrix(p,{index,regionIds,maxRunBytes:10}), /may download 10/);
+  assert.throws(() => extractMatrix(p,{index,regionIds:['oceania']}), /not in the current plan/);
+  assert.throws(() => extractMatrix(p,{regionIds}), /requires a working copy/);
+  assert.throws(() => extractMatrix(p,{index:{regions:{...index.regions, obsolete:{}}},regionIds}), /plan membership change/);
+  assert.equal(extractMatrix(p,{index}).length,3);
 });

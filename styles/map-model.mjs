@@ -1,8 +1,8 @@
-export {createPlatformLengths,createPlatformTileGeometry,platformLengthLabel,formatPlatformLength} from './platform-length.mjs?v=20261125-basemap-bootstrap-1';
-export {referenceDetailEligible,isNeutralRailReference} from './railway-visibility.mjs?v=20261125-basemap-bootstrap-1';
+export {createPlatformLengths,createPlatformTileGeometry,platformLengthLabel,formatPlatformLength} from './platform-length.mjs?v=20261126-canvas-basemap-sync-1';
+export {referenceDetailEligible,isNeutralRailReference} from './railway-visibility.mjs?v=20261126-canvas-basemap-sync-1';
 
-export {axleLoad,formatAxleLoad,axlePaint,axleLabel} from './axle-load.mjs?v=20261125-basemap-bootstrap-1';
-import {standardServiceWidth} from './service-frequency.mjs?v=20261125-basemap-bootstrap-1';
+export {axleLoad,formatAxleLoad,axlePaint,axleLabel} from './axle-load.mjs?v=20261126-canvas-basemap-sync-1';
+import {standardServiceWidth} from './service-frequency.mjs?v=20261126-canvas-basemap-sync-1';
 // The provider normalizes maxspeed to km/h; speed_label retains source units
 // and both directional values. Never infer a limit from railway class.
 export const SPEED_BANDS = [
@@ -272,6 +272,12 @@ export const INFRASTRUCTURE = [
 // dark ticks, sparser ticks for ski and chair lifts. Dashes are in line widths.
 export const AERIALWAY_CABLE = '#808080', AERIALWAY_TICK = '#1f2326';
 // Escalators, moving walkways and elevators (styles/conveying.mjs).
+// Shared colours for the stretched WebGL sprites and Canvas badges.
+export const TRACK_BADGES = {
+  'track-badge': {edge:'#173e47', fill:'#fffef8'},
+  'track-badge-tunnel': {edge:'#7d949c', fill:'#e3eaec'},
+  'track-badge-station': {edge:'#c47d12', fill:'#fff3da'},
+};
 export const CONVEYING_COLOUR = '#4a4f55';
 export const AERIALWAY_KINDS = Object.freeze([
   Object.freeze({id:'cableway', label:'Aerial cableway (cable car, gondola)', subclasses:Object.freeze(['cable_car','gondola','mixed_lift']), tickWidth:3, dash:Object.freeze([0.4/3,13/3])}),
@@ -592,7 +598,7 @@ const britishTest = (upper, code) => { const c = code.toUpperCase(); return ['an
 // made from its name, so it is the same wherever and whenever it is drawn.
 // Tiles carry it as owner_color (added in the browser, tile-labels.mjs);
 // without an owner, the unknown colour.
-export {ownerColor} from './owner-color.mjs?v=20261125-basemap-bootstrap-1';
+export {ownerColor} from './owner-color.mjs?v=20261126-canvas-basemap-sync-1';
 export const ownerPaint = () => ['coalesce', ['get', 'owner_color'], UNKNOWN_COLOR];
 // Aerialways and escalators are drawn in every view. Infrastructure and Power
 // show their type (thin line, ticks or arrows); every other view colours the

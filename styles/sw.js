@@ -5,13 +5,14 @@
 // and served from the saved copy of that version first (a changed file gets
 // a new version); a versioned request is never answered by another version,
 // so a newer module is never paired with an older one it depends on. A new
-// page is shown only once every file of its version is saved. Other files
+// page is shown once its required files are saved. Other files
 // come from the network first, the saved copy only when it fails. The map
-// libraries are hosted with this page and included in the same complete shell.
+// libraries are hosted with this page. The staged Canvas entry can install
+// without WebGL. The rollback entry still requires the renderer pair.
 // Their filenames pin the library version, so cached old/new app versions
 // cannot overwrite one another's dependency bytes. Map tiles and data files
 // are not handled here.
-const PREFIX = 'atlas-shell-', CACHE = `${PREFIX}99`, KEEP_VERSIONS = 2;
+const PREFIX = 'atlas-shell-', CACHE = `${PREFIX}100`, KEEP_VERSIONS = 2;
 const FONT_CACHE='atlas-label-fonts-v1';
 // Shell 94 removes the restricted backgrounds and retains bathymetry status reporting.
 // The previous shell adds ownership schema to the Mongolian failure fix (the atlas.4 MapLibre repair:
@@ -44,7 +45,12 @@ const legacyMapLibre = url => LEGACY_MAPLIBRE.has(url.origin + url.pathname);
 const SHELL = /\/(app\.css|[\w-]+\.mjs|vendor\/[\w.-]+\.(?:js|css)|world\.style\.json|major-stations\.geojson|manifest\.webmanifest|atlas-icon[\w-]*\.(?:png|svg))$/;
 // Saved at installation, so an app installed on the first visit (before this
 // worker controlled the page) also opens offline.
-const PRECACHE = ['./', ...LIBRARIES, 'app.css', 'app.mjs', 'shared-tile-protocols.mjs', 'status-ui.mjs', 'legend-ui.mjs', 'feature-inspector.mjs', 'bathymetry.mjs', 'soviet-topo.mjs', 'soviet-coverage.mjs', 'viewport-settle.mjs', 'mode-tile-cache.mjs', 'terrain-3d.mjs', 'imagery.mjs', 'imagery-regions.mjs', 'map-model.mjs', 'owner-color.mjs', 'layer-semantics.mjs', 'map-controls.mjs', 'rail-provider-recovery.mjs', 'mainline-reference.mjs', 'station-world.mjs', 'station-fallback.mjs', 'railway-visibility.mjs', 'platform-length.mjs', 'context.mjs', 'cjk-font.mjs', 'rare-han.mjs', 'world-font.mjs', 'mongolian-text.mjs', 'mongolian-shaping.mjs', 'crossing-tags.mjs', 'power-facilities.mjs', 'energy-network.mjs', 'energy-network-schema.mjs', 'data-ages.mjs', 'draw.mjs', 'elevation.mjs', 'terrain-requests.mjs', 'dem-repair.mjs', 'globe-drag.mjs', 'keyboard-pan.mjs', 'watch-map.mjs', 'tile-bundles.mjs', 'service-frequency.mjs', 'service-status.mjs', 'departures.mjs', 'departures-ui.mjs', 'polar.mjs', 'track-count.mjs', 'track-tiles.mjs', 'han-region.mjs', 'han-region-data.mjs', 'loading-gauge-list.mjs', 'axle-load.mjs', 'vendor/tile-labels.js', 'vendor/track-worker.js', 'vendor/polar-layer.js', 'vendor/maplibre-contour.js', 'vendor/dem-worker.js', 'vendor/depth-worker.js', 'vendor/terrain-3d-worker.js', 'world.style.json', 'major-stations.geojson', 'manifest.webmanifest', 'atlas-icon.svg', 'atlas-icon-192.png', 'atlas-icon-512.png', 'atlas-icon-maskable-512.png', 'atlas-icon-touch-180.png'];
+const PRECACHE = ['./', ...LIBRARIES, 'app.css', 'app.mjs', 'shared-tile-protocols.mjs', 'status-ui.mjs', 'legend-ui.mjs', 'feature-inspector.mjs', 'bathymetry.mjs', 'soviet-topo.mjs', 'soviet-coverage.mjs', 'viewport-settle.mjs', 'mode-tile-cache.mjs', 'terrain-3d.mjs', 'imagery.mjs', 'imagery-regions.mjs', 'map-model.mjs', 'owner-color.mjs', 'layer-semantics.mjs', 'map-controls.mjs', 'rail-provider-recovery.mjs', 'mainline-reference.mjs', 'station-world.mjs', 'station-fallback.mjs', 'railway-visibility.mjs', 'platform-length.mjs', 'context.mjs', 'cjk-font.mjs', 'rare-han.mjs', 'world-font.mjs', 'mongolian-text.mjs', 'mongolian-shaping.mjs', 'crossing-tags.mjs', 'power-facilities.mjs', 'energy-network.mjs', 'energy-network-schema.mjs', 'data-ages.mjs', 'draw.mjs', 'elevation.mjs', 'terrain-requests.mjs', 'dem-repair.mjs', 'globe-drag.mjs', 'keyboard-pan.mjs', 'watch-map.mjs', 'tile-bundles.mjs', 'service-frequency.mjs', 'service-status.mjs', 'departures.mjs', 'departures-ui.mjs', 'polar.mjs', 'track-count.mjs', 'track-tiles.mjs', 'han-region.mjs', 'han-region-data.mjs', 'loading-gauge-list.mjs', 'axle-load.mjs', 'vendor/tile-labels.js', 'vendor/track-worker.js', 'vendor/polar-layer.js', 'vendor/flat-browser.js', 'vendor/maplibre-contour.js', 'vendor/dem-worker.js', 'vendor/depth-worker.js', 'vendor/terrain-3d-worker.js', 'world.style.json', 'major-stations.geojson', 'manifest.webmanifest', 'atlas-icon.svg', 'atlas-icon-192.png', 'atlas-icon-512.png', 'atlas-icon-maskable-512.png', 'atlas-icon-touch-180.png'];
+
+// Only the staged entry can open without WebGL. The released entry and
+// older pages still require the complete WebGL shell.
+const GL_SHELL = new Set(LIBRARIES.filter(path => path.startsWith('vendor/maplibre-gl-')));
+const hasCanvasEntry = html => /<html\b[^>]*\bdata-flat-entry="staged"/i.test(html);
 
 // The version the page asks for, read from its module script.
 const pageVersion = html => html.match(/src="app\.mjs\?v=([\w.-]+)"/)?.[1] ?? null;
@@ -65,11 +71,11 @@ async function verifiedLegacyLibrary(cache, url, expected = LEGACY_LIBRARIES[url
     return sha256 === expected ? response : null;
   } catch { return null; }
 }
-// Saves every file of one version, all fetched now (so they match each
+// Saves the required files of one version, all fetched now (so they match each
 // other), under both the plain and the versioned address; then drops the
 // files of other versions. Throws if any file fails, keeping what was there.
-async function saveVersion(cache, version, page) {
-  const files = await Promise.all(PRECACHE.filter(path => path !== './').map(async path => {
+async function saveVersion(cache, version, page, canvasEntry = false) {
+  const readAsset = async path => {
     const url = new URL(path, self.registration.scope), key = url.origin + url.pathname;
     const saved = await cache.match(versioned(key, version));
     if (saved) return [key, saved];
@@ -82,7 +88,9 @@ async function saveVersion(cache, version, page) {
     // body rejects before any of this version's files are published.
     await response.clone().arrayBuffer();
     return [key, response];
-  }));
+  };
+  const needed = PRECACHE.filter(path => path !== './' && !(canvasEntry && GL_SHELL.has(path)));
+  const files = await Promise.all(needed.map(readAsset));
   for (const [key, response] of files) {
     await cache.put(versioned(key, version), response.clone());
     await cache.put(key, response);
@@ -139,16 +147,12 @@ async function migrate(cache, version) {
 
 self.addEventListener('install', event => event.waitUntil((async () => {
   const cache = await caches.open(CACHE);
-  // Every file is needed: if one fails to load, the installation fails, the
-  // worker in place (and its complete copy) stays, and the browser tries
-  // again later.
+  // If a required file fails, keep the existing worker and its complete shell.
   const response = await fetch(new URL('./', self.registration.scope), {cache: 'no-cache'});
   if (!response.ok) throw new Error(`page returned ${response.status}`);
-  const version = pageVersion(await response.clone().text());
+  const html = await response.clone().text(), version = pageVersion(html);
   if (!version) throw new Error('page names no version');
-  // App modules and version-pinned map libraries succeed together. A blocked
-  // third-party CDN cannot prevent the new shell from becoming available.
-  await saveVersion(cache, version, response);
+  await saveVersion(cache, version, response, hasCanvasEntry(html));
   await migrate(cache, version);
   await self.skipWaiting();
 })()));
@@ -158,6 +162,26 @@ self.addEventListener('activate', event => event.waitUntil((async () => {
   for (const key of await caches.keys()) if (key.startsWith(PREFIX) && key !== CACHE) await caches.delete(key);
   await self.clients.claim();
 })()));
+// A page asks only after the WebGL renderer actually started. On the first
+// visit its assets may have loaded before this worker controlled the page.
+let webglWarmup;
+self.addEventListener('message', event => {
+  if (event.data !== 'atlas:cache-webgl' || !event.source?.url?.startsWith(self.registration.scope)) return;
+  if (!webglWarmup) webglWarmup = (async () => {
+    const cache = await caches.open(CACHE);
+    const files = await Promise.all([...GL_SHELL].map(async path => {
+      const key = new URL(path, self.registration.scope).href;
+      const saved = await cache.match(key);
+      if (saved?.ok) return null;
+      const response = await fetch(key, {cache: 'force-cache'});
+      if (!response.ok) throw new Error('WebGL asset unavailable');
+      await response.clone().arrayBuffer();
+      return [key, response];
+    }));
+    for (const item of files) if (item) await cache.put(...item);
+  })().catch(() => {}).finally(() => { webglWarmup = null; });
+  event.waitUntil(webglWarmup);
+});
 self.addEventListener('fetch', event => {
   const request = event.request, url = new URL(request.url);
   if (request.method === 'GET' && legacyMapLibre(url)) {
@@ -212,14 +236,14 @@ self.addEventListener('fetch', event => {
     try {
       const response = await fetch(request);
       if (response.ok && request.mode === 'navigate') {
-        // A page is shown only once every file of its version is saved
+        // A page is shown once its required files for this version are saved
         // (quick when the version is unchanged: they are all saved), so it
         // always finds its own files even if the connection then drops. If
         // they cannot all be had, the saved page, complete with its files,
         // is shown instead.
-        const next = pageVersion(await response.clone().text());
+        const html = await response.clone().text(), next = pageVersion(html);
         if (next) {
-          try { await saveVersion(cache, next, response.clone()); }
+          try { await saveVersion(cache, next, response.clone(), hasCanvasEntry(html)); }
           catch { const saved = await cache.match(plain); if (saved) return saved; }
         }
       } else if (response.ok) {

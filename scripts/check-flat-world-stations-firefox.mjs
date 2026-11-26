@@ -1,0 +1,252 @@
+import assert from 'node:assert/strict';
+import {createServer} from 'node:http';
+import {mkdtemp,readFile,rm} from 'node:fs/promises';
+import {tmpdir} from 'node:os';
+import {join} from 'node:path';
+import {gzipSync} from 'node:zlib';
+import {firefox} from 'playwright';
+import vtPbf from 'vt-pbf';
+import {createPreviewServer} from './serve.mjs';
+import {installEmptyMapProviders} from './browser-renderer-fixture.mjs';
+import {encodeBundle} from '../styles/tile-bundles.mjs';
+
+const html=(await readFile('styles/index.html','utf8'));
+const preview=createPreviewServer({root:'styles'});
+const style=JSON.parse(await readFile('styles/world.style.json','utf8'));
+const curated='Curated Hub';
+const curatedLon=7.03125;
+const curatedLat=Math.atan(Math.sinh(Math.PI*(1-2*7.5/16)))*180/Math.PI;
+style.sources.stationMajor.data={type:'FeatureCollection',features:[{
+  type:'Feature',id:'fixture-hub',geometry:{type:'Point',coordinates:[curatedLon,curatedLat]},
+  properties:{id:'node-46103',osm_type:'node',osm_id:'46103',tier:3,rank:1,feature:'station',station:'train'},
+}]};
+const manifest={complete:true,schema:1,license:'ODbL-1.0',minzoom:3,maxzoom:7,
+  stations:1,tiles:2,bundles:1,polar:0,pendingRegions:0,completedRegions:32};
+const index={zoom:3,bundles:['4/3']};
+let mode='complete',curatedUnavailable=false;
+const seen=[], curatedRequests=[];
+const bytes=(layer,id,name,coordinates)=>vtPbf.fromGeojsonVt({[layer]:{features:[{
+  type:1,id,geometry:[coordinates],
+  tags:{id:'node-'+id,osm_id:String(id),osm_type:'node',name,feature:'station',state:'present',station:'train'},
+}]}},{version:2});
+const centre=2048;
+const world='Snapshot-only railway station';
+const established='Established fallback station';
+const layer='atlas_station_points';
+const bundle=gzipSync(encodeBundle(new Map([
+  ['4/8/7',bytes(layer,46101,world,[centre,centre])],
+  ['3/4/3',bytes(layer,46101,world,[centre/2,2048+centre/2])],
+])));
+const fallback=bytes('standard_railway_text_stations_low',46102,established,[centre+768,centre]);
+const server=createServer((req,res)=>{
+  const path=new URL(req.url,'http://local').pathname;
+  const write=(type,body)=>res.writeHead(200,{'content-type':type,'cache-control':'no-store'}).end(body);
+  if(path==='/')return write('text/html',html);
+  if(path==='/world.style.json'){
+    if(mode!=='selected-only')return write('application/json',JSON.stringify(style));
+    const selectedStyle=structuredClone(style);
+    selectedStyle.sources.stationMajor.data.features[0].properties.tier=5;
+    return write('application/json',JSON.stringify(selectedStyle));
+  }
+  if(path==='/major-stations.geojson')return write('application/json','{"type":"FeatureCollection","features":[]}');
+  if(path.startsWith('/data/station-points/')){
+    seen.push(path);
+    if(path.endsWith('/manifest.json'))return write('application/json',JSON.stringify(['incomplete','selected-only'].includes(mode)?{...manifest,complete:false}:manifest));
+    if(path.endsWith('/index.json'))return write('application/json',JSON.stringify(index));
+    if(path.endsWith('/3/4/3.bundle.gz')&&mode==='complete')return write('application/gzip',bundle);
+    return res.writeHead(404).end();
+  }
+  if(path==='/station-low-fixture.json')return write('application/json',JSON.stringify({minzoom:4,maxzoom:4,tiles:[origin+'/station-low-fixture/{z}/{x}/{y}.pbf']}));
+  if(path.startsWith('/station-low-fixture/'))return write('application/x-protobuf',path.endsWith('/4/8/7.pbf')?Buffer.from(fallback):Buffer.alloc(0));
+  return preview.emit('request',req,res);
+});
+await new Promise((resolve,reject)=>server.once('error',reject).listen(0,'127.0.0.1',resolve));
+const origin='http://127.0.0.1:'+server.address().port;
+const lat=Math.atan(Math.sinh(Math.PI*(1-2*7.5/16)))*180/Math.PI;
+async function expectCuratedRequests(count,requests){
+  for(let i=0;i<120;i++){
+    if(requests.filter(path=>/\/8\/\d+\/\d+$/.test(path)).length>=count)return;
+    await new Promise(resolve=>setTimeout(resolve,50));
+  }
+  assert.fail('expected '+count+' curated name requests: '+JSON.stringify(requests));
+}
+const profile=await mkdtemp(join(tmpdir(),'atlas-world-stations-'));
+let browser;
+try{
+  browser=await firefox.launchPersistentContext(profile,{headless:true,executablePath:process.env.FIREFOX_EXECUTABLE,
+    viewport:{width:960,height:640},deviceScaleFactor:2,serviceWorkers:'block',firefoxUserPrefs:{'webgl.disabled':true}});
+  await installEmptyMapProviders(browser,origin+'/',{firstParty:'network'});
+  await browser.route(url=>url.pathname.includes('standard_railway_text_stations_low'),route=>{
+    const p=new URL(route.request().url()).pathname;
+    if(/\/\d+\/\d+\/\d+$/.test(p))return route.fulfill({contentType:'application/x-protobuf',headers:{'access-control-allow-origin':'*'},
+      body:p.endsWith('/4/8/7')?Buffer.from(fallback):Buffer.alloc(0)});
+    return route.fulfill({json:{minzoom:4,maxzoom:4,tiles:[origin+'/station-low-fixture/{z}/{x}/{y}.pbf']}});
+  });
+  await browser.route(url=>/\/standard_railway_text_stations(?:$|[,/])/.test(url.pathname),route=>{
+    const p=new URL(route.request().url()).pathname;
+    curatedRequests.push(p);
+    if(/\/\d+\/\d+\/\d+$/.test(p)&&curatedUnavailable)return route.fulfill({
+      status:404,headers:{'access-control-allow-origin':'*'},body:''});
+    if(/\/\d+\/\d+\/\d+$/.test(p))return route.fulfill({contentType:'application/x-protobuf',headers:{'access-control-allow-origin':'*'},
+      body:p.endsWith('/8/133/120')?Buffer.from(bytes('standard_railway_text_stations',46103,curated,[0,0])):Buffer.alloc(0)});
+    return route.fulfill({json:{minzoom:8,maxzoom:8,tiles:['https://openrailwaymap.app/standard_railway_text_stations/{z}/{x}/{y}']}});
+  });
+  for(const [state,z] of [['complete',4],['complete',3],['incomplete',4],['broken-bundle',4],['reconnect',4],['selected-only',4]]){
+    mode=state==='reconnect'?'incomplete':state;
+    curatedUnavailable=state==='reconnect';
+    seen.length=0;curatedRequests.length=0;
+    const p=await browser.newPage(),failures=[],curatedFinished=[];
+    try{
+      p.on('pageerror',e=>failures.push(e.message));
+      p.on('requestfinished',request=>{const path=new URL(request.url()).pathname;
+        if(path.startsWith('/standard_railway_text_stations,')&&/\/8\/\d+\/\d+$/.test(path))curatedFinished.push(path);
+      });
+      await p.addInitScript(()=>{
+        localStorage.setItem('atlas_disable_webgl','1');
+        window.glAttempts=0;
+        window.stationLabels=new Set();
+        window.curatedMarker=false;
+        window.curatedRadius=0;
+        const arc=CanvasRenderingContext2D.prototype.arc;
+        CanvasRenderingContext2D.prototype.arc=function(x,y,radius,...args){
+          if(this.canvas.matches?.('canvas.atlas-flat-preview')&&Math.abs(x-384)<2&&Math.abs(y-320)<2&&radius>0){
+            window.curatedMarker=true;
+            window.curatedRadius=radius;
+          }
+          return arc.call(this,x,y,radius,...args);
+        };
+        const fillText=CanvasRenderingContext2D.prototype.fillText;
+        CanvasRenderingContext2D.prototype.fillText=function(label,x,y,...args){
+          if(this.canvas.matches?.('canvas.atlas-flat-preview')){
+            window.stationLabels.add(label);
+            if(label==='Curated Hub')window.curatedTextPoint=[x+this.measureText(label).width*.82,y];
+          }
+          return fillText.call(this,label,x,y,...args);
+        };
+        const get=HTMLCanvasElement.prototype.getContext;
+        HTMLCanvasElement.prototype.getContext=function(type,...args){
+          if(type.startsWith('webgl'))window.glAttempts++;
+          return get.call(this,type,...args);
+        };
+      });
+      const missingBundle=state==='broken-bundle'?p.waitForResponse(r=>r.status()===404&&r.url().includes('.bundle.gz')):null;
+      await p.goto(origin+'/?names=0&stations=1&relief=0&transport=0&destinations=0&constraints=0&detail=0#'+z+'/'+lat+'/11.25');
+      if(missingBundle){
+        await missingBundle;
+        await p.evaluate(()=>{
+          window.curatedMarker=false;
+          dispatchEvent(new Event('online'));
+        });
+      }
+      const canvas=p.locator('canvas.atlas-flat-preview');
+      await canvas.waitFor();
+      if(state==='selected-only'){
+        await p.waitForFunction(()=>window.curatedMarker);
+        assert.equal(curatedFinished.length,0,'below the label tier, unselected hubs do not fetch names');
+        await p.mouse.click(384,320);
+        await p.getByRole('heading',{name:curated,exact:true}).waitFor({timeout:5000});
+        await p.locator('#detail-content a[href="https://www.openstreetmap.org/node/46103"]').waitFor();
+        assert.equal(await p.evaluate(label=>window.stationLabels.has(label),curated),false);
+        assert.equal(await p.evaluate(()=>window.glAttempts),0);
+        assert.deepEqual(failures,[]);
+        console.log('Canvas selected an unnamed hub below its label tier and resolved its exact OSM node');
+        continue;
+      }
+      if(state==='reconnect'){
+        await p.waitForFunction(()=>window.curatedMarker);
+        await expectCuratedRequests(5,curatedFinished);
+        assert.equal(await p.evaluate(label=>window.stationLabels.has(label),curated),false);
+        const requestsBefore=curatedRequests.length;
+        await p.evaluate(()=>new Promise(done=>requestAnimationFrame(()=>requestAnimationFrame(done))));
+        assert.equal(curatedRequests.length,requestsBefore,'a stationary viewport must not poll for a missing name');
+        await p.mouse.click(384,320);
+        await p.getByRole('heading',{name:'Unnamed station',exact:true}).waitFor({timeout:5000});
+        curatedUnavailable=false;
+        await p.evaluate(()=>dispatchEvent(new Event('online')));
+        await p.getByRole('heading',{name:curated,exact:true}).waitFor({timeout:5000});
+        await p.locator('#details-close').click();
+      }
+      await p.waitForFunction(label=>window.stationLabels.has(label),curated,{timeout:12000}).catch(async error=>{
+        console.error('curated overview', JSON.stringify({state,z,curatedRequests,failures,
+          labels:await p.evaluate(()=>[...window.stationLabels]),
+          status:await p.locator('#map-status').textContent()}));
+        throw error;
+      });
+      if(z===4&&state==='complete'){
+        const point=await p.evaluate(()=>window.curatedTextPoint);
+        assert.ok(Math.hypot(point[0]-384,point[1]-320)>12,'label click must not fall within marker hit distance');
+        await p.mouse.click(...point);
+        await p.getByRole('heading',{name:curated,exact:true}).waitFor({timeout:5000});
+        await p.locator('#detail-content a[href="https://www.openstreetmap.org/node/46103"]').waitFor();
+        await p.locator('#details-close').click();
+      }
+      if(z===4&&state!=='complete'){
+        // A broken snapshot hides the old markers while its manifest is
+        // considered valid. Wait for the first restored marker paint.
+        await p.waitForFunction(()=>window.curatedMarker);
+        await p.mouse.click(384,320);
+        await p.getByRole('heading',{name:curated,exact:true}).waitFor({timeout:5000}).catch(async error=>{
+          console.error('curated marker click',JSON.stringify({state,z,seen,
+            marker:await p.evaluate(()=>window.curatedMarker),
+            target:await p.evaluate(()=>document.elementFromPoint(384,320)?.outerHTML?.slice(0,150)),
+            details:await p.locator('#detail-content').innerText(),
+            status:await p.locator('#map-status').textContent()}));
+          throw error;
+        });
+        await p.locator('#detail-content a[href="https://www.openstreetmap.org/node/46103"]').waitFor();
+        await p.locator('#details-close').click();
+      }
+      const [px,py]=[state==='complete'?480:576,320];
+      const name=state==='complete'?world:established;
+      await p.waitForFunction(({px,py})=>{
+        const c=document.querySelector('canvas.atlas-flat-preview'),ctx=c.getContext('2d');
+        const k=c.width/c.clientWidth;
+        return ctx.getImageData(Math.round(px*k)-3,Math.round(py*k)-3,7,7).data
+          .some((v,i,a)=>i%4===0&&v>155&&v<236&&a[i+1]<240&&a[i+2]<236&&a[i+3]===255);
+      },{px,py},{timeout:12000}).catch(async error=>{
+        console.error(state,z,seen,await p.locator('#map-status').textContent());throw error;
+      });
+      await p.mouse.click(px,py);
+      await p.getByRole('heading',{name,exact:true}).waitFor({timeout:5000});
+      const expectedID=state==='complete'?46101:46102;
+      await p.locator('#detail-content a[href="https://www.openstreetmap.org/node/'+expectedID+'"]').waitFor();
+      assert.equal(await p.locator('#names').isChecked(),false);
+      if(state==='complete'){
+        await p.getByText(/Independent worldwide OpenStreetMap station-point snapshot/).waitFor();
+        const dock=p.locator('.atlas-flat-credit-box');
+        if(await dock.getAttribute('open')===null)await dock.locator('summary').click();
+        await dock.getByText(/OpenStreetMap contributors, ODbL/).waitFor({timeout:5000});
+        await dock.locator('summary').click();
+        if(z===4){
+          await p.locator('#details-close').click();
+          if(!await p.locator('#settings-open').isVisible())await p.locator('#controls-open').click();
+          await p.locator('#settings-open').click();
+          await p.locator('#stations').uncheck();
+          await p.mouse.click(px,py);
+          assert.equal(await p.getByRole('heading',{name,exact:true}).count(),0);
+          await p.locator('#stations').check();
+          await p.locator('#settings-close').click();
+          await p.mouse.click(px,py);
+          await p.getByRole('heading',{name,exact:true}).waitFor({timeout:5000});
+        }
+        assert.equal(seen.filter(path=>path.endsWith('/index.json')).length,1);
+        assert.equal(seen.filter(path=>path.endsWith('.bundle.gz')).length,1);
+      }else if(mode==='incomplete'){
+        assert.deepEqual(seen,['/data/station-points/manifest.json']);
+      }else{
+        assert.ok(seen.some(path=>path.endsWith('.bundle.gz')));
+        assert.equal(await p.getByText(/Independent worldwide OpenStreetMap station-point snapshot/).count(),0);
+      }
+      assert.deepEqual(failures,[]);
+      assert.equal(await p.evaluate(()=>window.glAttempts),0);
+      if(state==='reconnect'){
+        const initialRadius=await p.evaluate(()=>window.curatedRadius);
+        assert.ok(Math.abs(initialRadius-1.15*.45)<0.001,'initial ring has the z4 railway width');
+        await p.evaluate(hash=>{window.curatedRadius=0;location.hash=hash;},'#5/'+lat+'/9.140625');
+        const expected=(1.15+(1.8-1.15)/3)*.45;
+        await p.waitForFunction(r=>Math.abs(window.curatedRadius-r)<0.001,expected);
+      }
+      console.log('Canvas world stations:',state,'z'+z,'painted and opened exact node',expectedID,'with names disabled');
+    }finally{await p.close();}
+  }
+} finally{await browser?.close();server.close();await rm(profile,{recursive:true,force:true});}

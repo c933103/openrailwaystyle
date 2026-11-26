@@ -7,7 +7,7 @@ import {launchBrowser} from './browser.mjs';
 import {installEmptyMapProviders} from './browser-renderer-fixture.mjs';
 
 // Serve the real packaged page, modules and style. In the control remove only
-// the three HTML hints. All fixture responses are local, and no timing target
+// the HTML hints. All fixture responses are local, and no timing target
 // depends on the host's rendering speed or the public provider's response.
 const directory = new URL('../styles/', import.meta.url);
 const pageHtml = await readFile(new URL('index.html', directory), 'utf8');
@@ -16,8 +16,11 @@ const types = {'.mjs':'text/javascript','.js':'text/javascript','.css':'text/css
 const pin = /\/vendor\/maplibre-gl-[\w.-]+\.js$/;
 const paths = {app:'/app.mjs', style:'/world.style.json', labels:'/vendor/tile-labels.js'};
 const hintLine = /  <link rel="(?:preload|modulepreload)"[^>]+href="(?:world\.style\.json\?v=[^"]+|vendor\/maplibre-gl-[\w.-]+\.js|vendor\/tile-labels\.js\?v=[^"]+)">\n/g;
-const control = pageHtml.replace(hintLine,'');
-assert.equal([...pageHtml.matchAll(hintLine)].length,3,'startup must advertise the three first-party inputs');
+const rendererHint = /  <script id="startup-renderer-preload">[\s\S]*?<\/script>\n/g;
+const control = pageHtml.replace(hintLine,'').replace(rendererHint,'');
+assert.equal([...pageHtml.matchAll(hintLine)].length,2,'keep both static first-party data hints');
+assert.equal([...pageHtml.matchAll(rendererHint)].length,1,'keep the conditional renderer hint');
+const canvasEntry=/<html\b[^>]* data-flat-entry="staged">/.test(pageHtml);
 const samples = {};
 const server = createServer(async (req,res) => {
   try {
@@ -80,7 +83,8 @@ try {
         const matching = requests.filter(predicate);
         assert.equal(matching.length,1,mode+' should request each input once: '+JSON.stringify(matching));
         if(i<2) assert.equal(matching[0].search,version,'HTML preloads use the actual app version');
-        assert.equal(matching[0].at < appEnd,mode==='preloaded',mode+' discovery: '+matching[0].path);
+        const shouldPreload=mode==='preloaded'&&(i<2||!canvasEntry);
+        assert.equal(matching[0].at < appEnd,shouldPreload,mode+' discovery: '+matching[0].path);
       }
       assert.equal(await page.locator('#map canvas.maplibregl-canvas').count(),1,'the real map created its renderer');
       await page.waitForLoadState('networkidle',{timeout:5000}).catch(()=>{});

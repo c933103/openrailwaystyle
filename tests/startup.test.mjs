@@ -485,7 +485,7 @@ for (const previous of ['sw-before-first-party-libraries.js','sw-before-maplibre
     const url=new URL(typeof input==='string'?input:input.url||input.href);fetched.push(url.href);
     if(offline)throw Error('offline');
     if(failControl&&url.pathname.endsWith('/map-controls.mjs'))throw Error('control download interrupted');
-    if(failReplacement&&url.pathname.endsWith('vendor/maplibre-gl-5.24.0-atlas.4.js'))throw Error('replacement library unavailable');
+    if(failReplacement&&url.pathname.endsWith('vendor/flat-browser.js'))throw Error('required Canvas module unavailable');
     const oldFirstParty=legacyDistributions.find(library=>url.pathname.endsWith('/'+library.target.replace(/-atlas\.\d+\.js$/,'.js')));
     if(url.hostname==='cdn.jsdelivr.net'||oldFirstParty) {
       const css=url.pathname.endsWith('.css');
@@ -513,7 +513,7 @@ for (const previous of ['sw-before-first-party-libraries.js','sw-before-maplibre
   assert.match(await (await request(old,'./')).text(),/app.mjs\?v=old/, 'failed updated control module keeps the complete old page');
   failControl=false;
   assert.equal(await (await request(old,'./')).text(),html,'old worker really admitted the new HTML');
-  failReplacement=true;await assert.rejects(install(worker(newSource)),/replacement library unavailable/);
+  failReplacement=true;await assert.rejects(install(worker(newSource)),/required Canvas module unavailable/);
   offline=true;
   assert.equal(await (await request(old,'./')).text(),html);
   const version=html.match(/src="app\.mjs\?v=([\w.-]+)"/)[1];
@@ -613,7 +613,7 @@ for(const mode of ['tampered-bytes','crypto-unavailable'])test(`legacy startup r
   } finally {result.dom.window.close();}
 });
 test('installation help works before renderer libraries load and after WebGL initialization fails', async t => {
-  for (const options of [{delayLibraries: true}, {failWebGL: true}]) await t.test(JSON.stringify(options), async () => {
+  for (const options of [{delayLibraries: true}, {failWebGL: true, rollbackEntry:true}]) await t.test(JSON.stringify(options), async () => {
     const {dom, window, maps} = await start(options);
     try {
       const get = id => window.document.getElementById(id);
@@ -1069,7 +1069,10 @@ test('controls work while the map is still loading, and settings take effect onc
   const {dom,window,maps,errors,loadLibraries} = await start({delayLibraries:true});
   try {
     assert.equal(maps.length,0,'the map waits for its libraries');
-    assert.equal(window.document.head.querySelectorAll('script').length,3,'libraries load from the app, not blocking the page');
+    const head = html.match(/<head>([\s\S]*?)<\/head>/)[1];
+    assert.doesNotMatch(head,/<script\b[^>]*\bsrc=/i,'the HTML head must not load parser-blocking scripts');
+    const libraries = [...window.document.head.querySelectorAll('script[src]')].map(node => new URL(node.src).pathname.split('/').at(-1)).sort();
+    assert.deepEqual(libraries,['maplibre-contour.js','maplibre-gl-5.24.0-atlas.4.js','pmtiles-4.2.1.js']);
     window.document.querySelector('[data-mode="electrification"]').click();
     assert.equal(window.document.querySelector('[data-mode="electrification"]').getAttribute('aria-pressed'),'true');
     const units = window.document.getElementById('units');

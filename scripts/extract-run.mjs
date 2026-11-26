@@ -30,10 +30,34 @@ export const regionKey = id => id.replaceAll('/', '--');
 export const previousEntry = entry => entry && {sourceMd5: entry.sourceMd5, pbfBytes: entry.pbfBytes, filter: entry.filter,
   sourceTimestamp: entry.sourceTimestamp, counts: entry.counts};
 
-export function extractMatrix(plan, {maxJobs = MAX_JOBS, maxRunBytes = MAX_RUN_BYTES, index = null} = {}) {
+// Only exact plan IDs are accepted. A missing ID cannot expand the scope.
+export function parseRegionSelection(input = '', gapsOnly = false) {
+  if (typeof input !== 'string') throw new Error('Region selection must be text');
+  const ids = input === '' ? [] : input.split(',').map(id => id.trim());
+  if (ids.some(id => !/^[a-z0-9]+(?:[-/][a-z0-9]+)*$/.test(id))) throw new Error('Use comma-separated region IDs');
+  if (new Set(ids).size !== ids.length) throw new Error('A region ID is repeated');
+  if (ids.length && gapsOnly) throw new Error('region_ids and gaps_only cannot be combined');
+  return ids;
+}
+
+export function extractMatrix(plan, {maxJobs = MAX_JOBS, maxRunBytes = MAX_RUN_BYTES, index = null, regionIds = []} = {}) {
   if (plan?.valid !== true) throw new Error(`The region plan is not valid: ${(plan?.problems || ['no plan']).join('; ')}`);
-  const regions = plan.regions;
-  if (!Array.isArray(regions) || !regions.length) throw new Error('The region plan has no regions');
+  const all = plan.regions;
+  if (!Array.isArray(all) || !all.length) throw new Error('The region plan has no regions');
+  const planIds = new Set(all.map(region => region.id));
+  if (planIds.size !== all.length) throw new Error('Two regions share an id');
+  if (!Array.isArray(regionIds) || new Set(regionIds).size !== regionIds.length) throw new Error('Invalid region selection');
+  const selected = new Set(regionIds);
+  if (regionIds.length) {
+    const unknown = regionIds.filter(id => !planIds.has(id));
+    if (unknown.length) throw new Error(`Region not in the current plan: ${unknown.join(', ')}`);
+    const current = Object.keys(index?.regions ?? {}).filter(id => !id.startsWith('gap/'));
+    // The full path handles membership changes and first-time publication.
+    if (current.length !== planIds.size || current.some(id => !planIds.has(id))) {
+      throw new Error('Selective refresh requires a working copy for every current region and no plan membership change');
+    }
+  }
+  const regions = selected.size ? all.filter(region => selected.has(region.id)) : all;
   const over = regions.filter(region => region.oversized || region.bytes > plan.maxBytes);
   if (over.length) throw new Error(`Regions over the limit: ${over.map(region => region.id).join(', ')}`);
   if (regions.length > maxJobs) throw new Error(`${regions.length} regions; one run holds ${maxJobs}`);
@@ -91,7 +115,8 @@ if (import.meta.url === pathToFileURL(process.argv[1] || '').href) {
   if (command === 'matrix') {
     // The index is optional: none on the first run.
     const index = dir && existsSync(dir) ? JSON.parse(await readFile(dir, 'utf8')) : null;
-    const entries = extractMatrix(plan, {index});
+    const regionIds = parseRegionSelection(process.env.EXTRACT_REGION_IDS, process.env.EXTRACT_GAPS_ONLY === 'true');
+    const entries = extractMatrix(plan, {index, regionIds});
     const output = `matrix=${JSON.stringify(entries)}\ncount=${entries.length}\n`;
     if (process.env.GITHUB_OUTPUT) await appendFile(process.env.GITHUB_OUTPUT, output); else process.stdout.write(output);
     console.log(`${entries.length} regions, ${(entries.reduce((sum, e) => sum + e.bytes, 0) / GiB).toFixed(2)} GiB`);

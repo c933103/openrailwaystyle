@@ -259,7 +259,8 @@ test('drawing points are selected, then moved, deleted, curved or extended', asy
   assert.deepEqual(d.features.at(-1).properties.curved, [0,1,1,0,1,0,0,0], 'between an end and a curve point: part of the curve');
   // Dragging a middle handle inserts the point, then moves it.
   at(9, 9);
-  const target = {drawing: line.id, after: 6, mid: 1};
+  const target = {...sources['atlas-drawing-handles'].data.features
+    .find(f => f.properties.drawing === line.id && f.properties.mid && f.properties.after === 6).properties};
   handlers['mousedown drawing-handle-targets']({features: [{properties: target}], point: {x: 0, y: 0}, originalEvent: {button: 0}, preventDefault() {}});
   handlers['mousemove ']({point: {x: 50, y: 0}, lngLat: {lng: -0.8, lat: 0.2}});
   handlers['mousemove ']({point: {x: 60, y: 0}, lngLat: {lng: -0.8, lat: 0.3}});
@@ -328,4 +329,100 @@ test('erase deletes a drawing even when clicked on one of its points', async () 
   picked = {drawing: id, index: 0};
   d.click({lng: 1, lat: 1}, {x: 1, y: 1});
   assert.equal(d.features.length, 0);
+});
+
+test('renderer handoff keeps a draft and curve flags without silently finishing it',()=>{
+  const create=()=>new Drawing(editingMap({}, {}, ()=>null));
+  const before=create();
+  before.setMode('area');
+  for(const [lng,lat] of [[0,0],[1,0],[0,1]])before.click({lng,lat},{x:lng,y:lat});
+  before.setStyle({color:'#345678',dash:'dotted',width:5});
+  before.setPaused(true);
+  const snapshot=JSON.parse(JSON.stringify(before.rendererDraft()));
+  const after=create();
+  assert.equal(after.restoreRendererDraft(snapshot),true);
+  assert.equal(after.paused,true);
+  assert.deepEqual(after.style,{color:'#345678',dash:'dotted',width:5});
+  assert.equal(after.collection().features.length,0,'a renderer switch cannot commit the draft');
+  assert.deepEqual(after.draft,[[0,0],[1,0],[0,1]]);
+  after.setPaused(false);after.finish();
+  assert.deepEqual(after.features[0].geometry.coordinates,[[[0,0],[1,0],[0,1],[0,0]]]);
+  assert.equal(after.restoreRendererDraft({...snapshot,flags:[]}),false);
+});
+
+test('renderer handoff preserves extension semantics and refuses to replace an independently changed original',()=>{
+  const create=()=>new Drawing(editingMap({}, {}, ()=>null));
+  const geo={type:'Feature',properties:{color:'#345678',name:'Route'},geometry:{type:'LineString',coordinates:[[0,0],[1,0]]}};
+  const before=create();before.add([geo],false);before.setMode('line');
+  before.select({drawing:before.features[0].id,index:1});before.extendSelected();
+  before.setCurved(true);before.click({lng:2,lat:1},{x:2,y:1});
+  const snapshot=JSON.parse(JSON.stringify(before.rendererDraft()));
+  const after=create();after.add(readDrawing(before.collection()),false);
+  assert.equal(after.restoreRendererDraft(snapshot),true);
+  assert.equal(after.features.length,0,'the original is not duplicated alongside its draft');
+  assert.equal(after.collection().features.length,1,'Save still includes the unmodified original');
+  assert.deepEqual(after.draftCurved,[0,0,1]);
+  after.cancel();
+  assert.deepEqual(readDrawing(after.collection()),readDrawing(geo));
+  const modified=create();
+  modified.add([{...geo,geometry:{type:'LineString',coordinates:[[0,0],[8,0]]}}],false);
+  assert.equal(modified.restoreRendererDraft(snapshot),false);
+  assert.deepEqual(modified.features[0].geometry.coordinates,[[0,0],[8,0]]);
+});
+
+test('renderer handoff never adopts an identical neighbour and recovers as a separate draft',()=>{
+  const make=()=>new Drawing(editingMap({}, {}, ()=>null));
+  const geo={type:'Feature',properties:{color:'#345678',dash:'dotted',width:5},geometry:{type:'LineString',coordinates:[[0,0],[1,0]]}};
+  const source=make();source.add(readDrawing({type:'FeatureCollection',features:[geo,geo]}),false);
+  source.setMode('line');source.select({drawing:source.features[0].id,index:1});source.extendSelected();
+  source.click({lng:2,lat:1},{x:2,y:1});
+  const draft=JSON.parse(JSON.stringify(source.rendererDraft()));
+  assert.equal(draft.extension.unambiguous,false);
+  const changed={...geo,geometry:{type:'LineString',coordinates:[[0,0],[8,0]]}};
+  const target=make();target.add(readDrawing({type:'FeatureCollection',features:[changed,geo]}),false);
+  const saved=target.collection();
+  assert.equal(target.restoreRendererDraft(draft),false);
+  // Even an unambiguous-at-origin (or legacy) payload cannot adopt a match at another position.
+  assert.equal(target.restoreRendererDraft({...draft,extension:{...draft.extension,unambiguous:true}}),false);
+  assert.equal(target.recoverRendererLine({...draft,flags:[]}),false);
+  assert.equal(target.recoverRendererLine(draft),true);
+  assert.deepEqual(target.collection(),saved);
+  assert.deepEqual(target.style,{color:'#345678',dash:'dotted',width:5});
+  target.finish();
+  assert.deepEqual(target.collection().features.slice(0,2),saved.features);
+  assert.deepEqual(target.collection().features[2].geometry.coordinates,[[0,0],[1,0],[2,1]]);
+});
+
+test('renderer handoff keeps unfinished distance points and restores a selected radius point',()=>{
+  const make=()=>new Measure(editingMap({}, {}, ()=>null));
+  const source=make();source.setMode('distance');
+  for(const [lng,lat] of [[0,0],[1,0]])source.click({lng,lat});
+  const target=make();
+  assert.equal(target.restoreRendererMeasurement(JSON.parse(JSON.stringify(source.rendererMeasurement()))),true);
+  assert.equal(target.ended,false);
+  assert.deepEqual(target.points,[[0,0],[1,0]]);
+  target.click({lng:1,lat:1});target.end();
+  assert.deepEqual(target.profileCoordinates(),[[0,0],[1,0],[1,1]]);
+  source.setMode('radius');
+  for(const [lng,lat] of [[0,0],[1,1],[2,0]])source.click({lng,lat});
+  source.select(1);
+  assert.equal(target.restoreRendererMeasurement(source.rendererMeasurement()),true);
+  assert.equal(target.mode,'radius');assert.equal(target.selected,1);
+  assert.deepEqual(target.profileCoordinates(),source.profileCoordinates());
+  target.deleteSelected();assert.deepEqual(target.points,[[0,0],[2,0]]);
+});
+
+test('renderer handoff requests elevation anew from the restored coordinate',async()=>{
+  const pre=new Measure(editingMap({}, {}, ()=>null));pre.setMode('elevation');pre.click({lng:-179.8,lat:23});
+  const received=[];
+  const target=new Measure(editingMap({}, {}, ()=>null),{heights:async points=>{received.push(points);return [-20];}});
+  const state=JSON.parse(JSON.stringify(pre.rendererMeasurement()));
+  assert.deepEqual(state.spot,[-179.8,23]);
+  assert.equal(target.restoreRendererMeasurement(state),true);
+  assert.equal(target.spot.pending,true);
+  await new Promise(resolve=>setImmediate(resolve));
+  assert.deepEqual(received,[[[-179.8,23]]]);
+  assert.equal(target.spot.value,-20);
+  assert.equal(target.restoreRendererMeasurement({...state,spot:null}),false);
+  assert.equal(target.spot.value,-20,'invalid storage does not disturb the current result');
 });

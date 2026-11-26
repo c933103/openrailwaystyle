@@ -40,7 +40,7 @@ const atlas3MapLibre=Buffer.from(buildAtlas3Text(
 // at headers, but its slot is only released when the response body is consumed.
 // highWaterMark:0 makes this distinction explicit instead of eagerly buffering
 // every mock response (which would hide the installation deadlock).
-function startWorker({version = 'new', fail = '', stores = new Map(), code = source, rejectExternal = false, noLegacyCrypto = false, assetBodies = new Map()} = {}) {
+function startWorker({version = 'new', fail = '', stores = new Map(), code = source, rejectExternal = false, noLegacyCrypto = false, assetBodies = new Map(), canvasEntry = false} = {}) {
   const handlers = new Map(), queue = [], writes = [], requests = [];
   const counts = {active: 0, peak: 0, started: 0, finished: 0};
   let offline = false, skipped = false, claimed = false;
@@ -85,7 +85,7 @@ function startWorker({version = 'new', fail = '', stores = new Map(), code = sou
       ? {body:priorMapLibre,type:'application/javascript'} : new URL(url).pathname.endsWith('/vendor/maplibre-gl-5.24.0-atlas.1.js')
       ? {body:previousMapLibre,type:'application/javascript'} : legacyDistributions.get(url) ?? (new URL(url).pathname.endsWith('/vendor/maplibre-gl-5.24.0.js')
       ? legacyDistributions.get('https://cdn.jsdelivr.net/npm/maplibre-gl@5.24.0/dist/maplibre-gl.js') : null);
-    const body = page ? `<script type="module" src="app.mjs?v=${version}"></script>` : assetBodies.get(new URL(url).pathname)??legacy?.body??`${version}: ${url}`;
+    const body = page ? `${canvasEntry?'<html data-flat-entry="staged">':''}<script type="module" src="app.mjs?v=${version}"></script>` : assetBodies.get(new URL(url).pathname)??legacy?.body??`${version}: ${url}`;
     let consumed = false;
     return new Response(new ReadableStream({
       pull(controller) {
@@ -123,7 +123,12 @@ function startWorker({version = 'new', fail = '', stores = new Map(), code = sou
     assert.ok(result, `${path} must be handled by the worker`);
     return result;
   };
-  return {stores, counts, writes, requests, lifecycle, request, setOffline() { offline = true; },
+  const message = (data, source = {url:scope}) => {
+    let result;
+    handlers.get('message')({data,source,waitUntil(promise) { result=promise; }});
+    return result;
+  };
+  return {stores, counts, writes, requests, lifecycle, request, message, setOffline() { offline = true; },
     get skipped() { return skipped; }, get claimed() { return claimed; }};
 }
 
@@ -152,7 +157,47 @@ test('installation drains response bodies without exhausting its three network s
   assert.equal(await app.clone().text(), `new: ${scope}app.mjs?v=new`);
 });
 
-for (const fail of ['map-model.mjs', 'maplibre-gl-5.24.0-atlas.4.js', 'maplibre-gl-5.24.0.css', 'pmtiles-4.2.1.js']) {
+test('a staged Canvas renderer is available from the exact warm shell version offline', async () => {
+  const worker=startWorker({version:'canvas-shell'});
+  await bounded(worker.lifecycle('install'));
+  await worker.lifecycle('activate');
+  const path='vendor/flat-browser.js';
+  const current=path+'?v=canvas-shell';
+  worker.setOffline();
+  assert.equal(await (await worker.request(current)).text(), 'canvas-shell: '+scope+current);
+  await assert.rejects(worker.request(path+'?v=other-shell'));
+});
+
+test('a staged Canvas shell installs without either half of the WebGL pair but keeps common inputs strict',async()=>{
+  const worker = startWorker({canvasEntry:true,fail:'maplibre-gl-5.24.0-atlas.4.js'});
+  await bounded(worker.lifecycle('install'));await worker.lifecycle('activate');
+  worker.setOffline();
+  assert.match(await (await worker.request('./',true)).text(),/data-flat-entry="staged"/);
+  assert.match(await (await worker.request('vendor/flat-browser.js?v=new')).text(),/flat-browser/);
+  await assert.rejects(worker.request('vendor/maplibre-gl-5.24.0-atlas.4.js'));
+  await assert.rejects(worker.request('vendor/maplibre-gl-5.24.0.css'));
+  const missing = startWorker({canvasEntry:true,fail:'pmtiles-4.2.1.js'});
+  await assert.rejects(bounded(missing.lifecycle('install')), /truncated response/);
+  assert.equal(missing.skipped,false);
+});
+
+test('Canvas installation and navigation never fetch WebGL; an active WebGL page can explicitly warm the pair',async()=>{
+  const worker=startWorker({canvasEntry:true});
+  await bounded(worker.lifecycle('install'));await worker.lifecycle('activate');
+  await bounded(worker.request('./',true));
+  assert.ok(!worker.requests.some(url=>url.includes('maplibre-gl-')));
+  assert.equal(worker.message('atlas:cache-webgl',{url:'https://unrelated.test/'}),undefined);
+  assert.equal(worker.message('anything else'),undefined);
+  assert.ok(!worker.requests.some(url=>url.includes('maplibre-gl-')));
+  await bounded(worker.message('atlas:cache-webgl'));
+  assert.equal(worker.requests.filter(url=>url.includes('maplibre-gl-')).length,2);
+  worker.setOffline();
+  for(const asset of ['vendor/maplibre-gl-5.24.0-atlas.4.js','vendor/maplibre-gl-5.24.0.css']){
+    assert.ok((await worker.request(asset)).ok,asset);
+  }
+});
+
+for (const fail of ['map-model.mjs', 'flat-browser.js', 'maplibre-gl-5.24.0-atlas.4.js', 'maplibre-gl-5.24.0.css', 'pmtiles-4.2.1.js']) {
   test(`a truncated ${fail} response cannot publish or activate an incomplete shell`, async () => {
     const worker = startWorker({fail});
     await assert.rejects(bounded(worker.lifecycle('install')), /truncated response/);

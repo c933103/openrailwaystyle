@@ -8,7 +8,8 @@ import {tmpdir} from 'node:os';
 import {resolve,extname,join} from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {spawn} from 'node:child_process';
-import {emptyReferenceFixture} from './browser-renderer-fixture.mjs';
+import {emptyReferenceFixture,installEmptyMapProviders} from './browser-renderer-fixture.mjs';
+import {launchBrowser} from './browser.mjs';
 
 const check=fileURLToPath(new URL('./check-orm-fixture-browser.mjs',import.meta.url));
 const root=fileURLToPath(new URL('../styles/',import.meta.url)),repo=resolve(root,'..');
@@ -29,33 +30,48 @@ const server=createServer(async(req,res)=>{
 await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));
 const temporary=await mkdtemp(join(tmpdir(),'atlas-deployed-fixture-'));
 try {
-  const cases=[['missing-css','/atlas-project/','/vendor/maplibre-gl-5.24.0.css']];
-  if(!process.argv.includes('--required-assets-only'))cases.push(['root','/'],['project','/atlas-project/']);
-  for(const [name,path,missing] of cases){
-    missingAsset=missing;
+  const project=`http://127.0.0.1:${server.address().port}/atlas-project/`;
+  const browser=await launchBrowser({executablePath:process.env.CHROMIUM_EXECUTABLE});
+  try{
+    for(const [asset,shouldRecover] of [
+      ['/vendor/maplibre-gl-5.24.0.css',true], ['/vendor/pmtiles-4.2.1.js',false],
+    ]){
+      missingAsset=asset;
+      const context=await browser.newContext({serviceWorkers:'block',viewport:{width:1000,height:650}});
+      try{
+        await installEmptyMapProviders(context,project,{firstParty:'network'});
+        const page=await context.newPage();
+        const missing=page.waitForResponse(r=>r.url()===project+asset.slice(1)&&r.status()===404,{timeout:18000});
+        await Promise.all([missing,page.goto(project,{waitUntil:'domcontentloaded'})]);
+        const canvas=page.locator('canvas.atlas-flat-preview');
+        if(shouldRecover){
+          await canvas.waitFor({timeout:18000});
+          await page.getByText(/the WebGL renderer files could not load/).waitFor({timeout:10000});
+          assert.equal(await page.locator('canvas.maplibregl-canvas').count(),0);
+          const map=page.locator('#map'), before=await map.getAttribute('data-flat-center');
+          await canvas.press('ArrowRight');
+          assert.notEqual(await map.getAttribute('data-flat-center'),before);
+        }else{
+          await page.getByText(/Map libraries could not load/).waitFor({timeout:18000});
+          assert.equal(await canvas.count(),0,'common data reader must not be confused with an optional WebGL file');
+        }
+      }finally{await context.close();}
+    }
+    console.log('PASS: packaged project URL recovers missing MapLibre CSS into usable Canvas and fails closed for missing PMTiles');
+  }finally{await browser.close();}
+  missingAsset=null;
+  if(!process.argv.includes('--required-assets-only'))for(const [name,path] of [['root','/'],['project','/atlas-project/']]){
     const cwd=join(temporary,name);await mkdir(cwd);
     await symlink(join(repo,'node_modules'),join(cwd,'node_modules'),'dir');
     const result=await new Promise(resolve=>{
-      let output='';
-      const child=spawn(process.execPath,[check],{cwd,stdio:missing?['ignore','pipe','pipe']:'inherit',env:{...process.env,
+      const child=spawn(process.execPath,[check],{cwd,stdio:'inherit',env:{...process.env,
         ATLAS_FIXTURE_BASE_URL:'',MAP_BASE_URL:`http://127.0.0.1:${server.address().port}${path}`,
         FIXTURE_SETUP_DELAY:'3500',FIXTURE_CAPTURE_DELAY:'1500'}});
-      child.stdout?.on('data',chunk=>{output+=chunk;});child.stderr?.on('data',chunk=>{output+=chunk;});
-      // The missing stylesheet must fail during startup, not after long map
-      // checks happen to hit an unrelated error.
-      const timer=missing?setTimeout(()=>child.kill(),45000):null;
-      child.on('error',error=>{clearTimeout(timer);resolve({code:1,output:output+error.message});});
-      child.on('exit',code=>{clearTimeout(timer);resolve({code,output});});
+      child.on('error',()=>resolve(1));
+      child.on('exit',resolve);
     });
     await mkdir('browser-review',{recursive:true});
     await cp(join(cwd,'browser-review'),`browser-review/deployed-${name}`,{recursive:true});
-    if(missing){
-      assert.notEqual(result.code,0,'the actual deployed checker must reject a missing required stylesheet');
-      assert.match(result.output,/Required first-party browser libraries failed:[\s\S]*maplibre-gl-5\.24\.0\.css: HTTP 404/);
-      const ledger=JSON.parse(await readFile(join(cwd,'browser-review/orm-network-ledger.json'),'utf8'));
-      assert.ok(ledger.some(row=>row.event==='initial-map-ready'),'the negative control must reach map-ready despite CSS 404');
-      assert.ok(!ledger.some(row=>/\/railway_line_high\/14\//.test(row.url||'')),'required assets must fail before z14 checks');
-      console.log('PASS: actual deployed checker rejects MapLibre CSS 404 after map-ready and before z14 checks');
-    }else assert.equal(result.code,0,`real-client network fixture at ${path}`);
+    assert.equal(result,0,`real-client network fixture at ${path}`);
   }
 }finally{server.closeAllConnections();await new Promise(resolve=>server.close(resolve));await rm(temporary,{recursive:true,force:true});}

@@ -31,10 +31,15 @@ export function flatCamera({center, zoom, width, height, bearing = 0}) {
     return worldToPoint([nearestWorld ? x + Math.round(cx - x) : x, y]);
   };
   const unproject = point => worldToLngLat(pointToWorld(point));
-  const zoomAt = (nextZoom, point) => {
+  const zoomAt = (nextZoom, point, nextBearing = bearing) => {
     const [x, y] = pointToWorld(point), factor = 2 ** (zoom - nextZoom);
-    return flatCamera({center: worldToLngLat([x - (x - cx) * factor, y - (y - cy) * factor]),
+    if(nextBearing===bearing)return flatCamera({
+      center: worldToLngLat([x - (x - cx) * factor, y - (y - cy) * factor]),
       zoom: nextZoom, bearing, width, height});
+    const [dx,dy]=[point[0]-mx,point[1]-my], nextScale=WORLD*2**nextZoom;
+    const nc=Math.cos(nextBearing*RAD),ns=Math.sin(nextBearing*RAD);
+    return flatCamera({center:worldToLngLat([x-(dx*nc-dy*ns)/nextScale,y-(dx*ns+dy*nc)/nextScale]),
+      zoom:nextZoom,bearing:nextBearing,width,height});
   };
   const panBy = ([dx, dy]) => flatCamera({center: unproject([mx + dx, my + dy]), zoom, bearing, width, height});
 
@@ -68,4 +73,53 @@ export function flatCamera({center, zoom, width, height, bearing = 0}) {
   };
   return {center: worldToLngLat([cx, cy]), zoom, bearing, width, height,
     project, unproject, panBy, zoomAt, visibleTiles, tileTransform};
+}
+
+// Fit the visible screen rectangle without widening a rotated geographic box.
+export function flatBoxRect(camera,start,end) {
+  const clamp=(value,limit)=>Math.max(0,Math.min(limit,value));
+  const x0=clamp(start[0],camera.width), x1=clamp(end[0],camera.width);
+  const y0=clamp(start[1],camera.height), y1=clamp(end[1],camera.height);
+  const width=Math.abs(x0-x1), height=Math.abs(y0-y1);
+  return width>=4&&height>=4?{left:Math.min(x0,x1),top:Math.min(y0,y1),width,height}:null;
+}
+
+export function fitFlatScreenBox(camera,rect,maxZoom=22) {
+  if(!rect)return null;
+  const {left,top,width,height}=rect;
+  const zoom=Math.min(maxZoom,camera.zoom+Math.log2(Math.min(camera.width/width,camera.height/height)));
+  if(zoom<=camera.zoom)return null;
+  return flatCamera({...camera,zoom,center:camera.unproject([left+width/2,top+height/2])});
+}
+
+// Local ground resolution at the centre of the Mercator camera. Use CSS
+// pixels (not device pixels); bearing does not change Mercator's local scale.
+export function flatScaleBar(camera, units, maxWidth = 100) {
+  const width = Math.min(maxWidth, camera.width - 20);
+  if (!(width >= 12)) return null;
+  const metresPerPixel = 2 * Math.PI * 6371008.8 * Math.cos(camera.center[1] * RAD) / (WORLD * 2 ** camera.zoom);
+  const metres = width * metresPerPixel;
+  const [factor, unit] = units === 'imperial'
+    ? (metres >= 1609.344 ? [1609.344, 'mi'] : [.3048, 'ft'])
+    : (metres >= 1000 ? [1000, 'km'] : [1, 'm']);
+  const available = metres / factor, order = 10 ** Math.floor(Math.log10(available));
+  const value = Number(([5,2,1,.5].find(n => n * order <= available) * order).toPrecision(8));
+  return {value, unit, width: value * factor / metresPerPixel};
+}
+
+// A provider's geographic bounding box may cross the antimeridian. Fit the
+// rectangle in world space, including the current map rotation and padding.
+export function fitFlatBounds(camera, [[west,south],[east,north]], {padding=40,maxZoom=15,minZoom=-0.5}={}) {
+  if (![west,south,east,north].every(Number.isFinite) || south>=north ||
+      west < -180 || west > 180 || east < -180 || east > 180 || south < -90 || north > 90)
+    return null;
+  if (east<west) east+=360;
+  const [x0,y0]=lngLatToWorld([west,north]),[x1,y1]=lngLatToWorld([east,south]);
+  const w=x1-x0,h=y1-y0;
+  const c=Math.abs(Math.cos(camera.bearing*RAD)),s=Math.abs(Math.sin(camera.bearing*RAD));
+  const availableX=Math.max(1,camera.width-2*Math.min(padding,camera.width/4));
+  const availableY=Math.max(1,camera.height-2*Math.min(padding,camera.height/4));
+  const span=Math.min(availableX/(w*c+h*s),availableY/(w*s+h*c))/WORLD;
+  const zoom=clamp(Math.log2(span),minZoom,maxZoom);
+  return flatCamera({center:worldToLngLat([(x0+x1)/2,(y0+y1)/2]),zoom,width:camera.width,height:camera.height,bearing:camera.bearing});
 }

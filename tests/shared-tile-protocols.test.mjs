@@ -44,8 +44,9 @@ test('app startup sends the real provider registrations through the shared regis
   assert.ok(version);
   assert.ok(app.includes("from './shared-tile-protocols.mjs?v=" + version + "'"));
   assert.match(worker, /const PRECACHE = [^\n]+'shared-tile-protocols\.mjs'/);
-  assert.match(app, /createSharedTileProtocols\(\{forward: maplibregl\.addProtocol\.bind\(maplibregl\)\}\)/);
+  assert.match(app, /createSharedTileProtocols\(useFlat \? \{\} : \{forward: maplibregl\.addProtocol\.bind\(maplibregl\)\}\)/);
   assert.doesNotMatch(app, /maplibregl\.addProtocol\(/);
+  assert.match(app, /mountFlatMap\(\{[\s\S]+?protocols:tileProtocols/);
   for (const call of ['installLabelProtocols(tileProtocols,', 'dem.setupMaplibre(tileProtocols)',
       'installBathymetry(tileProtocols,', 'installTerrain3D(tileProtocols,',
       'installWorldStationLifecycle({map,maplibregl:tileProtocols,']) assert.ok(app.includes(call), call);

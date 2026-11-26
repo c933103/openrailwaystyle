@@ -23,6 +23,28 @@ Layer metadata declares groups, view restrictions, setting requirements, backgro
 
 The migration regression manifest in `tests/fixtures/style-composition-baseline.json` records ordered layer hashes, source hashes and root rendering settings. Changes to paint, filters, zoom limits, label placement, embedded station data or ordering require deliberate review and baseline updates; `atlas:*` metadata and the project description are excluded. Browser checks complement this definition-level comparison with actual rendering. The initial refactor preserves the reviewed Infrastructure integration's cartography.
 
+## 2D mode without WebGL
+
+The map uses Canvas 2D automatically when WebGL cannot start. Use **Settings → Disable WebGL** to choose it on a browser that supports WebGL; the preference stays on that browser. Clearing it retries WebGL where available. In 2D mode the globe and pitched terrain mesh are unavailable; flat hillshade and contours still work. The installed app can reopen its saved interface and edit local drawings without the network, but that does not cache all remote maps or data for offline use.
+
+For the 2D map, the Terrain setting paints a map-anchored
+approximation of the existing hillshade in the same layer order. It computes
+uphill and downhill illumination from the shared repaired elevations rather
+than downloading a new relief dataset or reading the color of the basemap.
+The Canvas tile queue handles its lifetime; the contour path shares the
+same elevation cache. Shading is bounded at 128×128 pixels per canonical tile and uses one-sided
+differences at tile boundaries; it does not request neighbors just to shade
+an edge. The original elevation resolution is available to contours and
+profiles. The output is flat relief, not a pitched terrain mesh.
+
+The 2D map supports fixed-camera recovery for already visible
+failed tiles and metadata. A first transport failure can retry on the browser's
+reconnect signal. Otherwise transient failures retry with bounded delays and
+respect any provider Retry-After. Healthy and already in-flight data are
+left alone. The failure stays visible until the retry succeeds or the tile or
+source leaves the current view. An isolated bathymetry failure warns only
+about incomplete seabed shading.
+
 ## 3D land and seabed terrain
 
 The map's native MapLibre raster-DEM terrain mesh activates when the camera is
