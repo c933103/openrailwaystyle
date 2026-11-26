@@ -1,4 +1,4 @@
-name: Compare pinned crossings snapshots for PR 531
+name: Verify refreshed crossing source rows for PR 531
 on:
   push:
     branches: [evidence/crossings-source-parity-531]
@@ -7,20 +7,32 @@ permissions:
 jobs:
   compare:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 12
     steps:
       - uses: actions/checkout@v4
         with:
           persist-credentials: false
-      - name: Compare exact OSM crossing tables without provider requests
+      - name: Compare the 15 unresolved rows with the two pinned working copies
+        env:
+          GH_TOKEN: ${{ github.token }}
         shell: bash
         run: |
           set -euo pipefail
+          d="$(mktemp -d)"
+          trap 'rm -rf "$d"' EXIT
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq osmium-tool
+          oldidx=index-20261125T021300Z-45510371095.json
+          newidx=index-20261126T161713Z-45852008906.json
+          for index in "$oldidx" "$newidx"; do
+            gh release download osm-extract --pattern "$index" --dir "$d"
+          done
           OLD=d5388a9c883f62ce636b29a47324a14221a066bc
-          NEW=176dabadeb74996089178c870775fb08b174287a
-          git fetch --quiet --depth=1 --filter=blob:none origin "$OLD" "$NEW"
-          git show "$OLD:crossings.tsv.gz" > "$RUNNER_TEMP/old.tsv.gz"
-          git show "$NEW:crossings.tsv.gz" > "$RUNNER_TEMP/new.tsv.gz"
-          git show "$OLD:regions.json" > "$RUNNER_TEMP/regions.json"
-          git show "$NEW:source.json" > "$RUNNER_TEMP/source.json"
-          python3 scripts/compare-crossings-531.py "$RUNNER_TEMP" | tee "$GITHUB_STEP_SUMMARY"
+          BASE=176dabadeb74996089178c870775fb08b174287a
+          git fetch --quiet --depth=1 --filter=blob:none origin "$OLD" "$BASE"
+          git show "$OLD:crossings.tsv.gz" > "$d/old.tsv.gz"
+          git show "$BASE:crossings.tsv.gz" > "$d/new.tsv.gz"
+          git show "$OLD:regions.json" > "$d/regions.json"
+          git show "$BASE:source.json" > "$d/source.json"
+          python3 scripts/compare-crossings-531.py "$d" > "$d/baseline.md"
+          python3 scripts/compare-refreshed-crossings-531.py "$d" "$oldidx" "$newidx" | tee "$GITHUB_STEP_SUMMARY"
