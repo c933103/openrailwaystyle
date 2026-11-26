@@ -1,0 +1,8 @@
+{
+  "schema": 1,
+  "dataset": "station-points",
+  "source": "extract",
+  "complete": true,
+  "osmTimestamp": "2026-11-15T21:22:28Z",
+  "inputSha256": "a6d2e6aa00644d58014f03ecd41c6a5a7b2d4c3b7bdb57e7aac52b21f4ee4407"
+}
