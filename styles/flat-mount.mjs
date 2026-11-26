@@ -285,6 +285,16 @@ export function mountFlatMap({mount, style, styleURL, protocols, requestedView, 
     const [raw,lat]=camera.unproject(point);
     return {lng:tool===drawing?((raw+180)%360+360)%360-180:raw,lat};
   }
+  const inspectionHits=point=>{
+    const [x,y]=point;
+    if(x<0||x>camera.width||y<0||y>camera.height)return [];
+    const hits=query(camera,point,visibleFrame,allowFeature);
+    for(const symbol of paintedSymbols){
+      if(symbol.bounds.some(b=>x>=b.left&&x<=b.right&&y>=b.top&&y<=b.bottom))
+        hits.push({...symbol.hit,distance:Math.hypot(x-symbol.px,y-symbol.py)});
+    }
+    return hits;
+  };
   const screenPoint=([x,y])=>({x,y});
   const clickTool=(tool,point)=>tool.click(mapPosition(point,tool),screenPoint(point));
   const gesture=createFlatGesture({
@@ -301,11 +311,7 @@ export function mountFlatMap({mount, style, styleURL, protocols, requestedView, 
         if(line){onDrawingProfile(line);return;}
       }
       if(!onInspect)return;
-      const hits=query(camera,point,visibleFrame,allowFeature);
-      for(const symbol of paintedSymbols){
-        if(symbol.bounds.some(b=>x>=b.left&&x<=b.right&&y>=b.top&&y<=b.bottom))
-          hits.push({...symbol.hit,distance:Math.hypot(x-symbol.px,y-symbol.py)});
-      }
+      const hits=inspectionHits(point);
       if(hits.length)onInspect(hits,camera.unproject(point));
     },
   });
@@ -464,6 +470,7 @@ export function mountFlatMap({mount, style, styleURL, protocols, requestedView, 
     setCamera(next,true,'location');
   };
   return {close,invalidateLabels:schedule,moveTo,zoomBy,resetNorth,showLocation,followLocation,setStyle,readSourcePoints,platformCandidates,
+    inspectionAt:location=>inspectionHits(camera.project(location)),
     getPlatformLayer:id=>platformLayers.has(id),
     platformProjection:{getContainer:()=>mount,project:lngLat=>{const [x,y]=camera.project(lngLat);return {x,y};},
       unproject:point=>{const [lng,lat]=camera.unproject(point);return {lng,lat};}},

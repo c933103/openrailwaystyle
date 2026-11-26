@@ -175,6 +175,7 @@ function restoreCachedMapStyle() {
 const stagedFlatEntry = document.documentElement.dataset.flatEntry === 'staged';
 const RENDERER_STORE = 'atlas_disable_webgl';
 const RENDERER_WORK_HANDOFF = 'atlas_renderer_work_v1';
+let cancelSelectionRestore;
 let explicitFlat = false;
 try { explicitFlat = stagedFlatEntry && localStorage.getItem(RENDERER_STORE) === '1'; } catch {}
 function webglAvailable() {
@@ -195,12 +196,14 @@ if (stagedFlatEntry) {
   toggle.addEventListener('change',()=>{
     const drawingDraft = drawing && (drawing.draft.length > 0 || drawing.extending) ? drawing.rendererDraft() : null;
     const measurement = measuring?.rendererMeasurement();
-    const transferring = drawingDraft || measurement;
+    const selection = !$('details').hidden ? rendererSelection(currentFeature) : null;
+    const transferring = drawingDraft || measurement || selection;
     try {
-      if (transferring) sessionStorage.setItem(RENDERER_WORK_HANDOFF, JSON.stringify({drawing:drawingDraft,measurement}));
+      if (transferring) sessionStorage.setItem(RENDERER_WORK_HANDOFF, JSON.stringify({drawing:drawingDraft,measurement,selection}));
     } catch {
       if(drawingDraft) $('draw-status').textContent='The browser could not keep this drawing across a renderer switch. Finish the drawing before switching.';
-      else $('measure-status').textContent='The browser could not keep this measurement across a renderer switch. Clear the measurement before switching.';
+      else if(measurement) $('measure-status').textContent='The browser could not keep this measurement across a renderer switch. Clear the measurement before switching.';
+      else status.textContent='The browser could not keep this selection across a renderer switch.';
       toggle.checked=explicitFlat;return;
     }
     try {localStorage.setItem(RENDERER_STORE,toggle.checked?'1':'0');}
@@ -888,6 +891,7 @@ function stationObject(osmId) {
   return null;
 }
 function showDetails(feature) {
+  cancelSelectionRestore?.();
   cancelProfile();
   platformLengths?.prioritizeEdge(['platformEdges','platformLengths'].includes(feature.source)?feature:null);
   if(['platformEdges','platformLengths','platforms','platformNumbers'].includes(feature.source))feature=platformLengths?.enrich(feature)||feature;
@@ -1613,7 +1617,58 @@ function drawStyle(style) {
   whenMap(() => drawing.setStyle(style));
   if (style.color) reflectDrawingColor(style.color);
 }
-function restoreRendererWork() {
+function inspectionIdentity(feature) {
+  const source=feature?.source, sourceLayer=feature?.sourceLayer??feature?.layer?.['source-layer'];
+  if(!feature) return null;
+  const raw=feature.id;
+  const hasID=typeof raw==='number'&&Number.isSafeInteger(raw)||typeof raw==='string'&&raw.length;
+  const osm=hasID ? null : osmObject(feature);
+  const id=hasID ? String(raw) : osm ? `${osm.type}:${osm.id}` : '';
+  const geometry=feature?.geometry?.type?.replace(/^Multi/,'');
+  return typeof source==='string'&&source.length&&source.length<=100&&
+    (sourceLayer===undefined||typeof sourceLayer==='string'&&sourceLayer.length<=100)&&
+    id.length&&id.length<=100&&['Point','LineString','Polygon'].includes(geometry)
+      ? {source,sourceLayer:sourceLayer??'',id,geometry} : null;
+}
+function rendererSelection(feature) {
+  const key=inspectionIdentity(feature);
+  const location=feature?.geometry?.type==='Point'?feature.geometry.coordinates:
+    [feature?.clickLngLat?.lng,feature?.clickLngLat?.lat];
+  const at=Array.isArray(location) ? location.slice(0,2) : null;
+  return key&&at?.length===2&&at.every(Number.isFinite)&&Math.abs(at[0])<=540&&Math.abs(at[1])<=90 ? {key,at} : null;
+}
+function restoreRendererSelection(selection, query) {
+  const {key,at}=selection||{};
+  if (!query||settings.ui==='watch'||!key||!Array.isArray(at)||at.length!==2||
+      !at.every(Number.isFinite)||Math.abs(at[0])>540||Math.abs(at[1])>90) return;
+  const mount=$('map');
+  const cancel=()=>{
+    clearInterval(retry);clearTimeout(deadline);
+    mount.removeEventListener('pointerdown',cancel,true);
+    if(cancelSelectionRestore===cancel)cancelSelectionRestore=null;
+  };
+  // Ask only for hits at the saved location and only while a pending handoff
+  // exists. Re-resolve from painted, selectable features, not saved details.
+  const retry=setInterval(()=>{
+    if(settings.ui==='watch'){cancel();return;}
+    const feature=query(at)?.find(candidate=>{
+      const other=inspectionIdentity(candidate);
+      return other&&other.source===key.source&&other.sourceLayer===key.sourceLayer&&
+        other.id===key.id&&other.geometry===key.geometry;
+    });
+    if (!feature) return;
+    cancel();
+    const [lng,lat]=at;
+    feature.properties=feature.properties?.atlas_han ? feature.properties : {...feature.properties,...locate(lng,lat)};
+    feature.clickLngLat={lng,lat};
+    showDetails(feature);
+    if(!useFlat)renameOpenMajorStation();
+  },125);
+  const deadline=setTimeout(cancel,12000);
+  cancelSelectionRestore=cancel;
+  mount.addEventListener('pointerdown',cancel,{capture:true,once:true});
+}
+function restoreRendererWork(querySelection) {
   if (!stagedFlatEntry) return;
   let pending,state;
   const consume = () => {
@@ -1624,6 +1679,7 @@ function restoreRendererWork() {
     if (pending===null) return;
     state=JSON.parse(pending);
   } catch { if (pending) consume(); return; }
+  restoreRendererSelection(state?.selection,querySelection);
   if (state?.measurement && !state.drawing) {
     $('measure-toolbar').hidden=false;
     if(!measuring.restoreRendererMeasurement(state.measurement)){
@@ -2130,7 +2186,7 @@ async function initialize() {
     });
     toolButtons.append(locateButton,locationStatus);
     $('map').append(toolButtons);
-    restoreRendererWork();
+    restoreRendererWork(flat.inspectionAt);
     const action=pendingDraw;pendingDraw=undefined;action?.();
     updateDrawing();
     let applied=JSON.stringify(settings);
@@ -2320,7 +2376,12 @@ async function initialize() {
     if (measuring.mode === 'distance') { event.preventDefault(); measuring.end(); }
     else if (drawing.multiPoint && !drawing.paused) { event.preventDefault(); drawing.finish(); }
   });
-  restoreRendererWork();
+  restoreRendererWork(at=>{
+    if(!ready||!clickable.length)return [];
+    const p=map.project(at), canvas=map.getCanvas();
+    if(p.x<0||p.x>canvas.clientWidth||p.y<0||p.y>canvas.clientHeight)return [];
+    return map.queryRenderedFeatures([[p.x-7,p.y-7],[p.x+7,p.y+7]],{layers:clickable});
+  });
   const action = pendingDraw; pendingDraw = undefined; action?.();
   let recoveryRemoved = false, recoveryStatusPending = false;
   stationFailures = createStationFallbackState(map);
@@ -2664,7 +2725,7 @@ function profileChart(profile, km, units) {
   svg.addEventListener('pointerleave', () => { cursor.setAttribute('visibility', 'hidden'); readout.textContent = ''; profileMarker?.remove(); flatSourceContext?.setProfileMarker?.(null); });
   return svg;
 }
-function closeDetails() { cancelProfile(); $('details').hidden = true; currentFeature = null; platformLengths?.prioritizeEdge(null); profileMarker?.remove(); frequencyExpiry?.update(); }
+function closeDetails() { cancelSelectionRestore?.(); cancelProfile(); $('details').hidden = true; currentFeature = null; platformLengths?.prioritizeEdge(null); profileMarker?.remove(); frequencyExpiry?.update(); }
 $('details-close').addEventListener('click', closeDetails);
 addEventListener('keydown', event => { if (event.key === 'Escape' && !$('details').hidden && !drawing?.active && !measuring?.active && !document.querySelector('dialog[open]')) closeDetails(); });
 // The data dates are read each time Help opens, so a page left open shows

@@ -88,7 +88,9 @@ style.sources.openmaptiles.url='pmtiles://data/nearby-fixture.pmtiles';
 // MapLibre clamps the persisted world view to z1. The Firefox z0 fixture
 // rail lies north of the 700×440 viewport at z1, despite its tile loading.
 // Place the same deterministic rail closer to the equator for this proof.
-const bytes=Buffer.from(flatVectorFixture({railY:chromiumSwitch?1600:900}));
+const bytes=Buffer.from(flatVectorFixture({railY:chromiumSwitch?1600:900,sameNameNeighbour:chromiumSwitch}));
+const stationMissingBytes=Buffer.from(flatVectorFixture({railY:1600,sameNameNeighbour:true,missingStation:true}));
+let selectionTargetUnavailable=false;
 // A single archived bus interchange roughly 90 m from the fixture station.
 const nearbyLngLat=[-0.1017,51.501], n=2**14;
 const mx=(nearbyLngLat[0]+180)/360*n,my=(1-Math.asinh(Math.tan(nearbyLngLat[1]*Math.PI/180))/Math.PI)/2*n;
@@ -237,7 +239,7 @@ const server=createServer((req,res)=>{
   } else if(pathname==='/entry-tilejson.json') {
     res.writeHead(200,{'content-type':'application/json'});res.end(JSON.stringify({tiles:[railTemplate],minzoom:0,maxzoom:0}));
   } else if(pathname==='/fixture/0/0/0.pbf'||pathname==='/label/0/0/0.pbf') {
-    res.writeHead(200,{'content-type':'application/x-protobuf'});res.end(bytes);
+    res.writeHead(200,{'content-type':'application/x-protobuf','cache-control':'no-store'});res.end(selectionTargetUnavailable?stationMissingBytes:bytes);
   } else preview(req,res);
 });
 await new Promise((ok,fail)=>server.once('error',fail).listen(0,'127.0.0.1',ok));
@@ -517,6 +519,54 @@ try {
     try {
       await page.goto(origin);
       await painted('webgl','before');
+      const stationLink=id=>page.locator(`#detail-content a[href="https://www.openstreetmap.org/node/${id}"]`);
+      const stationPoint=await page.waitForFunction(async()=>{
+        const {map}=await import(document.querySelector('script[type=module]').src);
+        const features=map.queryRenderedFeatures().filter(f=>f.layer?.id==='station-fixture-dots');
+        const match=features.find(f=>f.id===7), neighbour=features.find(f=>f.id===8);
+        if(!match||neighbour?.properties.name!==match.properties.name)return null;
+        const p=map.project(match.geometry.coordinates),r=map.getCanvas().getBoundingClientRect();
+        const x=p.x+r.x-5,y=p.y+r.y;
+        return document.elementFromPoint(x,y)===map.getCanvas()?{point:[x,y],neighbour:neighbour.geometry.coordinates}:null;
+      },null,{timeout:9000});
+      const originalStationPoint=await stationPoint.jsonValue();
+      await page.mouse.click(...originalStationPoint.point);
+      await stationLink(7).waitFor({timeout:7000}).catch(async e=>{console.error('Initial station inspector',await page.locator('#detail-content').textContent(),await page.locator('#detail-content a').evaluateAll(links=>links.map(a=>a.href)));throw e;});
+      await switchMode(true);
+      await painted('canvas','selection-canvas');
+      await stationLink(7).waitFor({timeout:7000});
+      assert.equal(await stationLink(8).count(),0);
+      assert.equal(await consumed(),true);
+      await switchMode(false);
+      await painted('webgl','selection-webgl');
+      await stationLink(7).waitFor({timeout:7000});
+      assert.equal(await stationLink(8).count(),0);
+      selectionTargetUnavailable=true;
+      await switchMode(true);
+      await painted('canvas','selection-target-missing');
+      assert.equal(await consumed(),true);
+      assert.equal(await page.locator('#details').evaluate(el=>el.hidden),true);
+      // The nearby identically named decoy remains selectable. A new user
+      // click cancels the unresolved handoff instead of reopening old content.
+      await page.waitForTimeout(350);
+      assert.equal(await page.locator('#details').evaluate(el=>el.hidden),true);
+      const decoy=await page.evaluate(async location=>{
+        const c=document.querySelector('canvas.atlas-flat-preview'),r=c.getBoundingClientRect();
+        const v=JSON.parse(localStorage.getItem('atlas_view'));
+        const {flatCamera}=await import(new URL('flat-camera.mjs',document.querySelector('script[type=module]').src));
+        const [x,y]=flatCamera({center:v.c,zoom:v.z,width:r.width,height:r.height,bearing:v.b??0}).project(location);
+        const spot=[r.left+x,r.top+y];
+        if(document.elementFromPoint(...spot)!==c)throw new Error('Neighbour click is not over the Canvas');
+        return spot;
+      },originalStationPoint.neighbour);
+      await page.mouse.click(...decoy);
+      await stationLink(8).waitFor({timeout:7000});
+      assert.equal(await stationLink(7).count(),0);
+      await page.locator('#details-close').click();
+      selectionTargetUnavailable=false;
+      await switchMode(false);
+      await painted('webgl','before-draft-tests');
+      console.log('The exact station reopened in both renderers; a missing target did not reopen a same-name neighbour.');
       await page.getByTitle('Drawing tools',{exact:true}).click();
       await page.locator('[data-draw="line"]').click();
       await page.locator('#draw-dash').selectOption('dotted');

@@ -19,7 +19,7 @@ export function profileHarness({heights = points => points.map((_, i) => i), uni
     if (className) node.className = className;
     return node;
   };
-  const context = vm.createContext({...elevation, document, $, AbortController, frequencyExpiry: null, settings: {units}, currentFeature: null,
+  const context = vm.createContext({...elevation, document, $, AbortController, cancelSelectionRestore: null, frequencyExpiry: null, settings: {units}, currentFeature: null,
     lengthKm, formatLength, climb, formatClimb, textNode, map: flatSourceContext?null:{}, flatSourceContext, useFlat:Boolean(flatSourceContext), platformLengths:null, DEM_URL: 'fixture-only',
     createElevation: () => ({heights}),
     row: (dl, label, value) => dl.append(textNode('dt', label), textNode('dd', value)),
