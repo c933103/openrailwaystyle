@@ -126,6 +126,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           DATASET: ${{ inputs.dataset }}
+          DATA_SOURCES: ${{ vars.DATA_SOURCES }}
         run: node scripts/osm-update-plan.mjs
   update:
     needs: plan

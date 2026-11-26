@@ -11,7 +11,8 @@
 // successful run used, so no builder change is missed, whenever it was pushed.
 import {resolve} from 'node:path';
 import {fileURLToPath} from 'node:url';
-import {appendFile} from 'node:fs/promises';
+import {appendFile, readFile} from 'node:fs/promises';
+import {parseConfig, parseFile, settings, SOURCES_FILE} from './data-source.mjs';
 import {execFileSync} from 'node:child_process';
 
 // Order is the run order. `every` runs on each scheduler run (every 6 hours);
@@ -90,15 +91,22 @@ export function lastDueTime(due, now) {
   throw new Error('Unknown due rule');
 }
 
+// Keep the held Overpass snapshot as a manual fallback; no automatic
+// network work is needed for crossings once they use independently published extracts.
+function skipAutomaticCrossings(id, only, sources) {
+  return id === 'crossings' && only === 'due' && sources.crossings?.source === 'extract';
+}
+
 // lastRuns: id -> {started: ISO start time, sha: commit} of the latest
 // successful run on main (absent when there is none). rebuilt: ids whose
 // builder files changed since that commit.
-export function dueUpdates(now, lastRuns, {only = 'due', rebuilt = []} = {}) {
+export function dueUpdates(now, lastRuns, {only = 'due', rebuilt = [], sources = {}} = {}) {
   if (!(now instanceof Date) || !Number.isFinite(now.getTime())) throw new Error('Invalid time');
   if (only !== 'due' && only !== 'all' && !OSM_UPDATES.some(entry => entry.id === only)) throw new Error(`Unknown dataset: ${only}`);
   return OSM_UPDATES.filter(entry => {
     if (only === 'all') return true;
     if (only !== 'due') return entry.id === only;
+    if (skipAutomaticCrossings(entry.id, only, sources)) return false;
     if (rebuilt.includes(entry.id)) return true;
     const dueAt = lastDueTime(entry.due, now);
     if (!dueAt) return true;
@@ -131,15 +139,22 @@ export function builderChanged(sha, head, paths, git = (...args) => execFileSync
 }
 
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
-  const {GITHUB_REPOSITORY: repo, GH_TOKEN: token, GITHUB_OUTPUT: output, DATASET: only = 'due', GITHUB_SHA: head} = process.env;
+  const {GITHUB_REPOSITORY: repo, GH_TOKEN: token, GITHUB_OUTPUT: output, GITHUB_SHA: head} = process.env;
+  const only = process.env.DATASET || 'due';
   if (!repo || !token || !output || !head) throw new Error('Missing repository, token, commit or output');
+  const sources = settings(parseFile(await readFile(SOURCES_FILE, 'utf8')), parseConfig(process.env.DATA_SOURCES));
   const lastRuns = {}, rebuilt = [];
   for (const entry of OSM_UPDATES) {
+    if (skipAutomaticCrossings(entry.id, only, sources)) continue;
     lastRuns[entry.id] = await latestRun(repo, token, entry.workflow);
     if (lastRuns[entry.id] && builderChanged(lastRuns[entry.id].sha, head, entry.paths)) rebuilt.push(entry.id);
   }
-  const runs = dueUpdates(new Date(), lastRuns, {only: only || 'due', rebuilt});
+  const runs = dueUpdates(new Date(), lastRuns, {only, rebuilt, sources});
   for (const entry of OSM_UPDATES) {
+    if (skipAutomaticCrossings(entry.id, only, sources)) {
+      console.log('crossings: automatic Overpass refresh disabled by extract selection');
+      continue;
+    }
     const last = lastRuns[entry.id];
     console.log(`${entry.id}: last success ${last ? `${last.started} at ${last.sha.slice(0, 9)}` : 'none'}${rebuilt.includes(entry.id) ? ', builder changed since' : ''}; ${runs.some(r => r.id === entry.id) ? 'run' : 'not due'}`);
   }
