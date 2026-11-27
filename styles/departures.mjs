@@ -242,10 +242,11 @@ function validateDepartureTime(time) {
 // bypasses presentation vetoes. Explicit direction disagreements conservatively
 // veto merges; equal direction values alone establish no identity across feeds.
 // Board rows from departure lists (one list per stop; merged, earliest first,
-// rail modes only, one row per train). Within one list only an exact repeat is
-// the same train: trip/route identity, names, mode family, resolved destination
-// and scheduled time must all agree. Live/cancelled observations of that exact
-// train are combined, not discarded. Two services of one feed can leave together. Across lists,
+// rail modes only, one row per train). Within one list, exact repeats or
+// observations of a proven same boarding event may merge before expiry.
+// Labels alone cannot establish a same-list match. If labels differ, preserve
+// them as cross-board ambiguity evidence, not as permission to match another
+// train without strong event identity. Two services of one feed can leave together. Across lists,
 // two feeds can describe one train with different names and destination texts
 // ("桜木町" and "(普通 Local) 桜木町 Sakuragichō"). Rows from different lists
 // are candidates when they are of the same mode family, leave in the same
@@ -327,7 +328,21 @@ function mergeDepartureRows(observations, {now = Date.now(), count = 10} = {}) {
     if (!exact.has(key)) exact.set(key, []);
     exact.get(key).push(row);
   }
-  const rows = [...exact.values()].map(mergeObservations);
+  const sameBoard = new Map(), rows = [];
+  for (const row of [...exact.values()].map(mergeObservations)) {
+    if (!sameEvent(row, row)) { rows.push(row); continue; }
+    const key = JSON.stringify([row.list, row.tripId, row.routeId, row.stopId,
+      modeFamily(row.mode), row.scheduled, row.tripEvent]);
+    if (!sameBoard.has(key)) sameBoard.set(key, []);
+    sameBoard.get(key).push(row);
+  }
+  for (const group of sameBoard.values()) {
+    if (group.length === 1 || conflictingDirections(group)) { rows.push(...group); continue; }
+    // Keep every former candidate edge; collapsing translated observations
+    // must not remove a competing label and unlock a different train.
+    rows.push({...mergeObservations(group), presentations:group,
+      directionId:group.find(row => row.directionId !== null)?.directionId ?? null});
+  }
   const upcoming = new Set(rows.filter(row => row.departure >= now - 60_000));
   const groups = departureGroups([...upcoming]);
   // An expired cancellation is still evidence for a delayed train in another
@@ -352,12 +367,21 @@ function mergeDepartureRows(observations, {now = Date.now(), count = 10} = {}) {
     }
     return row;
   });
-  return out.sort((a, b) => a.departure - b.departure || compareRows(a, b)).slice(0, count).map(({list, to, minute, liveTrack, matchingLine, routeId, directionId, event, ...row}) => row);
+  return out.sort((a, b) => a.departure - b.departure || compareRows(a, b)).slice(0, count).map(({list, to, minute, liveTrack, matchingLine, routeId, directionId, event, presentations, ...row}) => row);
 }
 
 function departureGroups(rows, {allCandidates = false} = {}) {
-  const compatible = (a, b) => a.list !== b.list && (sameEvent(a, b) || (modeFamily(a.mode) === modeFamily(b.mode) && a.minute === b.minute && a.to && b.to &&
-    (a.to.includes(b.to) || b.to.includes(a.to)) && (!a.matchingLine || !b.matchingLine || a.matchingLine === b.matchingLine)));
+  const compatiblePresentation = (a, b) => modeFamily(a.mode) === modeFamily(b.mode) &&
+    a.minute === b.minute && a.to && b.to && (a.to.includes(b.to) || b.to.includes(a.to)) &&
+    (!a.matchingLine || !b.matchingLine || a.matchingLine === b.matchingLine);
+  // A directionless constituent can have a strong edge which the condensed
+  // row no longer has. Keep it for ambiguity counting, then apply the known
+  // consolidated directions (and actual same-event identity) to merging.
+  const constituentEdge = (a, b) => sameEvent(a, b) || compatiblePresentation(a, b);
+  const edgesTo = (a, b) => b.presentations
+    ? b.presentations.some(right => constituentEdge(a, right)) : constituentEdge(a, b);
+  const compatible = (a, b) => a.list !== b.list &&
+    (a.presentations ? a.presentations.some(left => edgesTo(left, b)) : edgesTo(a, b));
   const only = (a, list) => rows.filter(r => r.list === list && compatible(a, r)).length === 1;
   const parent = rows.map((_, i) => i), find = i => parent[i] === i ? i : (parent[i] = find(parent[i]));
   for (let i = 0; i < rows.length; i++) for (let j = i + 1; j < rows.length; j++)
@@ -368,7 +392,8 @@ function departureGroups(rows, {allCandidates = false} = {}) {
   for (const group of groups.values()) {
     if (new Set(group.map(r => r.list)).size < group.length ||
         !Number.isFinite(group[0].scheduled) || !group.every(row => row.scheduled === group[0].scheduled && row.event === group[0].event) ||
-        (!sameEventGroup(group) && (!group.every(row => destinationNumbers(row.to) === destinationNumbers(group[0].to)) ||
+        (!sameEventGroup(group) && (group.some(row => row.presentations) ||
+          !group.every(row => destinationNumbers(row.to) === destinationNumbers(group[0].to)) ||
           conflictingDestinationText(group))) || conflictingSourceTrips(group) || conflictingDirections(group)) {
       out.push(...group.map(row => [row])); continue;
     }
