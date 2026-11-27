@@ -1,4 +1,4 @@
-import {compileFlatGeometryStyle} from './flat-style.mjs';
+import {compileFlatGeometryStyle,flatGeometryOrder} from './flat-style.mjs';
 import {offsetFlatPath,flatPolygonGeometry,flatRingsContain} from './flat-vector.mjs';
 
 const distance = ([x,y],[ax,ay],[bx,by]) => {
@@ -59,10 +59,11 @@ export function compileFlatVectorQuery(layers, {include = () => true, includeFil
         if(!cache.has(vector)) cache.set(vector,new Map());
         const decoded=cache.get(vector);
         if(!decoded.has(layer.sourceLayer)) decoded.set(layer.sourceLayer,vector.layer(layer.sourceLayer));
-        for (const feature of decoded.get(layer.sourceLayer)) {
+        const canonical={z:tile.z,x:tile.x,y:tile.y};
+        for (const feature of flatGeometryOrder(layer,decoded.get(layer.sourceLayer),global,canonical,true)) {
           const polygonOutline=layer.type==='line'&&layer.id==='platform-outlines'&&feature.type===3;
           if (!polygonOutline&&({circle:1,line:2,fill:3}[layer.type])!==feature.type||allowFeature&&!allowFeature(layer.id,feature,tile)) continue;
-          const paint=layer.resolve(global,feature,{}, {z:tile.z,x:tile.x,y:tile.y});
+          const paint=layer.resolve(global,feature,{},canonical);
           if (!paint) continue;
           const paths=feature.paths.filter(path=>path.length>0).map(path=>path.map(({x,y})=>{
             const nx=x/feature.extent,ny=y/feature.extent;

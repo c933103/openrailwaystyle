@@ -1,7 +1,7 @@
 import {latest, normalizePropertyExpression} from '@maplibre/maplibre-gl-style-spec';
 import {drawFlatRasterLayer} from './flat-raster.mjs';
 import {flatReliefPaint} from './flat-relief.mjs';
-import {compileFlatGeometryStyle} from './flat-style.mjs';
+import {compileFlatGeometryStyle,flatGeometryOrder} from './flat-style.mjs';
 import {drawFlatVectorLayer,flatLineIntersectsViewport} from './flat-vector.mjs';
 import {compileFlatTextLabel,drawFlatTextLabels,flatLabelCandidates} from './flat-labels.mjs';
 
@@ -90,7 +90,7 @@ export function compileFlatFrame(layers) {
               const cached = decoded.get(vector);
               const name = geometry.sourceLayer;
               if (!cached.has(name)) cached.set(name,vector.layer(name));
-              for (const feature of cached.get(name)) {
+              for (const feature of flatGeometryOrder(geometry,cached.get(name),global,canonical)) {
                 if(allowFeature&&!allowFeature(id,feature,tile))continue;
                 const paint = geometry.resolve(global,feature,featureState(source,name,feature.id) ?? {},canonical);
                 if (!paint)continue;
