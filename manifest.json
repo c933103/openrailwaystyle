@@ -1,0 +1,376 @@
+{
+  "version": 2,
+  "built": "2026-11-27T08:45:12.102Z",
+  "source": "OpenStreetMap via Overpass",
+  "license": "ODbL-1.0",
+  "complete": true,
+  "format": "atlas-tile-bundle-1",
+  "minzoom": 10,
+  "maxzoom": 12,
+  "bundleZoom": 8,
+  "areas": 71397,
+  "counts": {
+    "archaeological_site": 64668,
+    "world_heritage": 2349,
+    "historic_district": 806,
+    "battlefield": 354,
+    "cultural_protected_area": 3220
+  },
+  "tiles": 144474,
+  "bundles": 3157,
+  "bytes": 12395165,
+  "coverage": [
+    {
+      "bbox": [
+        -90,
+        -180,
+        -45,
+        -135
+      ],
+      "timestamp": "2026-11-26T19:00:33Z",
+      "features": 0
+    },
+    {
+      "bbox": [
+        -90,
+        -135,
+        -67.5,
+        -112.5
+      ],
+      "timestamp": "2026-11-26T19:02:44Z",
+      "features": 0
+    },
+    {
+      "bbox": [
+        -90,
+        -112.5,
+        -67.5,
+        -90
+      ],
+      "timestamp": "2026-11-26T19:03:48Z",
+      "features": 0
+    },
+    {
+      "bbox": [
+        -67.5,
+        -135,
+        -45,
+        -112.5
+      ],
+      "timestamp": "2026-11-26T19:04:51Z",
+      "features": 0
+    },
+    {
+      "bbox": [
+        -67.5,
+        -112.5,
+        -45,
+        -90
+      ],
+      "timestamp": "2026-11-26T19:10:51Z",
+      "features": 0
+    },
+    {
+      "bbox": [
+        -90,
+        -90,
+        -45,
+        -45
+      ],
+      "timestamp": "2026-11-27T03:01:04Z",
+      "features": 9
+    },
+    {
+      "bbox": [
+        -90,
+        -45,
+        -45,
+        0
+      ],
+      "timestamp": "2026-11-27T05:22:54Z",
+      "features": 0
+    },
+    {
+      "bbox": [
+        -90,
+        0,
+        -45,
+        45
+      ],
+      "timestamp": "2026-11-27T05:22:54Z",
+      "features": 0
+    },
+    {
+      "bbox": [
+        -90,
+        45,
+        -45,
+        90
+      ],
+      "timestamp": "2026-11-27T05:24:58Z",
+      "features": 3
+    },
+    {
+      "bbox": [
+        -90,
+        90,
+        -45,
+        135
+      ],
+      "timestamp": "2026-11-27T05:27:06Z",
+      "features": 0
+    },
+    {
+      "bbox": [
+        -90,
+        135,
+        -45,
+        180
+      ],
+      "timestamp": "2026-11-27T05:28:04Z",
+      "features": 6
+    },
+    {
+      "bbox": [
+        -45,
+        -180,
+        0,
+        -135
+      ],
+      "timestamp": "2026-11-27T05:28:56Z",
+      "features": 36
+    },
+    {
+      "bbox": [
+        -45,
+        -135,
+        0,
+        -90
+      ],
+      "timestamp": "2026-11-27T05:30:53Z",
+      "features": 4
+    },
+    {
+      "bbox": [
+        -45,
+        -90,
+        0,
+        -45
+      ],
+      "timestamp": "2026-11-27T05:38:21Z",
+      "features": 1941
+    },
+    {
+      "bbox": [
+        -45,
+        -45,
+        0,
+        0
+      ],
+      "timestamp": "2026-11-27T05:39:21Z",
+      "features": 40
+    },
+    {
+      "bbox": [
+        -45,
+        0,
+        0,
+        45
+      ],
+      "timestamp": "2026-11-27T05:40:22Z",
+      "features": 55
+    },
+    {
+      "bbox": [
+        -45,
+        45,
+        0,
+        90
+      ],
+      "timestamp": "2026-11-27T05:42:23Z",
+      "features": 50
+    },
+    {
+      "bbox": [
+        -45,
+        90,
+        0,
+        135
+      ],
+      "timestamp": "2026-11-27T05:43:22Z",
+      "features": 244
+    },
+    {
+      "bbox": [
+        -45,
+        135,
+        0,
+        180
+      ],
+      "timestamp": "2026-11-27T05:44:27Z",
+      "features": 311
+    },
+    {
+      "bbox": [
+        0,
+        -180,
+        45,
+        -135
+      ],
+      "timestamp": "2026-11-27T05:46:36Z",
+      "features": 21
+    },
+    {
+      "bbox": [
+        0,
+        -135,
+        45,
+        -90
+      ],
+      "timestamp": "2026-11-27T05:53:51Z",
+      "features": 948
+    },
+    {
+      "bbox": [
+        0,
+        -90,
+        45,
+        -45
+      ],
+      "timestamp": "2026-11-27T05:54:56Z",
+      "features": 1173
+    },
+    {
+      "bbox": [
+        0,
+        -45,
+        45,
+        0
+      ],
+      "timestamp": "2026-11-27T06:02:01Z",
+      "features": 4015
+    },
+    {
+      "bbox": [
+        0,
+        0,
+        45,
+        45
+      ],
+      "timestamp": "2026-11-27T06:03:04Z",
+      "features": 12964
+    },
+    {
+      "bbox": [
+        0,
+        45,
+        45,
+        90
+      ],
+      "timestamp": "2026-11-27T06:07:18Z",
+      "features": 1550
+    },
+    {
+      "bbox": [
+        0,
+        90,
+        45,
+        135
+      ],
+      "timestamp": "2026-11-27T06:10:19Z",
+      "features": 2267
+    },
+    {
+      "bbox": [
+        0,
+        135,
+        45,
+        180
+      ],
+      "timestamp": "2026-11-27T06:11:18Z",
+      "features": 1105
+    },
+    {
+      "bbox": [
+        45,
+        -180,
+        90,
+        -135
+      ],
+      "timestamp": "2026-11-27T06:12:19Z",
+      "features": 22
+    },
+    {
+      "bbox": [
+        45,
+        -135,
+        90,
+        -90
+      ],
+      "timestamp": "2026-11-27T06:13:17Z",
+      "features": 196
+    },
+    {
+      "bbox": [
+        45,
+        -90,
+        90,
+        -45
+      ],
+      "timestamp": "2026-11-27T06:16:20Z",
+      "features": 47
+    },
+    {
+      "bbox": [
+        45,
+        -45,
+        90,
+        0
+      ],
+      "timestamp": "2026-11-27T06:22:30Z",
+      "features": 31395
+    },
+    {
+      "bbox": [
+        45,
+        0,
+        90,
+        45
+      ],
+      "timestamp": "2026-11-27T08:37:37Z",
+      "features": 12429
+    },
+    {
+      "bbox": [
+        45,
+        45,
+        90,
+        90
+      ],
+      "timestamp": "2026-11-27T08:39:49Z",
+      "features": 463
+    },
+    {
+      "bbox": [
+        45,
+        90,
+        90,
+        135
+      ],
+      "timestamp": "2026-11-27T08:41:50Z",
+      "features": 98
+    },
+    {
+      "bbox": [
+        45,
+        135,
+        90,
+        180
+      ],
+      "timestamp": "2026-11-27T08:42:55Z",
+      "features": 18
+    }
+  ],
+  "downloadedBytes": 35881040,
+  "selection": "Areas tagged historic=archaeological_site, historic=battlefield or historic=district, protect_class=22, or heritage=1."
+}
