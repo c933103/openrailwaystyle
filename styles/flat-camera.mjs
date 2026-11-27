@@ -1,5 +1,6 @@
 // Pixel camera for the Canvas 2D renderer. CSS pixels, fractional zoom and the
 // 512 px world at z0 match the normal flat map's camera conventions.
+export const FLAT_MIN_ZOOM = -0.5, FLAT_MAX_ZOOM = 22;
 const WORLD = 512;
 const RAD = Math.PI / 180;
 const MAX_LAT = Math.atan(Math.sinh(Math.PI)) / RAD;

@@ -1,6 +1,6 @@
 import {isNeutralRailReference} from './railway-visibility.mjs';
 import {flatRailReferenceClip} from './flat-rail-reference.mjs';
-import {flatCamera, flatScaleBar, fitFlatBounds, flatBoxRect, fitFlatScreenBox} from './flat-camera.mjs';
+import {FLAT_MIN_ZOOM, FLAT_MAX_ZOOM, flatCamera, flatScaleBar, fitFlatBounds, flatBoxRect, fitFlatScreenBox} from './flat-camera.mjs';
 import {compileFlatVectorQuery} from './flat-vector-query.mjs';
 import {compileFlatFrame} from './flat-frame.mjs';
 import {flatReliefPaint,flatReliefPixels} from './flat-relief.mjs';
@@ -467,7 +467,7 @@ export function mountFlatMap({mount, style, styleURL, protocols, requestedView, 
   });
   function zoomBy(delta, anchor) {
     if (disposed || gesture.active || toolDrag || boxZoom || mouseRotation || !delta) return;
-    const zoom=Math.max(-0.5,Math.min(22,camera.zoom+delta));
+    const zoom=Math.max(FLAT_MIN_ZOOM,Math.min(FLAT_MAX_ZOOM,camera.zoom+delta));
     if (zoom===camera.zoom) return;
     setCamera(camera.zoomAt(zoom,anchor??[camera.width/2,camera.height/2]),true);
   }
