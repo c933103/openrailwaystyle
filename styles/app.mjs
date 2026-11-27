@@ -1,4 +1,4 @@
-import {GOOGLE_PROTOCOL, GOOGLE_TILE_SOURCE_ID, isImageryOnlyBackground, googleZoomForMapLibre, googleVariantForSettings, googleTileProtocolUrl, installGoogleTileLayer, createAdminController} from './google-maps.mjs?v=20261127-google-admin-integration-2';
+import {GOOGLE_PROTOCOL, GOOGLE_TILE_SOURCE_ID, isImageryOnlyBackground, googleZoomForMapLibre, googleLongitudeBounds, googleVariantForSettings, googleTileProtocolUrl, installGoogleTileLayer, createAdminController} from './google-maps.mjs?v=20261127-google-admin-integration-2';
 import {installSovietStyle, sovietTile} from './soviet-topo.mjs?v=20261127-google-admin-integration-2';
 import {bindTerrainViewport} from './viewport-settle.mjs?v=20261127-google-admin-integration-2';
 import {pruneModeTiles} from './mode-tile-cache.mjs?v=20261127-google-admin-integration-2';
@@ -3064,7 +3064,6 @@ function configureAdminProvider(config) {
   $('admin-notice').hidden = true;
   $('admin-settings').hidden = false;
   const clampLat = value => Math.max(-85,Math.min(85,value));
-  const clampLng = value => Math.max(-180,Math.min(180,value));
   adminController = createAdminController({
     window, document, fetcher: (...args) => fetch(...args), assetVersion,
     deploymentConfig:config,
@@ -3086,12 +3085,11 @@ function configureAdminProvider(config) {
         const {clientWidth:w,clientHeight:h}=$('map');
         const points=[[0,0],[w,0],[w,h],[0,h]].map(point=>flatSourceContext.platformProjection.unproject(point));
         const xs=points.map(p=>p.lng), ys=points.map(p=>p.lat);
-        const crossing=Math.max(...xs)>180 || Math.min(...xs)<-180;
-        return {zoom:googleZoomForMapLibre(flatCurrentView.z),north:clampLat(Math.max(...ys)),south:clampLat(Math.min(...ys)),east:crossing?180:clampLng(Math.max(...xs)),west:crossing?-180:clampLng(Math.min(...xs))};
+        return {zoom:googleZoomForMapLibre(flatCurrentView.z),north:clampLat(Math.max(...ys)),south:clampLat(Math.min(...ys)),...googleLongitudeBounds(Math.min(...xs),Math.max(...xs))};
       }
       if (!map) return null;
       const b=map.getBounds();
-      return {zoom:googleZoomForMapLibre(map.getZoom(),settings.detail),north:clampLat(b.getNorth()),south:clampLat(b.getSouth()),east:clampLng(b.getEast()),west:clampLng(b.getWest())};
+      return {zoom:googleZoomForMapLibre(map.getZoom(),settings.detail),north:clampLat(b.getNorth()),south:clampLat(b.getSouth()),...googleLongitudeBounds(b.getWest(),b.getEast())};
     },
     onStateChange:()=>applySettings(),
   });

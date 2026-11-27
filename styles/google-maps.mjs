@@ -73,6 +73,15 @@ export function googleTileProtocolUrl(variant = 'satellite', language = 'local')
   return `${GOOGLE_PROTOCOL}://${safeVariant}/{z}/{x}/{y}?lang=${encodeURIComponent(language || 'local')}`;
 }
 
+// Preserve a narrow dateline-crossing viewport instead of presenting it as global.
+export function googleLongitudeBounds(west, east) {
+  if (!Number.isFinite(west) || !Number.isFinite(east) || Math.abs(east - west) >= 360) {
+    return { west: -180, east: 180 };
+  }
+  const wrap = x => x >= -180 && x <= 180 ? x : ((x + 180) % 360 + 360) % 360 - 180;
+  return { west: wrap(west), east: wrap(east) };
+}
+
 export function createGoogleTileSourceSpec(variant = 'satellite', language = 'local') {
   return {
     type: 'raster',
@@ -310,6 +319,7 @@ export function createAdminController({
   let configuredKey = null;
   let sessionChecked = false;
   let viewportTimer = null;
+  let viewportRequestId = 0;
   let activeSessionInitKey = null;
   let activeSessionPromise = null;
 
@@ -695,14 +705,25 @@ export function createAdminController({
   }
 
   function onViewportChange(immediate = false) {
+    const requestId = ++viewportRequestId;
+    if (viewportTimer) clearTimeout(viewportTimer);
     const settings = getSettings?.() || { background: 'map', language: 'local' };
     if (!isGoogleActiveForBackground(settings.background) || googleMode !== 'tiles') return;
-    if (viewportTimer) clearTimeout(viewportTimer);
+    const requestSession = session;
+    const variant = googleVariantForSettings({ ...settings, googleTheme: prefs.googleTheme });
+    const language = settings.language || 'local';
+    const isCurrent = () => {
+      const current = getSettings?.() || { background: 'map', language: 'local' };
+      return requestId === viewportRequestId && requestSession === session
+        && googleMode === 'tiles' && isGoogleActiveForBackground(current.background)
+        && variant === googleVariantForSettings({ ...current, googleTheme: prefs.googleTheme })
+        && language === (current.language || 'local');
+    };
     const run = async () => {
-      if (!session || googleMode !== 'tiles') return;
+      viewportTimer = null;
+      if (!isCurrent()) return;
       const bounds = getViewportBounds?.();
       if (!bounds) return;
-      const variant = googleVariantForSettings({ ...settings, googleTheme: prefs.googleTheme });
       const zoom = String(Math.max(0, Math.min(22, Math.round(bounds.zoom ?? 2))));
       const north = String(Math.max(bounds.north ?? 85, bounds.south ?? -85));
       const south = String(Math.min(bounds.north ?? 85, bounds.south ?? -85));
@@ -711,8 +732,8 @@ export function createAdminController({
       try {
         let res;
         if (usingDirectGoogleTiles || session.staticDirect) {
-          const direct = await ensureDirectBrowserTileSession(variant, settings.language || 'local');
-          if (!direct.ok) return;
+          const direct = await ensureDirectBrowserTileSession(variant, language);
+          if (!direct.ok || !isCurrent()) return;
           const vpUrl = new URL('https://tile.googleapis.com/tile/v1/viewport');
           vpUrl.searchParams.set('session', direct.session);
           vpUrl.searchParams.set('key', direct.apiKey);
@@ -730,7 +751,7 @@ export function createAdminController({
             south,
             east,
             west,
-            lang: settings.language || 'local',
+            lang: language,
           });
           res = await fetcher(apiUrl(`/api/gmaps/viewport?${params}`), {
             method: 'GET',
@@ -740,6 +761,7 @@ export function createAdminController({
         }
         if (!res?.ok) return;
         const data = await res.json().catch(() => ({}));
+        if (!isCurrent()) return;
         const copyEl = $('gmaps-copyright');
         if (copyEl) {
           copyEl.textContent = typeof data.copyright === 'string' && data.copyright

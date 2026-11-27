@@ -696,6 +696,7 @@ export function createServerApp(options: ServerOptions = {}) {
             { type: 'OAUTH_AUTH_ERROR', error: 'Invalid or expired OAuth state. Try signing in again.' },
             'Authentication failed',
             'Invalid or expired OAuth state. Close this window and try again.',
+            frontendOrigin,
           ),
         );
       return;
@@ -710,6 +711,7 @@ export function createServerApp(options: ServerOptions = {}) {
             { type: 'OAUTH_AUTH_ERROR', error: 'GitHub OAuth credentials are missing on the server.' },
             'Configuration missing',
             'GitHub OAuth credentials are not configured.',
+            frontendOrigin,
           ),
         );
       return;
@@ -737,7 +739,7 @@ export function createServerApp(options: ServerOptions = {}) {
         res
           .status(401)
           .type('html')
-          .send(renderPopupPostMessageHtml({ type: 'OAUTH_AUTH_ERROR', error: msg }, 'Sign-in failed', msg));
+          .send(renderPopupPostMessageHtml({ type: 'OAUTH_AUTH_ERROR', error: msg }, 'Sign-in failed', msg, frontendOrigin));
         return;
       }
 
@@ -762,6 +764,7 @@ export function createServerApp(options: ServerOptions = {}) {
               { type: 'OAUTH_AUTH_ERROR', error: 'Could not read GitHub user profile.' },
               'Sign-in failed',
               'Could not verify your GitHub account.',
+            frontendOrigin,
             ),
           );
         return;
@@ -778,6 +781,7 @@ export function createServerApp(options: ServerOptions = {}) {
               { type: 'OAUTH_AUTH_ERROR', error: 'GitHub profile returned no username.' },
               'Sign-in failed',
               'GitHub profile returned no username.',
+            frontendOrigin,
             ),
           );
         return;
@@ -793,7 +797,7 @@ export function createServerApp(options: ServerOptions = {}) {
         res
           .status(403)
           .type('html')
-          .send(renderPopupPostMessageHtml({ type: 'OAUTH_AUTH_ERROR', error: deniedMsg }, 'Admin access required', deniedMsg,stateClaims.frontendOrigin));
+          .send(renderPopupPostMessageHtml({ type: 'OAUTH_AUTH_ERROR', error: deniedMsg }, 'Admin access required', deniedMsg, frontendOrigin));
         return;
       }
 
@@ -807,7 +811,7 @@ export function createServerApp(options: ServerOptions = {}) {
             { type: 'OAUTH_AUTH_SUCCESS', session },
             'Admin verified',
             `Signed in as @${login}. This window will close automatically.`,
-            stateClaims.frontendOrigin,
+            frontendOrigin,
           ),
         );
     } catch {
@@ -819,6 +823,7 @@ export function createServerApp(options: ServerOptions = {}) {
             { type: 'OAUTH_AUTH_ERROR', error: 'GitHub verification request failed. Try again.' },
             'Connection error',
             'Could not reach GitHub to verify repository permissions.',
+            frontendOrigin,
           ),
         );
     }

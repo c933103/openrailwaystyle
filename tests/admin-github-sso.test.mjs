@@ -158,6 +158,9 @@ test('GitHub OAuth callback rejects non-admin users and proxies 2D Google Map Ti
   const mockFetcher = async (input, init) => {
     const url = String(input);
     if (url === 'https://github.com/login/oauth/access_token') {
+      const code=JSON.parse(init.body).code;
+      if (code==='rejected-exchange') return Response.json({error:'bad_verification_code'},{status:401});
+      if (code==='failed-transport') throw Error('fixture upstream disconnect');
       return new Response(JSON.stringify({ access_token: 'gho_test_token' }), {
         status: 200,
         headers: { 'Content-Type': 'application/json' },
@@ -241,6 +244,13 @@ test('GitHub OAuth callback rejects non-admin users and proxies 2D Google Map Ti
       const invalid = await (await fetch(cancelUrl+'invalid')).text();
       assert.ok(!invalid.includes(JSON.stringify(baseUrl)), 'invalid state must not supply a message target');
 
+      for (const [code,status,message] of [['rejected-exchange',401,/bad_verification_code/],['failed-transport',502,/GitHub verification request failed/]]) {
+        const rejected=await fetch(`${baseUrl}/auth/callback?code=${code}&state=${encodeURIComponent(state1)}`);
+        assert.equal(rejected.status,status);
+        const body=await rejected.text();
+        assert.match(body,message);
+        assert.ok(body.includes(JSON.stringify(baseUrl)), 'error is directed to the signed initiating frontend');
+      }
       const deniedRes = await fetch(`${baseUrl}/auth/callback?code=code1&state=${encodeURIComponent(state1)}`);
       assert.equal(deniedRes.status, 403);
       const deniedHtml = await deniedRes.text();
