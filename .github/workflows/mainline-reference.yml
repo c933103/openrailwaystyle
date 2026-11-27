@@ -298,4 +298,11 @@ jobs:
         if: github.ref == 'refs/heads/main'
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh workflow run site.yml --ref main
+        run: |
+          set -eu
+          queued_push=$(node scripts/site-reference-redeploy.mjs)
+          if [ -n "$queued_push" ]; then
+            echo "Exact main push site run $queued_push is already queued; it will use the published reference."
+            exit 0
+          fi
+          gh workflow run site.yml --ref main

@@ -65,7 +65,7 @@ test('source acceptance commands, build drivers and direct station input affect 
  try{
   for(const path of ['scripts','styles','.github','tests/fixtures/browser-glyphs','package.json','package-lock.json','admin-backend/package.json','admin-backend/package-lock.json'])await cp(path,join(root,path),{recursive:true});
   const baseline=await referenceInputDigest(root);
-  for(const path of ['scripts/serve.mjs','scripts/build-style.mjs','styles/data-src/major-stations.json']){
+  for(const path of ['scripts/serve.mjs','scripts/build-style.mjs','scripts/site-reference-redeploy.mjs','styles/data-src/major-stations.json']){
    const file=join(root,path),bytes=await readFile(file);
    await writeFile(file,Buffer.concat([bytes,Buffer.from('\n')]));
    assert.notEqual(await referenceInputDigest(root),baseline,path);

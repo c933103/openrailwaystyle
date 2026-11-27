@@ -23,8 +23,10 @@ export function validateMainlineSources(sources){
     !Number.isSafeInteger(s.pbfBytes)||s.pbfBytes<1||s.pbfBytes>48*1024**3||
     !Number.isSafeInteger(s.exportBytes)||s.exportBytes<1||s.exportBytes>1024**3)
     throw Error('Invalid, duplicate or oversized continent source');
-  const url=new URL(s.url);
-  if(url.href!==`https://download.geofabrik.de/${s.region}-${s.date.slice(2).replaceAll('-','')}.osm.pbf`)
+  const filename=`${s.region}-${s.date.slice(2).replaceAll('-','')}.osm.pbf`;
+  const origin='https://download.geofabrik.de/';
+  // Older successfully retained manifests record the previous root path.
+  if(s.url!==origin+filename&&s.url!==origin+s.region+'/'+filename)
     throw Error('Unpermitted reference acquisition origin');
   const timestamp=Date.parse(s.sourceTimestamp);
   if(!Number.isFinite(timestamp)||Math.abs(timestamp-Date.parse(s.date+'T00:00:00Z'))>2*86400000)

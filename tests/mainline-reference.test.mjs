@@ -46,6 +46,13 @@ with tempfile.TemporaryDirectory() as directory:
 });
 test('continent validation never certifies a missing, duplicated, changed-age or unpermitted source',()=>{
  const good=sources();assert.equal(validateMainlineSources(good),true);
+ const canonical=good.map(s=>({...s,url:s.url.replace('.de/','.de/'+s.region+'/')}));
+ assert.equal(validateMainlineSources(canonical),true);
+ for(const path of ['asia/antarctica-261009.osm.pbf','antarctica/antarctica-latest.osm.pbf',
+                    'antarctica/antarctica-261009.osm.pbf?replacement=1']) {
+  const wrong=structuredClone(canonical);wrong[1].url='https://download.geofabrik.de/'+path;
+  assert.throws(()=>validateMainlineSources(wrong),/Unpermitted/);
+ }
  assert.throws(()=>validateMainlineSources(good.slice(1)),/Missing/);
  for(const patch of [{region:'africa'},{complete:false},{date:'2026-10-08'},
   {sourceTimestamp:'2026-10-07T00:00:00Z'},{url:'https://openrailwaymap.app/tiles'},

@@ -14,6 +14,7 @@ export const REFERENCE_INPUTS=Object.freeze([
  'scripts/mainline-chains.mjs','scripts/mainline-coverage.mjs',
  'scripts/mainline-provenance.mjs','scripts/retain-mainline-generation.mjs',
  'scripts/record-mainline-acceptance.mjs','scripts/plan-mainline-reuse.mjs',
+ 'scripts/site-reference-redeploy.mjs',
  'scripts/find-mainline-checkpoints.mjs',
  'scripts/verify-mainline-snapshot.mjs','scripts/check-mainline-reference-browser.mjs',
  'scripts/browser-renderer-fixture.mjs','scripts/browser.mjs',

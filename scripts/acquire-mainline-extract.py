@@ -32,7 +32,9 @@ def source_url(region, date):
     day = dt.date.fromisoformat(date)
     if day > dt.datetime.now(dt.timezone.utc).date():
         raise ValueError('Future source date')
-    return f'https://download.geofabrik.de/{region}-{day:%y%m%d}.osm.pbf'
+    # Geofabrik's catalog publishes dated files under the region directory.
+    # Keep redirects disabled; do not fall back to the mutable latest alias.
+    return f'https://download.geofabrik.de/{region}/{region}-{day:%y%m%d}.osm.pbf'
 
 
 def check_download_budget(received, expected, elapsed):
