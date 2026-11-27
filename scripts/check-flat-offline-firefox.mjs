@@ -71,7 +71,7 @@ try {
     }
     return [...keys];
   });
-  for(const path of ['app.mjs','vendor/flat-browser.js','world.style.json','vendor/pmtiles-4.2.1.js'])
+  for(const path of ['app.mjs','vendor/flat-browser.js','vendor/flat-controls.css','world.style.json','vendor/pmtiles-4.2.1.js'])
     assert.ok(cached.includes('/'+path+'?v='+version),path+' has its exact version in Cache Storage');
   assert.ok(!cached.some(path=>assetPattern.test(path.split('?')[0])));
   assert.ok(!requests.some(path=>assetPattern.test(path)),'a Canvas page and its real worker must not request either available WebGL asset');
