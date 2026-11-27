@@ -218,11 +218,13 @@ function flatVisibleSegment(paths,project,extent,camera){
 }
 
 // Canvas measures the actual point-label font before placing the label.
-// Break ordinary words at spaces/tabs, and uninterrupted Han text between
-// ideographs (keeping variation selectors with their base). Names that need
-// punctuation-aware breaking keep the existing behavior. Line labels need
-// one visible path.
-const hanGraphic=/\p{Unified_Ideograph}[\uFE00-\uFE0F\u{E0100}-\u{E01EF}]?/gu;
+// Break ordinary words at spaces/tabs, and names made only of Han and
+// kana between glyph clusters. Punctuated/mixed Latin names keep the
+// existing behavior. Line labels need one visible path.
+const eastAsianGraphic=/(?:\p{Unified_Ideograph}|\p{sc=Hiragana}|\p{sc=Katakana}|ー)[\u3099\u309A\uFF9E\uFF9F\uFE00-\uFE0F\u{E0100}-\u{E01EF}]*/gu;
+// Do not leave a common dependent kana or length mark at the start of a
+// new line. These share a width measurement with the preceding cluster.
+const kanaNonstarter=/^[ぁぃぅぇぉっゃゅょゎゕゖァィゥェォッャュョヮヵヶーゝゞヽヾㇰ-ㇿｧ-ｯｰ]/u;
 function flatMeasuredLines(context,text,maxWidth) {
   const lines=[],widths=[];
   const measure=line=>context.measureText(line).width;
@@ -234,26 +236,28 @@ function flatMeasuredLines(context,text,maxWidth) {
       push(line,width);
       continue;
     }
-    const ideographs=[...line.matchAll(hanGraphic)];
-    if(ideographs.length>1&&ideographs.map(match=>match[0]).join('')===line){
+    const glyphs=[...line.matchAll(eastAsianGraphic)];
+    const eastAsian=glyphs.length>1&&glyphs.map(match=>match[0]).join('')===line;
+    const boundaries=eastAsian?glyphs.filter((match,i)=>i===0||!kanaNonstarter.test(match[0])):[];
+    if(boundaries.length>1){
       // Balance an unspaced name rather than putting a single trailing
       // character on the last line. Prefer the later break on a tie.
       let i=0, remaining=width;
-      while(i<ideographs.length-1&&remaining>maxWidth){
-        const start=ideographs[i].index;
+      while(i<boundaries.length-1&&remaining>maxWidth){
+        const start=boundaries[i].index;
         const target=remaining/Math.ceil(remaining/maxWidth);
-        let end=i+1, lineWidth=measure(line.slice(start,ideographs[end].index));
-        while(end<ideographs.length-1){
-          const nextWidth=measure(line.slice(start,ideographs[end+1].index));
+        let end=i+1, lineWidth=measure(line.slice(start,boundaries[end].index));
+        while(end<boundaries.length-1){
+          const nextWidth=measure(line.slice(start,boundaries[end+1].index));
           if(nextWidth>maxWidth||Math.abs(nextWidth-target)>Math.abs(lineWidth-target))break;
           end++;
           lineWidth=nextWidth;
         }
-        push(line.slice(start,ideographs[end].index),lineWidth);
+        push(line.slice(start,boundaries[end].index),lineWidth);
         i=end;
-        remaining=measure(line.slice(ideographs[i].index));
+        remaining=measure(line.slice(boundaries[i].index));
       }
-      push(line.slice(ideographs[i].index),remaining);
+      push(line.slice(boundaries[i].index),remaining);
       continue;
     }
     let start=0, boundary=0, resume=0;

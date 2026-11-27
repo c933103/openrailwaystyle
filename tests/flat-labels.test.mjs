@@ -263,3 +263,46 @@ test('width-limited all-Han point labels wrap without breaking variation sequenc
   assert.deepEqual(ctx.draws.filter(a=>a[0]==='fill').map(a=>a[1]),
     [label,'甲乙\u00a0丙丁','香港（港島）站','香港'+rare+'醫院國','際醫療中心']);
 });
+
+
+test('mixed Han and kana hospital text wraps and leaves the neighboring facility selectable', async()=>{
+  const {readFile}=await import('node:fs/promises');
+  const world=JSON.parse(await readFile(new URL('../styles/world.style.json',import.meta.url),'utf8'));
+  const hospital=world.layers.find(l=>l.id==='context-destinations-hospital-label');
+  const compiled=compileFlatTextLabel(hospital);
+  const name='国立研究開発法人国立がん研究センター中央病院';
+  const features=[
+    {id:51,type:1,properties:{class:'hospital',name}},
+    {id:52,type:1,properties:{class:'hospital'}},
+  ];
+  const ctx=context(),hits=[];
+  ctx.measureText=text=>({width:[...text].length*11});
+  const positions=[45,185];
+  const candidates=features.map((feature,i)=>({
+    ...compiled.resolve({zoom:16},feature,{x:0,y:0,z:0}),anchor:'left',variable:[],
+    px:positions[i],py:120,feature,
+  }));
+  const counts=drawFlatTextLabels(ctx,camera,[{id:hospital.id,candidates}],{
+    getIcon:()=>({width:48,height:48}),
+    onSymbol:(_group,{feature},rects)=>hits.push([feature.id,rects]),
+  });
+  assert.equal(counts.get(hospital.id),2);
+  assert.deepEqual(hits.map(([id])=>id),[51,52]);
+  const lines=ctx.draws.filter(a=>a[0]==='fill').map(a=>a[1]);
+  assert.equal(lines.length,3);
+  assert.equal(lines.join(''),name);
+  assert.ok(lines.every(s=>s.length<=9));
+});
+
+test('kana width breaks do not start a new line with common dependent kana or marks',()=>{
+  const ctx=context();
+  ctx.measureText=text=>({width:[...text].filter(c=>c!=='\u3099').length*10});
+  const text='甲乙キョー丙丁カ\u3099ッコウ';
+  const point={label:text,color:'black',halo:'white',haloWidth:0,size:10,anchor:'center',
+    maxWidth:3,opacity:1,padding:0,px:128,py:120};
+  drawFlatTextLabels(ctx,camera,[{id:'labels',candidates:[point]}]);
+  const lines=ctx.draws.filter(a=>a[0]==='fill').map(a=>a[1]);
+  assert.equal(lines.join(''),text);
+  assert.ok(lines.length>1&&lines.includes('キョー'));
+  assert.ok(lines.every(l=>!/^([ョーッ]|\u3099)/u.test(l)));
+});
