@@ -781,7 +781,7 @@ export function createServerApp(options: ServerOptions = {}) {
         return;
       }
 
-      const repoData = repoRes.ok ? await repoRes.json() as {owner?: {id?: number}} : {};
+      const repoData: {owner?: {id?: number}} = repoRes.ok ? await repoRes.json() as {owner?: {id?: number}} : {};
       // The site owner, not every collaborator with repository admin rights.
       const isAdmin = Number.isSafeInteger(userData.id) && userData.id === repoData.owner?.id;
 

@@ -263,7 +263,7 @@ body[data-gmaps-active="true"] .maplibregl-ctrl-bottom-left { bottom: max(var(--
 .gmp-quota-banner { position: fixed; top: 0; left: 0; right: 0; z-index: 50; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 8px 14px; background: #fffbeb; border-bottom: 1px solid #fcd34d; color: #78350f; font-size: 12px; line-height: 1.4; }
 .gmp-quota-banner a { color: #92400e; font-weight: 650; text-decoration: underline; }
 .gmp-quota-banner button { flex-shrink: 0; font-size: 11px; padding: 4px 9px; border-radius: 5px; border-color: #f59e0b; background: #fef3c7; color: #78350f; }
-body[data-ui="watch"] .gmaps-attribution { display: none !important; }
+
 
 
 body[data-gmaps-active="true"] #map{z-index:1;background:transparent}

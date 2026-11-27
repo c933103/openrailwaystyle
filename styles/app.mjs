@@ -821,7 +821,7 @@ function applySettings() {
     }
     terrain3DSelected = previous.terrain3D;
   }
-  if (ready && map?.getSource(GOOGLE_TILE_SOURCE_ID)) {
+  if (ready && map?.getStyle?.().sources?.[GOOGLE_TILE_SOURCE_ID] && map.getSource(GOOGLE_TILE_SOURCE_ID)) {
     const nextGoogleTileUrl = googleTileProtocolUrl(googleVariantForSettings(settings), settings.language);
     if (appliedGoogleTileUrl !== nextGoogleTileUrl) {
       appliedGoogleTileUrl = nextGoogleTileUrl;
@@ -3077,7 +3077,8 @@ function configureAdminProvider(config) {
         return {center:{lat,lng},zoom:googleZoomForMapLibre(flatCurrentView.z)};
       }
       if (!map) return {center:{lat:23,lng:15},zoom:googleZoomForMapLibre(1.8,settings.detail)};
-      const {lat,lng}=map.getCenter().wrap();
+      const rawCenter=map.getCenter();
+      const {lat,lng}=rawCenter.wrap?.() || rawCenter;
       return {center:{lat,lng},zoom:googleZoomForMapLibre(map.getZoom(),settings.detail)};
     },
     getViewportBounds:()=>{
