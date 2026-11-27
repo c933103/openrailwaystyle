@@ -738,25 +738,16 @@ jobs:
         with:
           name: railway-world-site
           path: styles
-      # Esri World Imagery needs an ArcGIS Location Platform API key (public in
-      # the browser; restrict it to the site's referrer in Esri's dashboard).
-      # Without the repository variable the site keeps Sentinel-2 imagery only.
-      - name: Configure satellite imagery provider
+      # A Google browser key is optional and intentionally public. The proxy's
+      # Google key and GitHub OAuth secret are never copied into the Pages artifact.
+      - name: Configure imagery and optional administrator backend
         env:
           ESRI_API_KEY: ${{ vars.ESRI_API_KEY }}
-        run: |
-          set -eu
-          if [ -n "$ESRI_API_KEY" ]; then
-            # The accepted character set needs no JSON escaping.
-            if ! printf '%s' "$ESRI_API_KEY" | grep -Eqx '[A-Za-z0-9._-]{20,}'; then
-              echo 'ESRI_API_KEY has an unexpected format' >&2; exit 1
-            fi
-            printf '{"esriKey":"%s"}\n' "$ESRI_API_KEY" > styles/imagery-config.json
-            echo 'Esri World Imagery enabled with Sentinel-2 fallback.'
-          else
-            echo '{}' > styles/imagery-config.json
-            echo 'No ESRI_API_KEY variable: Sentinel-2 imagery only.'
-          fi
+          GOOGLE_MAPS_BROWSER_API_KEY: ${{ vars.GOOGLE_MAPS_BROWSER_API_KEY }}
+          GITHUB_CLIENT_ID: ${{ vars.GITHUB_CLIENT_ID }}
+          GITHUB_ADMIN_REPO: ${{ vars.GITHUB_ADMIN_REPO }}
+          AUTH_BACKEND_ORIGIN: ${{ vars.AUTH_BACKEND_ORIGIN }}
+        run: node scripts/configure-imagery.mjs
       # Fail closed before removing/uploading anything: the previous deployed
       # site remains live until all four immutable release tables are verified.
       # On the first merge the publisher may still be running; after it succeeds,

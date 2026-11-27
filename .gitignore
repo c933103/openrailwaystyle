@@ -24,3 +24,5 @@ power-data/
 __pycache__/
 styles/fonts/rare-han-v1/
 styles/fonts/world-v1/
+
+.aistudio/

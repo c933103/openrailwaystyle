@@ -45,6 +45,7 @@ await build({entryPoints:['styles/terrain-3d-worker.mjs'],outfile:'styles/vendor
 await build({entryPoints:['styles/dem-worker.mjs'],outfile:'styles/vendor/dem-worker.js',bundle:true,format:'iife',platform:'browser',target:'es2022',minify:true,legalComments:'eof'});
 await build({entryPoints:['styles/polar-layer.mjs'],outfile:'styles/vendor/polar-layer.js',bundle:true,format:'esm',platform:'browser',target:'es2022',minify:true,legalComments:'eof'});
 await build({entryPoints:['styles/flat-browser.mjs'],outfile:'styles/vendor/flat-browser.js',bundle:true,format:'esm',platform:'browser',target:'es2022',minify:true,legalComments:'eof'});
+await build({entryPoints:['scripts/google-maps-loader-entry.mjs'],outfile:'styles/vendor/google-maps-loader.js',bundle:true,format:'esm',platform:'browser',target:'es2022',minify:true,legalComments:'eof'});
 await copyFile('node_modules/@maplibre/maplibre-gl-style-spec/LICENSE.txt','styles/vendor/maplibre-gl-style-spec-LICENSE.txt');
 await copyFile('node_modules/geojson-vt/LICENSE','styles/vendor/geojson-vt-LICENSE.txt');
 await copyFile('node_modules/earcut/LICENSE','styles/vendor/earcut-LICENSE.txt');
