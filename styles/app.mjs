@@ -1,41 +1,42 @@
-import {GOOGLE_PROTOCOL, GOOGLE_TILE_SOURCE_ID, isImageryOnlyBackground, createGoogleTileSourceSpec, googleWebGLTileZoom, googleZoomForMapLibre, googleLongitudeBounds, googleVariantForSettings, googleTileProtocolUrl, installGoogleTileLayer, createAdminController} from './google-maps.mjs?v=20261127-google-admin-integration-2';
-import {installSovietStyle, sovietTile} from './soviet-topo.mjs?v=20261127-google-admin-integration-2';
-import {bindTerrainViewport} from './viewport-settle.mjs?v=20261127-google-admin-integration-2';
-import {pruneModeTiles} from './mode-tile-cache.mjs?v=20261127-google-admin-integration-2';
-import {updateMapStatus} from './status-ui.mjs?v=20261127-google-admin-integration-2';
-import {renderLegendUI} from './legend-ui.mjs?v=20261127-google-admin-integration-2';
-import {createInspectorRows, createFeatureInspector} from './feature-inspector.mjs?v=20261127-google-admin-integration-2';
+import {splitMongolianLineLabels,isMongolianLineLabelOf} from './mongolian-line-labels.mjs?v=20261127-mongolian-line-1';
+import {GOOGLE_PROTOCOL, GOOGLE_TILE_SOURCE_ID, isImageryOnlyBackground, createGoogleTileSourceSpec, googleWebGLTileZoom, googleZoomForMapLibre, googleLongitudeBounds, googleVariantForSettings, googleTileProtocolUrl, installGoogleTileLayer, createAdminController} from './google-maps.mjs?v=20261127-mongolian-line-1';
+import {installSovietStyle, sovietTile} from './soviet-topo.mjs?v=20261127-mongolian-line-1';
+import {bindTerrainViewport} from './viewport-settle.mjs?v=20261127-mongolian-line-1';
+import {pruneModeTiles} from './mode-tile-cache.mjs?v=20261127-mongolian-line-1';
+import {updateMapStatus} from './status-ui.mjs?v=20261127-mongolian-line-1';
+import {renderLegendUI} from './legend-ui.mjs?v=20261127-mongolian-line-1';
+import {createInspectorRows, createFeatureInspector} from './feature-inspector.mjs?v=20261127-mongolian-line-1';
 
-import {dataAgeRows, staleNotice} from './data-ages.mjs?v=20261127-google-admin-integration-2';
-import {installHiddenTileMaskGuard, installControlLayout, rememberAttribution, installPwaInstall, backportMapLibre524, MAPLIBRE_BACKPORT} from './map-controls.mjs?v=20261127-google-admin-integration-2';
-import {CJK_FONTS, PROBE_FAMILY, PROBE_FONT, PROBE_SETS, familyNames, chooseCjkFont, isLocalFamily} from './cjk-font.mjs?v=20261127-google-admin-integration-2';
-import {RARE_HAN_FAMILY, createRareHanFonts, rareHanBlocks} from './rare-han.mjs?v=20261127-google-admin-integration-2';
-import {createWorldFonts} from './world-font.mjs?v=20261127-google-admin-integration-2';
-import {hasMongolian, mongolianBlocks, mongolianFontRequests, nameFragment} from './mongolian-text.mjs?v=20261127-google-admin-integration-2';
+import {dataAgeRows, staleNotice} from './data-ages.mjs?v=20261127-mongolian-line-1';
+import {installHiddenTileMaskGuard, installControlLayout, rememberAttribution, installPwaInstall, backportMapLibre524, MAPLIBRE_BACKPORT} from './map-controls.mjs?v=20261127-mongolian-line-1';
+import {CJK_FONTS, PROBE_FAMILY, PROBE_FONT, PROBE_SETS, familyNames, chooseCjkFont, isLocalFamily} from './cjk-font.mjs?v=20261127-mongolian-line-1';
+import {RARE_HAN_FAMILY, createRareHanFonts, rareHanBlocks} from './rare-han.mjs?v=20261127-mongolian-line-1';
+import {createWorldFonts} from './world-font.mjs?v=20261127-mongolian-line-1';
+import {hasMongolian, mongolianBlocks, mongolianFontRequests, nameFragment} from './mongolian-text.mjs?v=20261127-mongolian-line-1';
 
-import {contextIcon, contextLayerInteractive, nearbyTransport} from './context.mjs?v=20261127-google-admin-integration-2';
-import {TRACK_BADGES, SETTING_KEYS, SETTING_PARAMS, settingsQuery, UNKNOWN_COLOR, INFRASTRUCTURE, controlColor, trainProtection, trainProtectionShort, trainProtectionSystems, gaugeColor, axleLoad, formatAxleLoad, axleLabel, loadingGauge, loadingDimensions, VIEW_LINE_LAYERS, viewLinePaint, viewLineWidth, inactivePaint, describeCurrent, DEM_URL, contourOptions, speedPaint, speedLabel, SEARCH_API, PLACE_SEARCH_API, searchResponse, searchResults, railwaySearchRows, tileStations, drawnStationQueries, LANGUAGES, chooseName, labelExpression, displayName, legendRows, autoProjection, ORM, DETAIL_LEVELS, detailLevel, formatReadout, osmObject, createPlatformLengths, createPlatformTileGeometry, platformLengthLabel, formatPlatformLength, readSettings, formatSpeed, stationRank, decodeLifecycleTile, isNeutralRailReference} from './map-model.mjs?v=20261127-google-admin-integration-2';
+import {contextIcon, contextLayerInteractive, nearbyTransport} from './context.mjs?v=20261127-mongolian-line-1';
+import {TRACK_BADGES, SETTING_KEYS, SETTING_PARAMS, settingsQuery, UNKNOWN_COLOR, INFRASTRUCTURE, controlColor, trainProtection, trainProtectionShort, trainProtectionSystems, gaugeColor, axleLoad, formatAxleLoad, axleLabel, loadingGauge, loadingDimensions, VIEW_LINE_LAYERS, viewLinePaint, viewLineWidth, inactivePaint, describeCurrent, DEM_URL, contourOptions, speedPaint, speedLabel, SEARCH_API, PLACE_SEARCH_API, searchResponse, searchResults, railwaySearchRows, tileStations, drawnStationQueries, LANGUAGES, chooseName, labelExpression, labelFields, displayName, legendRows, autoProjection, ORM, DETAIL_LEVELS, detailLevel, formatReadout, osmObject, createPlatformLengths, createPlatformTileGeometry, platformLengthLabel, formatPlatformLength, readSettings, formatSpeed, stationRank, decodeLifecycleTile, isNeutralRailReference} from './map-model.mjs?v=20261127-mongolian-line-1';
 
-import {Drawing, Measure, readDrawing, lengthKm, formatLength, formatClimb, climb} from './draw.mjs?v=20261127-google-admin-integration-2';
-import {createElevation, createSurfaceElevation, alongLine, profileStats, profileSegments} from './elevation.mjs?v=20261127-google-admin-integration-2';
-import {stationDepartures, plannerLink, TRANSITOUS_SOURCES} from './departures.mjs?v=20261127-google-admin-integration-2';
-import {departureItem} from './departures-ui.mjs?v=20261127-google-admin-integration-2';
-import {installGlobeDrag, allowPolarCentres, readoutZoom, viewHash, parseViewHash} from './globe-drag.mjs?v=20261127-google-admin-integration-2';
-import {installBathymetry, shareArchiveRequests, seabedContourOpacity} from './bathymetry.mjs?v=20261127-google-admin-integration-2';
-import {installTerrain3D, syncTerrain3D, terrain3DEnabled, terrain3DSelectedForPitch, terrain3DViewTarget, terrainExaggeration, syncHighPitchTileBudget, TERRAIN_3D_MAX_PITCH, HIGH_PITCH_TILE_CACHE_LIMIT} from './terrain-3d.mjs?v=20261127-google-admin-integration-2';
-import {installKeyboardPan} from './keyboard-pan.mjs?v=20261127-google-admin-integration-2';
-import {annotateLayers, layerVisibility, shouldLocalizeLayer, installHybridRailCasings} from './layer-semantics.mjs?v=20261127-google-admin-integration-2';
-import {createPowerFacilityLoader, electricitySignalRows, POWER_FACILITY_EXPLANATION} from './power-facilities.mjs?v=20261127-google-admin-integration-2';
-import {serviceFrequencyPaint, nearestServiceFeature, frequencyAvailability, frequencyAttribution, selectedFrequencyProfile, FREQUENCY_LABELS, HOURLY_PROFILES, installFrequencyExpiry} from './service-frequency.mjs?v=20261127-google-admin-integration-2';
-import {installWatchGesture} from './watch-map.mjs?v=20261127-google-admin-integration-2';
-import {createRailProviderRecovery, createSourceFailures} from './rail-provider-recovery.mjs?v=20261127-google-admin-integration-2';
-import {createEnergyNetworkProtocol} from './energy-network.mjs?v=20261127-google-admin-integration-2';
-import {createBundleReader} from './tile-bundles.mjs?v=20261127-google-admin-integration-2';
-import {createReferenceReader} from './mainline-reference.mjs?v=20261127-google-admin-integration-2';
-import {addStationFallbackLayers, createStationFallbackState, createRailReferenceState, createReferenceRefresh, stationFallbackFilter, stationFallbackNamesEnabled, stationFallbackMarkersEnabled, shouldRefreshCuratedStationSource} from './station-fallback.mjs?v=20261127-google-admin-integration-2';
-import {installWorldStationLifecycle, prepareWorldStationOverlay, createStationViewPaint, WORLD_STATION_SOURCE, WORLD_STATION_DOTS, WORLD_STATION_SUPERSEDED_DOTS} from './station-world.mjs?v=20261127-google-admin-integration-2';
-import {loadImageryConfig, applyImageryConfig, createImageryProtocol, installImageryAttribution, PROVIDER_ATTRIBUTION} from './imagery.mjs?v=20261127-google-admin-integration-2';
-import {createSharedTileProtocols} from './shared-tile-protocols.mjs?v=20261127-google-admin-integration-2';
+import {Drawing, Measure, readDrawing, lengthKm, formatLength, formatClimb, climb} from './draw.mjs?v=20261127-mongolian-line-1';
+import {createElevation, createSurfaceElevation, alongLine, profileStats, profileSegments} from './elevation.mjs?v=20261127-mongolian-line-1';
+import {stationDepartures, plannerLink, TRANSITOUS_SOURCES} from './departures.mjs?v=20261127-mongolian-line-1';
+import {departureItem} from './departures-ui.mjs?v=20261127-mongolian-line-1';
+import {installGlobeDrag, allowPolarCentres, readoutZoom, viewHash, parseViewHash} from './globe-drag.mjs?v=20261127-mongolian-line-1';
+import {installBathymetry, shareArchiveRequests, seabedContourOpacity} from './bathymetry.mjs?v=20261127-mongolian-line-1';
+import {installTerrain3D, syncTerrain3D, terrain3DEnabled, terrain3DSelectedForPitch, terrain3DViewTarget, terrainExaggeration, syncHighPitchTileBudget, TERRAIN_3D_MAX_PITCH, HIGH_PITCH_TILE_CACHE_LIMIT} from './terrain-3d.mjs?v=20261127-mongolian-line-1';
+import {installKeyboardPan} from './keyboard-pan.mjs?v=20261127-mongolian-line-1';
+import {annotateLayers, layerVisibility, shouldLocalizeLayer, installHybridRailCasings} from './layer-semantics.mjs?v=20261127-mongolian-line-1';
+import {createPowerFacilityLoader, electricitySignalRows, POWER_FACILITY_EXPLANATION} from './power-facilities.mjs?v=20261127-mongolian-line-1';
+import {serviceFrequencyPaint, nearestServiceFeature, frequencyAvailability, frequencyAttribution, selectedFrequencyProfile, FREQUENCY_LABELS, HOURLY_PROFILES, installFrequencyExpiry} from './service-frequency.mjs?v=20261127-mongolian-line-1';
+import {installWatchGesture} from './watch-map.mjs?v=20261127-mongolian-line-1';
+import {createRailProviderRecovery, createSourceFailures} from './rail-provider-recovery.mjs?v=20261127-mongolian-line-1';
+import {createEnergyNetworkProtocol} from './energy-network.mjs?v=20261127-mongolian-line-1';
+import {createBundleReader} from './tile-bundles.mjs?v=20261127-mongolian-line-1';
+import {createReferenceReader} from './mainline-reference.mjs?v=20261127-mongolian-line-1';
+import {addStationFallbackLayers, createStationFallbackState, createRailReferenceState, createReferenceRefresh, stationFallbackFilter, stationFallbackNamesEnabled, stationFallbackMarkersEnabled, shouldRefreshCuratedStationSource} from './station-fallback.mjs?v=20261127-mongolian-line-1';
+import {installWorldStationLifecycle, prepareWorldStationOverlay, createStationViewPaint, WORLD_STATION_SOURCE, WORLD_STATION_DOTS, WORLD_STATION_SUPERSEDED_DOTS} from './station-world.mjs?v=20261127-mongolian-line-1';
+import {loadImageryConfig, applyImageryConfig, createImageryProtocol, installImageryAttribution, PROVIDER_ATTRIBUTION} from './imagery.mjs?v=20261127-mongolian-line-1';
+import {createSharedTileProtocols} from './shared-tile-protocols.mjs?v=20261127-mongolian-line-1';
 
 const $ = id => document.getElementById(id);
 $('help-power').textContent = POWER_FACILITY_EXPLANATION;
@@ -102,7 +103,7 @@ let railRecovery, stationFailures, railReferenceFailures, wakeRailRecovery = () 
 let stationWorldActive = false, stationWorldLifecycle;
 const stationViewPaint = createStationViewPaint();
 let map, ready = false, currentFeature, searchController, searchPausedUntil = 0, dem, scale, styleLanguage, pendingView, clickable = [], hoverFrame, drawing, measuring;
-const assetVersion = new URL(import.meta.url).searchParams.get('v') || '20261127-google-admin-integration-2';
+const assetVersion = new URL(import.meta.url).searchParams.get('v') || '20261127-mongolian-line-1';
 // An old active worker can save this new page before its replacement has
 // installed. If that update is interrupted, only old first-party/CDN copies
 // may be available offline. Read exact saved responses without contacting the
@@ -844,7 +845,7 @@ function applySettings() {
     // back with the map).
     if(layer.id==='polar-caps')map.triggerRepaint();
     if(layer.id==='service-routes')for(const [property,value] of [['line-width',frequencyPaint.width],['line-offset',frequencyPaint.offset],['line-opacity',frequencyPaint.opacity]])map.setPaintProperty(layer.id,property,value);
-    if(layer.id==='service-names')map.setLayoutProperty(layer.id,'text-offset',frequencyPaint.labelOffset);
+    if(isMongolianLineLabelOf(layer,'service-names'))map.setLayoutProperty(layer.id,'text-offset',frequencyPaint.labelOffset);
     const visible = isNeutralRailReference(layer) ? false : layerVisibility(layer, settings);
     // The verified, complete source replaces selective dots at z3–11. The
     // corresponding provider/curated name symbols stay eligible; the normal
@@ -1315,7 +1316,7 @@ function unitStyle(style) {
     const stationPaint = stationViewPaint(layer, settings.mode, map?.getZoom() ?? 1.8);
     if (stationPaint) Object.assign(layer.paint, stationPaint);
     if(layer.id==='service-routes')Object.assign(layer.paint,{'line-width':frequencyPaint.width,'line-offset':frequencyPaint.offset,'line-opacity':frequencyPaint.opacity});
-    if(layer.id==='service-names')layer.layout['text-offset']=frequencyPaint.labelOffset;
+    if(isMongolianLineLabelOf(layer,'service-names'))layer.layout['text-offset']=frequencyPaint.labelOffset;
     if (/^speed-(branch-overview|metro-overview|overview|tracks)$/.test(layer.id)) layer.paint['line-color'] = speedPaint(settings.units);
     if(['platform-lengths','platform-numbers'].includes(layer.id))layer.layout['text-field']=platformLengthLabel(settings.units);
     if (layer.id === 'axle-labels') layer.layout['text-field'] = axleLabel(settings.units);
@@ -1403,6 +1404,7 @@ function localizeStyle(style) {
       layer.layout['text-font']=[...original,...(family?[family]:[]),RARE_HAN_FAMILY];
     }
   }
+  if(!useFlat)splitMongolianLineLabels(style,labelFields(settings.language),shouldLocalizeLayer);
   if(style.glyphs)style.glyphs='atlasglyph://'+style.glyphs.replace(/^atlasglyph:\/\//,'');
   style.sources.openmaptiles.url = `atlasbase://${settings.language}/${unwrap(style.sources.openmaptiles.url).replace(/^pmtiles:\/\//,'')}`;
   for(const id of ['stationLow','stationMed','stations']) style.sources[id].url = `atlasstation://${settings.language}/${unwrap(style.sources[id].url)}`;
@@ -1885,7 +1887,7 @@ async function initialize() {
   // Keep the explicitly locked Pages placeholder until an OAuth backend is configured.
   // The complete provider implementation is built regardless of credentials.
   if (imagery.authBackendOrigin) configureAdminProvider(imagery);
-  const {installLabelProtocols, localizeTile, tileTextBlocks} = labelCode;
+  const {installLabelProtocols, localizeTile, tileTextBlocks, markStoredMongolianLines} = labelCode;
   locate = labelCode.locate;
   servedBuild = labelCode.buildInfo;
   if ((!useFlat && !window.maplibregl) || !window.pmtiles) throw new Error('Map libraries could not load. Check your connection and reload.');
@@ -1952,7 +1954,7 @@ async function initialize() {
     if (!names) {
       const stored = scheme==='axlebranch' ? await labelProtocols.axleTile(data) : data, found = tileTextBlocks(stored);
       if (found.size) await rareHanFonts.ensure(found);
-      return {data: stored};
+      return {data: markStoredMongolianLines(stored)};
     }
     const found = new Set(), localized = localizeTile(data,lang,{z,x,y},found);
     if (found.size) await rareHanFonts.ensure(found);
@@ -3231,7 +3233,7 @@ frequencyExpiry=installFrequencyExpiry({
     }
     const p=serviceFrequencyPaint(settings);
     if(map.getStyle().layers.some(l=>l.id==='service-routes'))for(const [key,value] of [['line-width',p.width],['line-offset',p.offset],['line-opacity',p.opacity]])map.setPaintProperty('service-routes',key,value);
-    if(map.getStyle().layers.some(l=>l.id==='service-names'))map.setLayoutProperty('service-names','text-offset',p.labelOffset);
+    for(const layer of map.getStyle().layers) if(isMongolianLineLabelOf(layer,'service-names'))map.setLayoutProperty(layer.id,'text-offset',p.labelOffset);
     if(currentFeature?.layer?.id==='service-routes')showServiceDetails(currentFeature);
   }
 });

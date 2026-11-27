@@ -1,3 +1,4 @@
+import {hasTraditionalMongolian, markMongolianTextFields, MONGOLIAN_LABEL_FIELDS, mongolianAnchorLayer, mongolianRouteAnchor} from './mongolian-line-labels.mjs';
 export {createBasemapSourceFactory, warmInitialBasemapArchive} from './basemap-range-source.mjs';
 export {createGlyphFallback, emptyGlyphRangePbf} from './glyph-fallback.mjs';
 import {waitForViewport} from './viewport-settle.mjs';
@@ -104,11 +105,14 @@ export function locateFeatures(tile, coordinates, sourceLayer) {
 // `found` (optional) collects the rare-Han blocks of the names written, so
 // their glyph slices can load before the tile is drawn (rare-han.mjs).
 export function writeLabels(tile, lang, found, sourceLayer) {
+  let lineHasMongolianName=false;
   for (const f of sourceLayer ? sourceFeatures(tile,sourceLayer) : features(tile)) {
     f.properties.atlas_name = chooseName(f.properties,lang);
     f.properties.atlas_language = lang;
+    lineHasMongolianName ||= f.type!==1 && hasTraditionalMongolian(f.properties.atlas_name);
     if (found) rareHanBlocks(f.properties.atlas_name, found);
   }
+  if(lineHasMongolianName)addMongolianAnchors(tile,sourceLayer);
   const result = encode(tile);
   return result.buffer.slice(result.byteOffset,result.byteOffset+result.byteLength);
 }
@@ -146,6 +150,43 @@ export function timedSource(inner, ms) {
 // Rare Han blocks in a tile's string values: each layer's value table, which
 // @mapbox/vector-tile 1.3.1 decodes with the layer (_values) without reading
 // features or geometry. Numbers, IDs and geometry are never mistaken for text.
+// Inspect the value table before decoding geometry. Non-Mongolian tiles
+// and point-only layers return the original bytes without re-encoding.
+function addMongolianAnchors(tile,onlyLayer,raw=false) {
+  let changed=false;
+  for(const [name,layer] of Object.entries(tile.layers)) {
+    if(onlyLayer&&name!==onlyLayer || name.endsWith('__atlas_mongolian_anchors') ||
+       raw&&!layer._values.some(hasTraditionalMongolian)) continue;
+    const rows=Array.from({length:layer.length},(_,i)=>layer.feature(i));
+    const anchors=[];
+    for(const f of rows) {
+      if(f.type===1) continue;
+      markMongolianTextFields(f.properties);
+      if(!f.properties[MONGOLIAN_LABEL_FIELDS])continue;
+      const at=mongolianRouteAnchor(f.loadGeometry(),layer.extent);
+      if(!at){delete f.properties[MONGOLIAN_LABEL_FIELDS];continue;}
+      anchors.push({id:f.id,type:1,properties:f.properties,loadGeometry:()=>[[at]]});
+    }
+    if(!anchors.length)continue;
+    const anchorName=mongolianAnchorLayer(name);
+    tile.layers[anchorName]={name:anchorName,version:layer.version,extent:layer.extent,length:anchors.length,
+      feature:i=>anchors[i]};
+    layer.feature=i=>rows[i];
+    changed=true;
+  }
+  return changed;
+}
+export function markStoredMongolianLines(data) {
+  if (!data?.byteLength) return data;
+  try {
+    const tile=new VectorTile(new Pbf(new Uint8Array(data)));
+    if(!addMongolianAnchors(tile,undefined,true))return data;
+    const encoded=encode(tile);
+    return encoded.buffer.slice(encoded.byteOffset,encoded.byteOffset+encoded.byteLength);
+  } catch {
+    return data;
+  }
+}
 export function tileTextBlocks(data, found = new Set()) {
   try {
     for (const layer of Object.values(new VectorTile(new Pbf(new Uint8Array(data))).layers))
@@ -251,7 +292,7 @@ export function installLabelProtocols(maplibregl, pmtilesProtocol, fetcher = fet
     // MapLibre transfers this buffer to its worker, detaching it. Keep the
     // cache's original for language changes, return visits and track counts.
     const data = (await get(url, controller.signal)).slice(0);
-    return {data: await storedGlyphs(data,url)};
+    return {data: markStoredMongolianLines(await storedGlyphs(data,url))};
   });
   // Overview tiles (zoom 0–6) carry way IDs but no loading gauge: add it
   // from the published way ID list (data/loading-gauge.json, about 250 kB

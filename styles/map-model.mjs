@@ -1,8 +1,8 @@
-export {createPlatformLengths,createPlatformTileGeometry,platformLengthLabel,formatPlatformLength} from './platform-length.mjs?v=20261127-google-admin-integration-2';
-export {referenceDetailEligible,isNeutralRailReference} from './railway-visibility.mjs?v=20261127-google-admin-integration-2';
+export {createPlatformLengths,createPlatformTileGeometry,platformLengthLabel,formatPlatformLength} from './platform-length.mjs?v=20261127-mongolian-line-1';
+export {referenceDetailEligible,isNeutralRailReference} from './railway-visibility.mjs?v=20261127-mongolian-line-1';
 
-export {axleLoad,formatAxleLoad,axlePaint,axleLabel} from './axle-load.mjs?v=20261127-google-admin-integration-2';
-import {standardServiceWidth} from './service-frequency.mjs?v=20261127-google-admin-integration-2';
+export {axleLoad,formatAxleLoad,axlePaint,axleLabel} from './axle-load.mjs?v=20261127-mongolian-line-1';
+import {standardServiceWidth} from './service-frequency.mjs?v=20261127-mongolian-line-1';
 // The provider normalizes maxspeed to km/h; speed_label retains source units
 // and both directional values. Never infer a limit from railway class.
 export const SPEED_BANDS = [
@@ -598,7 +598,7 @@ const britishTest = (upper, code) => { const c = code.toUpperCase(); return ['an
 // made from its name, so it is the same wherever and whenever it is drawn.
 // Tiles carry it as owner_color (added in the browser, tile-labels.mjs);
 // without an owner, the unknown colour.
-export {ownerColor} from './owner-color.mjs?v=20261127-google-admin-integration-2';
+export {ownerColor} from './owner-color.mjs?v=20261127-mongolian-line-1';
 export const ownerPaint = () => ['coalesce', ['get', 'owner_color'], UNKNOWN_COLOR];
 // Aerialways and escalators are drawn in every view. Infrastructure and Power
 // show their type (thin line, ticks or arrows); every other view colours the
@@ -773,11 +773,13 @@ export function chooseName(p, lang = 'local') {
 export function displayName(p, lang = 'local') {
   return p.atlas_language === lang ? p.atlas_name : chooseName(p,lang);
 }
-export function labelExpression(lang = 'local') {
+export function labelFields(lang = 'local') {
   // Styles cannot tell regions apart; use the order for places elsewhere.
   const requested = chinese(lang) ? chineseVariantKeys(lang) : [`name:${lang}`];
-  const keys = ['atlas_name', ...(lang !== 'local' ? [...new Set(requested),'name:en'] : []), 'name','name:nonlatin','name:latin','label','ref'];
-  return ['case', ...keys.flatMap(key=>[['!=',['coalesce',['get',key],''],''],['to-string',['get',key]]]), ''];
+  return ['atlas_name', ...(lang !== 'local' ? [...new Set(requested),'name:en'] : []), 'name','name:nonlatin','name:latin','label','ref'];
+}
+export function labelExpression(lang = 'local') {
+  return ['case', ...labelFields(lang).flatMap(key=>[['!=',['coalesce',['get',key],''],''],['to-string',['get',key]]]), ''];
 }
 // The station service substitutes the native name for missing translations.
 // Store only distinct returned translations; native script remains available.

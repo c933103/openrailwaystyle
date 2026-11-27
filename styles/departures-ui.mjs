@@ -1,4 +1,4 @@
-import {clock, trainSchedule} from './departures.mjs?v=20261127-google-admin-integration-2';
+import {clock, trainSchedule} from './departures.mjs?v=20261127-mongolian-line-1';
 
 const node = (document, tag, text = '', className = '') => {
   const element = document.createElement(tag);

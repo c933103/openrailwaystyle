@@ -1,8 +1,8 @@
-import {displayName, aerialwayKind, formatSpeed} from './map-model.mjs?v=20261127-google-admin-integration-2';
-import {powerFacilityName, powerFacilityEnergyRows} from './power-facilities.mjs?v=20261127-google-admin-integration-2';
-import {contextDescription} from './context.mjs?v=20261127-google-admin-integration-2';
-import {CROSSING_TAGS} from './crossing-tags.mjs?v=20261127-google-admin-integration-2';
-import {trainProtection, trainProtectionShort, CONTROL_FAMILIES, CONTROL_LEVELS} from './map-model.mjs?v=20261127-google-admin-integration-2';
+import {displayName, aerialwayKind, formatSpeed} from './map-model.mjs?v=20261127-mongolian-line-1';
+import {powerFacilityName, powerFacilityEnergyRows} from './power-facilities.mjs?v=20261127-mongolian-line-1';
+import {contextDescription} from './context.mjs?v=20261127-mongolian-line-1';
+import {CROSSING_TAGS} from './crossing-tags.mjs?v=20261127-mongolian-line-1';
+import {trainProtection, trainProtectionShort, CONTROL_FAMILIES, CONTROL_LEVELS} from './map-model.mjs?v=20261127-mongolian-line-1';
 
 // DOM helpers shared by the feature inspector and train-protection legend.
 export function createInspectorRows(textNode) {
