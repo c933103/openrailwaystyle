@@ -63,7 +63,7 @@ test('missing provenance rebuilds, while failed or unpinned metadata never becom
 test('generator identity follows actual transform dependencies and package lock, while browser changes retain data identity',async()=>{
  const root=await mkdtemp(join(tmpdir(),'mainline-data-provenance-'));
  try{
-  for(const path of ['scripts','styles','.github','package.json','package-lock.json'])await cp(path,join(root,path),{recursive:true});
+  for(const path of ['scripts','styles','.github','package.json','package-lock.json','admin-backend/package.json','admin-backend/package-lock.json'])await cp(path,join(root,path),{recursive:true});
   await mkdir(join(root,'tests/fixtures'),{recursive:true});await cp('tests/fixtures/browser-glyphs',join(root,'tests/fixtures/browser-glyphs'),{recursive:true});
   const data=await referenceDataInputDigest(root),renderer=await referenceInputDigest(root);
   for(const path of ['styles/map-model.mjs','styles/departures.mjs','styles/app.mjs','styles/sw.js','scripts/mainline-provenance.mjs']){

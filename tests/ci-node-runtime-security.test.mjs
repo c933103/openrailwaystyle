@@ -26,7 +26,7 @@ test('each Atlas Node setup tracks the latest patched Node 26 release',async()=>
       installations++;
     }
   }
-  assert.equal(installations,41,'all 41 runtime setup steps must track current fixes');
+  assert.equal(installations,42,'all 42 runtime setup steps must track current fixes');
 });
 
 test('Node 26 security guard accepts future fixes without accepting unpatched or other majors',()=>{

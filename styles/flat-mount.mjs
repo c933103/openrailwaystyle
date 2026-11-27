@@ -611,6 +611,9 @@ export function mountFlatMap({mount, style, styleURL, protocols, requestedView, 
     getPlatformLayer:id=>platformLayers.has(id),
     platformProjection:{getContainer:()=>mount,project:lngLat=>{const [x,y]=camera.project(lngLat);return {x,y};},
       unproject:point=>{const [lng,lat]=camera.unproject(point);return {lng,lat};}},
+    // Use the same planner and request budget as render(), even when the
+    // requested source is not active (for example during a coverage fallback).
+    getPlannedTileZoom:source=>planFlatSourceTiles(camera,source,512,tileDetail)[0]?.canonical.z,
     getTileTemplate:id=>metadata.get(id)?.value?.tiles?.[0],
     getSource:id=>style.sources[id]?.type==='geojson'?localData.get(id)?.source:undefined,measurementMap:measureOverlay.map,drawingMap:drawingOverlay.map,
     connectDrawing:tool=>{drawing=tool;schedule();},

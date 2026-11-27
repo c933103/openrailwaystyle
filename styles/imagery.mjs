@@ -46,7 +46,7 @@ function interior(point,polygons) {
 let regionData;
 export async function regionalImagery(z,x,y) {
   if(z<15 || z>IMAGERY_MAX_ZOOM)return null;
-  const {IMAGERY_REGIONS}=await (regionData ||= import('./imagery-regions.mjs?v=20261127-mongolian-label-picker-1'));
+  const {IMAGERY_REGIONS}=await (regionData ||= import('./imagery-regions.mjs?v=20261127-google-admin-integration-2'));
   const w=x/2**z*360-180,e=(x+1)/2**z*360-180,n=tileLatitude(z,y),s=tileLatitude(z,y+1);
   for(const provider of REGIONAL) {
     const [west,south,east,north]=provider.bounds;
@@ -83,13 +83,35 @@ export function eoxCovers(z, y) {
 const fill = (template, z, x, y) => template.replace('{z}', z).replace('{x}', x).replace('{y}', y);
 const imageType = response => /^image\//i.test(response.headers?.get?.('content-type') || '');
 
-// Reads the deployment's imagery configuration; any failure means EOX only.
+// Reads the deployment's imagery & admin configuration; any failure means EOX only.
 export async function loadImageryConfig(url, {fetcher = fetch, timeout = 3000} = {}) {
   try {
     const response = await fetcher(url, {cache: 'no-store', signal: AbortSignal.timeout(timeout)});
     if (!response.ok) return {};
     const config = await response.json();
-    return typeof config?.esriKey === 'string' && /^[A-Za-z0-9._-]{20,}$/.test(config.esriKey) ? {esriKey: config.esriKey} : {};
+    if (!config || typeof config !== 'object') return {};
+    const out = {};
+    if (typeof config.esriKey === 'string' && /^[A-Za-z0-9._-]{20,}$/.test(config.esriKey)) {
+      out.esriKey = config.esriKey;
+    }
+    if (typeof config.googleMapsKey === 'string' && /^[A-Za-z0-9._-]{20,}$/.test(config.googleMapsKey)) {
+      out.googleMapsKey = config.googleMapsKey;
+    }
+    if (typeof config.githubClientId === 'string' && /^[A-Za-z0-9._-]{10,}$/.test(config.githubClientId)) {
+      out.githubClientId = config.githubClientId;
+    }
+    if (typeof config.adminRepo === 'string' && /^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/.test(config.adminRepo)) {
+      out.adminRepo = config.adminRepo;
+    }
+    if (typeof config.authBackendOrigin === 'string' && config.authBackendOrigin) {
+      try {
+        const parsed = new URL(config.authBackendOrigin);
+        if (parsed.protocol === 'https:' && parsed.pathname === '/' && !parsed.search && !parsed.hash) {
+          out.authBackendOrigin = parsed.origin;
+        }
+      } catch {}
+    }
+    return out;
   } catch { return {}; }
 }
 

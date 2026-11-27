@@ -452,3 +452,37 @@ On a theme change, decoded tile managers are cleared only when every referring
 layer has explicit theme membership excluding the new view and is already hidden.
 Shared basemap and raw protocol caches are preserved. The current renderer calls
 these managers `tileManagers`; a missing or replaced manager is left alone.
+
+## Administrator Google Maps provider
+
+The supplied Google Maps integration is built and published even with no API
+key or authentication backend. In that configuration the existing Settings
+administrator button remains locked; ordinary visitors retain all five existing
+public backgrounds and do not contact GitHub OAuth or Google Maps.
+
+When a separate OAuth backend is ready, set the repository variable
+`AUTH_BACKEND_ORIGIN` to its HTTPS origin. The supplied optional Node
+`server.ts` implements the OAuth and Map Tiles routes; its private deployment
+configuration is documented in `.env.example`. Set the backend's `APP_URL`
+to its own origin and register `APP_URL/auth/callback` with GitHub. The
+frontend origin remains `https://10671435.xyz`; authorization verifies the
+numeric GitHub account ID against the repository owner's ID. No provider tile
+is needed to sign in. The administrator may switch between the existing
+provider and Google roadmap, terrain or satellite after authentication.
+Google raster tiles are read through the shared protocol by both WebGL and
+Canvas. The JavaScript API fallback is available only in WebGL's flat 2D
+mode with an explicitly configured separate browser key.
+
+The Pages workflow does not copy the backend's Google Maps API key, OAuth
+secret or session signing secret. The optional
+`GOOGLE_MAPS_BROWSER_API_KEY` repository variable is intentionally public;
+do not put a server key there. It must be restricted to the intended API and
+website. Leaving all credentials blank is supported. No backend is provisioned
+by GitHub Pages itself. Deploy the optional server independently, or implement
+the same authenticated routes on a different backend.
+
+### Optional admin dependencies
+
+The reference-data generator retains its original root `package.json` and lock. The optional supplied Google/Auth server has its own pinned lock under `admin-backend/`. The normal browser build installs the pinned production dependencies when required and bundles the Google JS loader even when no credentials are present. For direct server use from the repository root: `npm ci --prefix admin-backend --omit=dev --ignore-scripts` and `node server.ts`. No actual OAuth or Google credentials are needed for fixture tests.
+
+When updating the optional dependency lock, include the corresponding loader/build entry change under `scripts/` so the existing reference acceptance workflow runs for the new browser provenance. The optional lock changes browser acceptance, not generator provenance.

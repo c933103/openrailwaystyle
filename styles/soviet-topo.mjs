@@ -1,4 +1,4 @@
-import {gridSize, series} from './soviet-coverage.mjs?v=20261127-mongolian-label-picker-1';
+import {gridSize, series} from './soviet-coverage.mjs?v=20261127-google-admin-integration-2';
 
 const empty = Uint8Array.from(atob('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR4nGNgYGBgAAAABQABpfZFQAAAAABJRU5ErkJggg=='), c => c.charCodeAt(0));
 const transparent = () => ({data: empty.slice().buffer});
