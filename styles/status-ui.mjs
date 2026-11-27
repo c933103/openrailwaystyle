@@ -1,5 +1,5 @@
-import {numericSpeed, referenceDetailEligible} from './map-model.mjs?v=20261127-mongolian-line-2';
-import {terrain3DEnabled} from './terrain-3d.mjs?v=20261127-mongolian-line-2';
+import {numericSpeed, referenceDetailEligible} from './map-model.mjs?v=20261127-departure-event-1';
+import {terrain3DEnabled} from './terrain-3d.mjs?v=20261127-departure-event-1';
 
 // Source-event reconciliation and the visible availability diagnostics.
 export function mapErrorMessage({railRecovery, stationFailures, errors, settings, terrain3DSelected}) {

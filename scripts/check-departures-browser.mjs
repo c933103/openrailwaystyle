@@ -261,6 +261,30 @@ try {
       }
       boardBodies = {};
       console.log(`${engine}: same-source trip conflicts, same-instance/cross-source duplicates, expired cancellation isolation and cached reopening passed in both board orders.`);
+      // Identical line, destination and scheduled instant do not make an
+      // arrival and departure the same observation across two feed boards.
+      for (const order of [['a','b'], ['b','a']]) {
+        boardName = `Board event identity ${order.join('')}`; boardOrder = order;
+        const scheduled = row.place.departure;
+        boardBodies = {a:{stopTimes:[{...row, tripId:'20990101_11:00_fixture_departure',
+          place:{...row.place, scheduledDeparture:scheduled, track:'2'}}]},
+          b:{stopTimes:[{...row, tripId:'20990101_11:00_other_arrival', realTime:true, cancelled:true,
+            place:{stopId:'b', tz:row.place.tz, scheduledArrival:scheduled,
+              arrival:new Date(Date.parse(scheduled)+240000).toISOString(), track:'9'}}]}};
+        const before = boardRequests.length;
+        for (let reopen = 0; reopen < 2; reopen++) {
+          await openStation(boardName); await waitBoard();
+          const rows = page.locator('.departure-list > li');
+          assert.equal(await rows.count(), 2);
+          assert.deepEqual(await page.locator('.departure-track').allTextContents(), ['Pl. 2', 'Pl. 9']);
+          assert.equal(await rows.nth(0).locator('.departure-time.cancelled').count(), 0);
+          assert.equal(await rows.nth(1).locator('.departure-time.cancelled').count(), 1);
+          assert.equal(boardRequests.length - before, 3, 'cached reopen does not re-fetch either observation');
+          await page.locator('#details-close').click();
+        }
+      }
+      boardBodies = {};
+      console.log(`${engine}: same-time arrivals and departures retain separate platforms and cancellation on cached reopening in both board orders.`);
       // A nearer substring name cannot take a board slot or supply the journey
       // origin/destination. Exercise the production click, matching and renderer.
       const permutations = items => items.length < 2 ? [items] : items.flatMap((item, i) =>
