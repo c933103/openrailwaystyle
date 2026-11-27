@@ -1,4 +1,4 @@
-import { MODES, railwayTrackWidth } from './map-model.mjs?v=20261128-control-parity-3';
+import { MODES, railwayTrackWidth } from './map-model.mjs?v=20261128-fragment-bounds';
 
 const VERSION = 1;
 const VALUE_LABELS = /^(speed|electrification|control|gauge|loading|axle|owner)-labels$/;
