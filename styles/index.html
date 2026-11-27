@@ -33,7 +33,7 @@
   <meta name="apple-mobile-web-app-title" content="Railway Atlas">
   <!-- Start first-party map inputs with HTML discovery, before the app's module graph.
        Keep fetch mode and URLs identical to the requests in app.mjs. -->
-  <link rel="preload" as="fetch" crossorigin="anonymous" href="world.style.json?v=20261128-control-parity-2">
+  <link rel="preload" as="fetch" crossorigin="anonymous" href="world.style.json?v=20261128-control-parity-3">
   <script id="startup-renderer-preload">
     // Only preload MapLibre for the legacy entry. The normal entry waits for
     // renderer selection so WebGL-disabled browsers never download it.
@@ -43,7 +43,7 @@
       }));
     }
   </script>
-  <link rel="modulepreload" href="vendor/tile-labels.js?v=20261128-control-parity-2">
+  <link rel="modulepreload" href="vendor/tile-labels.js?v=20261128-control-parity-3">
   <!-- Warm the tile-metadata and glyph hosts (issue #447, stage 4) so their
        TLS/connection setup overlaps the library and style downloads instead
        of starting only when MapLibre first requests TileJSON or glyphs.
@@ -51,9 +51,9 @@
   <link rel="preconnect" href="https://openrailwaymap.app" crossorigin="anonymous">
   <link rel="preconnect" href="https://tuiles.enliberte.fr" crossorigin="anonymous">
   <link rel="preconnect" href="https://papers.reearth.land" crossorigin="anonymous">
-  <link href="vendor/flat-controls.css?v=20261128-control-parity-2" rel="stylesheet">
+  <link href="vendor/flat-controls.css?v=20261128-control-parity-3" rel="stylesheet">
   <link id="maplibre-css" data-href="vendor/maplibre-gl-5.24.0.css" rel="stylesheet">
-  <link href="app.css?v=20261128-control-parity-2" rel="stylesheet">
+  <link href="app.css?v=20261128-control-parity-3" rel="stylesheet">
 </head>
 <body>
   <div id="gmp-quota-banner" class="gmp-quota-banner" role="alert" hidden>
@@ -309,6 +309,6 @@
     }, true);
   </script>
   <section id="watch-menu" role="dialog" aria-modal="true" aria-label="Watch map controls" hidden><div id="watch-content"></div></section>
-  <script type="module" src="app.mjs?v=20261128-control-parity-2"></script>
+  <script type="module" src="app.mjs?v=20261128-control-parity-3"></script>
 </body>
 </html>

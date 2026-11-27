@@ -1,42 +1,42 @@
-import {splitMongolianLineLabels,isMongolianLineLabelOf} from './mongolian-line-labels.mjs?v=20261128-control-parity-2';
-import {GOOGLE_PROTOCOL, GOOGLE_TILE_SOURCE_ID, isImageryOnlyBackground, createGoogleTileSourceSpec, googleWebGLTileZoom, googleZoomForMapLibre, googleLongitudeBounds, googleVariantForSettings, googleTileProtocolUrl, installGoogleTileLayer, createAdminController} from './google-maps.mjs?v=20261128-control-parity-2';
-import {installSovietStyle, sovietTile} from './soviet-topo.mjs?v=20261128-control-parity-2';
-import {bindTerrainViewport} from './viewport-settle.mjs?v=20261128-control-parity-2';
-import {pruneModeTiles} from './mode-tile-cache.mjs?v=20261128-control-parity-2';
-import {updateMapStatus} from './status-ui.mjs?v=20261128-control-parity-2';
-import {renderLegendUI} from './legend-ui.mjs?v=20261128-control-parity-2';
-import {createInspectorRows, createFeatureInspector} from './feature-inspector.mjs?v=20261128-control-parity-2';
+import {splitMongolianLineLabels,isMongolianLineLabelOf} from './mongolian-line-labels.mjs?v=20261128-control-parity-3';
+import {GOOGLE_PROTOCOL, GOOGLE_TILE_SOURCE_ID, isImageryOnlyBackground, createGoogleTileSourceSpec, googleWebGLTileZoom, googleZoomForMapLibre, googleLongitudeBounds, googleVariantForSettings, googleTileProtocolUrl, installGoogleTileLayer, createAdminController} from './google-maps.mjs?v=20261128-control-parity-3';
+import {installSovietStyle, sovietTile} from './soviet-topo.mjs?v=20261128-control-parity-3';
+import {bindTerrainViewport} from './viewport-settle.mjs?v=20261128-control-parity-3';
+import {pruneModeTiles} from './mode-tile-cache.mjs?v=20261128-control-parity-3';
+import {updateMapStatus} from './status-ui.mjs?v=20261128-control-parity-3';
+import {renderLegendUI} from './legend-ui.mjs?v=20261128-control-parity-3';
+import {createInspectorRows, createFeatureInspector} from './feature-inspector.mjs?v=20261128-control-parity-3';
 
-import {dataAgeRows, staleNotice} from './data-ages.mjs?v=20261128-control-parity-2';
-import {installHiddenTileMaskGuard, installControlLayout, rememberAttribution, installPwaInstall, backportMapLibre524, MAPLIBRE_BACKPORT} from './map-controls.mjs?v=20261128-control-parity-2';
-import {CJK_FONTS, PROBE_FAMILY, PROBE_FONT, PROBE_SETS, familyNames, chooseCjkFont, isLocalFamily} from './cjk-font.mjs?v=20261128-control-parity-2';
-import {RARE_HAN_FAMILY, createRareHanFonts, rareHanBlocks} from './rare-han.mjs?v=20261128-control-parity-2';
-import {createWorldFonts} from './world-font.mjs?v=20261128-control-parity-2';
-import {hasMongolian, mongolianBlocks, mongolianFontRequests, nameFragment} from './mongolian-text.mjs?v=20261128-control-parity-2';
+import {dataAgeRows, staleNotice} from './data-ages.mjs?v=20261128-control-parity-3';
+import {installHiddenTileMaskGuard, installControlLayout, rememberAttribution, installPwaInstall, backportMapLibre524, MAPLIBRE_BACKPORT} from './map-controls.mjs?v=20261128-control-parity-3';
+import {CJK_FONTS, PROBE_FAMILY, PROBE_FONT, PROBE_SETS, familyNames, chooseCjkFont, isLocalFamily} from './cjk-font.mjs?v=20261128-control-parity-3';
+import {RARE_HAN_FAMILY, createRareHanFonts, rareHanBlocks} from './rare-han.mjs?v=20261128-control-parity-3';
+import {createWorldFonts} from './world-font.mjs?v=20261128-control-parity-3';
+import {hasMongolian, mongolianBlocks, mongolianFontRequests, nameFragment} from './mongolian-text.mjs?v=20261128-control-parity-3';
 
-import {contextIcon, contextLayerInteractive, nearbyTransport} from './context.mjs?v=20261128-control-parity-2';
-import {TRACK_BADGES, SETTING_KEYS, SETTING_PARAMS, settingsQuery, UNKNOWN_COLOR, INFRASTRUCTURE, controlColor, trainProtection, trainProtectionShort, trainProtectionSystems, gaugeColor, axleLoad, formatAxleLoad, axleLabel, loadingGauge, loadingDimensions, VIEW_LINE_LAYERS, viewLinePaint, viewLineWidth, inactivePaint, describeCurrent, DEM_URL, contourOptions, speedPaint, speedLabel, SEARCH_API, PLACE_SEARCH_API, searchResponse, searchResults, railwaySearchRows, tileStations, drawnStationQueries, LANGUAGES, chooseName, labelExpression, labelFields, displayName, legendRows, autoProjection, ORM, DETAIL_LEVELS, detailLevel, formatReadout, osmObject, createPlatformLengths, createPlatformTileGeometry, platformLengthLabel, formatPlatformLength, readSettings, formatSpeed, stationRank, decodeLifecycleTile, isNeutralRailReference} from './map-model.mjs?v=20261128-control-parity-2';
+import {contextIcon, contextLayerInteractive, nearbyTransport} from './context.mjs?v=20261128-control-parity-3';
+import {TRACK_BADGES, SETTING_KEYS, SETTING_PARAMS, settingsQuery, UNKNOWN_COLOR, INFRASTRUCTURE, controlColor, trainProtection, trainProtectionShort, trainProtectionSystems, gaugeColor, axleLoad, formatAxleLoad, axleLabel, loadingGauge, loadingDimensions, VIEW_LINE_LAYERS, viewLinePaint, viewLineWidth, inactivePaint, describeCurrent, DEM_URL, contourOptions, speedPaint, speedLabel, SEARCH_API, PLACE_SEARCH_API, searchResponse, searchResults, railwaySearchRows, tileStations, drawnStationQueries, LANGUAGES, chooseName, labelExpression, labelFields, displayName, legendRows, autoProjection, ORM, DETAIL_LEVELS, detailLevel, formatReadout, osmObject, createPlatformLengths, createPlatformTileGeometry, platformLengthLabel, formatPlatformLength, readSettings, formatSpeed, stationRank, decodeLifecycleTile, isNeutralRailReference} from './map-model.mjs?v=20261128-control-parity-3';
 
-import {Drawing, Measure, readDrawing, lengthKm, formatLength, formatClimb, climb} from './draw.mjs?v=20261128-control-parity-2';
-import {createElevation, createSurfaceElevation, alongLine, profileStats, profileSegments} from './elevation.mjs?v=20261128-control-parity-2';
-import {stationDepartures, plannerLink, TRANSITOUS_SOURCES} from './departures.mjs?v=20261128-control-parity-2';
-import {departureItem} from './departures-ui.mjs?v=20261128-control-parity-2';
-import {installGlobeDrag, allowPolarCentres, readoutZoom, viewHash, parseViewHash} from './globe-drag.mjs?v=20261128-control-parity-2';
-import {installBathymetry, shareArchiveRequests, seabedContourOpacity} from './bathymetry.mjs?v=20261128-control-parity-2';
-import {installTerrain3D, syncTerrain3D, terrain3DEnabled, terrain3DSelectedForPitch, terrain3DViewTarget, terrainExaggeration, syncHighPitchTileBudget, TERRAIN_3D_MAX_PITCH, HIGH_PITCH_TILE_CACHE_LIMIT} from './terrain-3d.mjs?v=20261128-control-parity-2';
-import {installKeyboardPan} from './keyboard-pan.mjs?v=20261128-control-parity-2';
-import {annotateLayers, layerVisibility, shouldLocalizeLayer, installHybridRailCasings} from './layer-semantics.mjs?v=20261128-control-parity-2';
-import {createPowerFacilityLoader, electricitySignalRows, POWER_FACILITY_EXPLANATION} from './power-facilities.mjs?v=20261128-control-parity-2';
-import {serviceFrequencyPaint, nearestServiceFeature, frequencyAvailability, frequencyAttribution, selectedFrequencyProfile, FREQUENCY_LABELS, HOURLY_PROFILES, installFrequencyExpiry} from './service-frequency.mjs?v=20261128-control-parity-2';
-import {installWatchGesture} from './watch-map.mjs?v=20261128-control-parity-2';
-import {createRailProviderRecovery, createSourceFailures} from './rail-provider-recovery.mjs?v=20261128-control-parity-2';
-import {createEnergyNetworkProtocol} from './energy-network.mjs?v=20261128-control-parity-2';
-import {createBundleReader} from './tile-bundles.mjs?v=20261128-control-parity-2';
-import {createReferenceReader} from './mainline-reference.mjs?v=20261128-control-parity-2';
-import {addStationFallbackLayers, createStationFallbackState, createRailReferenceState, createReferenceRefresh, stationFallbackFilter, stationFallbackNamesEnabled, stationFallbackMarkersEnabled, shouldRefreshCuratedStationSource} from './station-fallback.mjs?v=20261128-control-parity-2';
-import {installWorldStationLifecycle, prepareWorldStationOverlay, createStationViewPaint, WORLD_STATION_SOURCE, WORLD_STATION_DOTS, WORLD_STATION_SUPERSEDED_DOTS} from './station-world.mjs?v=20261128-control-parity-2';
-import {loadImageryConfig, applyImageryConfig, createImageryProtocol, installImageryAttribution, PROVIDER_ATTRIBUTION} from './imagery.mjs?v=20261128-control-parity-2';
-import {createSharedTileProtocols} from './shared-tile-protocols.mjs?v=20261128-control-parity-2';
+import {Drawing, Measure, readDrawing, lengthKm, formatLength, formatClimb, climb} from './draw.mjs?v=20261128-control-parity-3';
+import {createElevation, createSurfaceElevation, alongLine, profileStats, profileSegments} from './elevation.mjs?v=20261128-control-parity-3';
+import {stationDepartures, plannerLink, TRANSITOUS_SOURCES} from './departures.mjs?v=20261128-control-parity-3';
+import {departureItem} from './departures-ui.mjs?v=20261128-control-parity-3';
+import {installGlobeDrag, allowPolarCentres, readoutZoom, viewHash, parseViewHash} from './globe-drag.mjs?v=20261128-control-parity-3';
+import {installBathymetry, shareArchiveRequests, seabedContourOpacity} from './bathymetry.mjs?v=20261128-control-parity-3';
+import {installTerrain3D, syncTerrain3D, terrain3DEnabled, terrain3DSelectedForPitch, terrain3DViewTarget, terrainExaggeration, syncHighPitchTileBudget, TERRAIN_3D_MAX_PITCH, HIGH_PITCH_TILE_CACHE_LIMIT} from './terrain-3d.mjs?v=20261128-control-parity-3';
+import {installKeyboardPan} from './keyboard-pan.mjs?v=20261128-control-parity-3';
+import {annotateLayers, layerVisibility, shouldLocalizeLayer, installHybridRailCasings} from './layer-semantics.mjs?v=20261128-control-parity-3';
+import {createPowerFacilityLoader, electricitySignalRows, POWER_FACILITY_EXPLANATION} from './power-facilities.mjs?v=20261128-control-parity-3';
+import {serviceFrequencyPaint, nearestServiceFeature, frequencyAvailability, frequencyAttribution, selectedFrequencyProfile, FREQUENCY_LABELS, HOURLY_PROFILES, installFrequencyExpiry} from './service-frequency.mjs?v=20261128-control-parity-3';
+import {installWatchGesture} from './watch-map.mjs?v=20261128-control-parity-3';
+import {createRailProviderRecovery, createSourceFailures} from './rail-provider-recovery.mjs?v=20261128-control-parity-3';
+import {createEnergyNetworkProtocol} from './energy-network.mjs?v=20261128-control-parity-3';
+import {createBundleReader} from './tile-bundles.mjs?v=20261128-control-parity-3';
+import {createReferenceReader} from './mainline-reference.mjs?v=20261128-control-parity-3';
+import {addStationFallbackLayers, createStationFallbackState, createRailReferenceState, createReferenceRefresh, stationFallbackFilter, stationFallbackNamesEnabled, stationFallbackMarkersEnabled, shouldRefreshCuratedStationSource} from './station-fallback.mjs?v=20261128-control-parity-3';
+import {installWorldStationLifecycle, prepareWorldStationOverlay, createStationViewPaint, WORLD_STATION_SOURCE, WORLD_STATION_DOTS, WORLD_STATION_SUPERSEDED_DOTS} from './station-world.mjs?v=20261128-control-parity-3';
+import {loadImageryConfig, applyImageryConfig, createImageryProtocol, installImageryAttribution, PROVIDER_ATTRIBUTION} from './imagery.mjs?v=20261128-control-parity-3';
+import {createSharedTileProtocols} from './shared-tile-protocols.mjs?v=20261128-control-parity-3';
 
 const $ = id => document.getElementById(id);
 $('help-power').textContent = POWER_FACILITY_EXPLANATION;
@@ -103,7 +103,7 @@ let railRecovery, stationFailures, railReferenceFailures, wakeRailRecovery = () 
 let stationWorldActive = false, stationWorldLifecycle;
 const stationViewPaint = createStationViewPaint();
 let map, ready = false, currentFeature, searchController, searchPausedUntil = 0, dem, scale, styleLanguage, pendingView, clickable = [], hoverFrame, drawing, measuring;
-const assetVersion = new URL(import.meta.url).searchParams.get('v') || '20261128-control-parity-2';
+const assetVersion = new URL(import.meta.url).searchParams.get('v') || '20261128-control-parity-3';
 // An old active worker can save this new page before its replacement has
 // installed. If that update is interrupted, only old first-party/CDN copies
 // may be available offline. Read exact saved responses without contacting the
@@ -875,7 +875,7 @@ function applySettings() {
   if (ready) wakeRailRecovery();
 }
 let attribution, flatCredits, attributionStateCleanup, controlLayout, servedBuild;
-function codeAttribution() {
+function codeAttributionNode() {
   const span=document.createElement('span');span.className='atlas-build';
   span.append(`Build ${assetVersion} · `);
   if (servedBuild?.version && servedBuild.version !== assetVersion) span.append(`Label build ${servedBuild.version} · `);
@@ -885,11 +885,11 @@ function codeAttribution() {
     link.textContent=`Code ${servedBuild.commit.slice(0,10)}`;link.title=servedBuild.commit;
     link.target='_blank';link.rel='noopener';span.append(link);
   } else span.append('Development build');
-  return span.outerHTML;
+  return span;
 }
 function updateAttribution() {
   if (!map || attribution) return;
-  attribution = new maplibregl.AttributionControl({compact: true, customAttribution: codeAttribution()});
+  attribution = new maplibregl.AttributionControl({compact: true, customAttribution: codeAttributionNode().outerHTML});
   map.addControl(attribution, 'bottom-right');
   attributionStateCleanup = rememberAttribution(
     $('map').querySelector('.maplibregl-ctrl-bottom-right .maplibregl-ctrl-attrib'),
@@ -2138,7 +2138,7 @@ async function initialize() {
     attributionStateCleanup=rememberAttribution(creditsBox,{
       open:settings.attributionOpen,changed:open=>{settings.attributionOpen=open;saveSettings();}
     });
-    const buildCredit=codeAttribution();
+    const buildCredit=codeAttributionNode();
     let creditSignature;
     const requestedMongolian=new Set();
     const getMongolianFont=(text,size)=>{
@@ -2284,7 +2284,10 @@ async function initialize() {
         const signature=JSON.stringify(credits);
         if(signature===creditSignature)return;
         creditSignature=signature;
-        appendFlatCredits(flatCredits,[...credits,buildCredit],location.href);
+        // Provider credit HTML is untrusted and deliberately loses attributes.
+        // Keep our own build label and code link as a separately created node.
+        appendFlatCredits(flatCredits,credits,location.href);
+        flatCredits.append(buildCredit);
         creditLabel.textContent=flatCredits.querySelector('a[href="https://www.openstreetmap.org/copyright"]')
           ? '© OpenStreetMap · Map credits' : 'Map credits';
       },

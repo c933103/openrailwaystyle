@@ -76,7 +76,12 @@ try {
   assert.deepEqual(webglRequests,[],kind+': Canvas must not download either WebGL asset');
   assert.equal(await page.locator('#globe-toggle,#terrain-toggle').count(),0);
   await information.locator('.maplibregl-ctrl-attrib-button').click();
-  assert.ok(await information.locator('.atlas-build').isVisible(),'Canvas attribution is interactive');
+  const canvasBuild=information.locator('.atlas-build');
+  await canvasBuild.waitFor({timeout:10000});
+  assert.ok((await canvasBuild.innerText()).startsWith('Build '+expected.version+' · '));
+  if(expected.sourceUrl)assert.equal(await canvasBuild.locator('a').getAttribute('href'),expected.sourceUrl);
+  else if(expected.commit)assert.ok((await canvasBuild.innerText()).includes(expected.commit.slice(0,10)));
+  else assert.ok((await canvasBuild.innerText()).includes('Development build'));
   await page.screenshot({path:`browser-review/build-${kind}-canvas-info.png`,timeout:120000});
   assert.deepEqual(errors,[]);
   console.log('PASS build info and real renderer control parity',kind,JSON.stringify(expected));
