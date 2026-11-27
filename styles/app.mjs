@@ -1,42 +1,42 @@
-import {splitMongolianLineLabels,isMongolianLineLabelOf} from './mongolian-line-labels.mjs?v=20261127-board-event-1';
-import {GOOGLE_PROTOCOL, GOOGLE_TILE_SOURCE_ID, isImageryOnlyBackground, createGoogleTileSourceSpec, googleWebGLTileZoom, googleZoomForMapLibre, googleLongitudeBounds, googleVariantForSettings, googleTileProtocolUrl, installGoogleTileLayer, createAdminController} from './google-maps.mjs?v=20261127-board-event-1';
-import {installSovietStyle, sovietTile} from './soviet-topo.mjs?v=20261127-board-event-1';
-import {bindTerrainViewport} from './viewport-settle.mjs?v=20261127-board-event-1';
-import {pruneModeTiles} from './mode-tile-cache.mjs?v=20261127-board-event-1';
-import {updateMapStatus} from './status-ui.mjs?v=20261127-board-event-1';
-import {renderLegendUI} from './legend-ui.mjs?v=20261127-board-event-1';
-import {createInspectorRows, createFeatureInspector} from './feature-inspector.mjs?v=20261127-board-event-1';
+import {splitMongolianLineLabels,isMongolianLineLabelOf} from './mongolian-line-labels.mjs?v=20261128-control-parity-3';
+import {GOOGLE_PROTOCOL, GOOGLE_TILE_SOURCE_ID, isImageryOnlyBackground, createGoogleTileSourceSpec, googleWebGLTileZoom, googleZoomForMapLibre, googleLongitudeBounds, googleVariantForSettings, googleTileProtocolUrl, installGoogleTileLayer, createAdminController} from './google-maps.mjs?v=20261128-control-parity-3';
+import {installSovietStyle, sovietTile} from './soviet-topo.mjs?v=20261128-control-parity-3';
+import {bindTerrainViewport} from './viewport-settle.mjs?v=20261128-control-parity-3';
+import {pruneModeTiles} from './mode-tile-cache.mjs?v=20261128-control-parity-3';
+import {updateMapStatus} from './status-ui.mjs?v=20261128-control-parity-3';
+import {renderLegendUI} from './legend-ui.mjs?v=20261128-control-parity-3';
+import {createInspectorRows, createFeatureInspector} from './feature-inspector.mjs?v=20261128-control-parity-3';
 
-import {dataAgeRows, staleNotice} from './data-ages.mjs?v=20261127-board-event-1';
-import {installHiddenTileMaskGuard, installControlLayout, rememberAttribution, installPwaInstall, backportMapLibre524, MAPLIBRE_BACKPORT} from './map-controls.mjs?v=20261127-board-event-1';
-import {CJK_FONTS, PROBE_FAMILY, PROBE_FONT, PROBE_SETS, familyNames, chooseCjkFont, isLocalFamily} from './cjk-font.mjs?v=20261127-board-event-1';
-import {RARE_HAN_FAMILY, createRareHanFonts, rareHanBlocks} from './rare-han.mjs?v=20261127-board-event-1';
-import {createWorldFonts} from './world-font.mjs?v=20261127-board-event-1';
-import {hasMongolian, mongolianBlocks, mongolianFontRequests, nameFragment} from './mongolian-text.mjs?v=20261127-board-event-1';
+import {dataAgeRows, staleNotice} from './data-ages.mjs?v=20261128-control-parity-3';
+import {installHiddenTileMaskGuard, installControlLayout, rememberAttribution, installPwaInstall, backportMapLibre524, MAPLIBRE_BACKPORT} from './map-controls.mjs?v=20261128-control-parity-3';
+import {CJK_FONTS, PROBE_FAMILY, PROBE_FONT, PROBE_SETS, familyNames, chooseCjkFont, isLocalFamily} from './cjk-font.mjs?v=20261128-control-parity-3';
+import {RARE_HAN_FAMILY, createRareHanFonts, rareHanBlocks} from './rare-han.mjs?v=20261128-control-parity-3';
+import {createWorldFonts} from './world-font.mjs?v=20261128-control-parity-3';
+import {hasMongolian, mongolianBlocks, mongolianFontRequests, nameFragment} from './mongolian-text.mjs?v=20261128-control-parity-3';
 
-import {contextIcon, contextLayerInteractive, nearbyTransport} from './context.mjs?v=20261127-board-event-1';
-import {TRACK_BADGES, SETTING_KEYS, SETTING_PARAMS, settingsQuery, UNKNOWN_COLOR, INFRASTRUCTURE, controlColor, trainProtection, trainProtectionShort, trainProtectionSystems, gaugeColor, axleLoad, formatAxleLoad, axleLabel, loadingGauge, loadingDimensions, VIEW_LINE_LAYERS, viewLinePaint, viewLineWidth, inactivePaint, describeCurrent, DEM_URL, contourOptions, speedPaint, speedLabel, SEARCH_API, PLACE_SEARCH_API, searchResponse, searchResults, railwaySearchRows, tileStations, drawnStationQueries, LANGUAGES, chooseName, labelExpression, labelFields, displayName, legendRows, autoProjection, ORM, DETAIL_LEVELS, detailLevel, formatReadout, osmObject, createPlatformLengths, createPlatformTileGeometry, platformLengthLabel, formatPlatformLength, readSettings, formatSpeed, stationRank, decodeLifecycleTile, isNeutralRailReference} from './map-model.mjs?v=20261127-board-event-1';
+import {contextIcon, contextLayerInteractive, nearbyTransport} from './context.mjs?v=20261128-control-parity-3';
+import {TRACK_BADGES, SETTING_KEYS, SETTING_PARAMS, settingsQuery, UNKNOWN_COLOR, INFRASTRUCTURE, controlColor, trainProtection, trainProtectionShort, trainProtectionSystems, gaugeColor, axleLoad, formatAxleLoad, axleLabel, loadingGauge, loadingDimensions, VIEW_LINE_LAYERS, viewLinePaint, viewLineWidth, inactivePaint, describeCurrent, DEM_URL, contourOptions, speedPaint, speedLabel, SEARCH_API, PLACE_SEARCH_API, searchResponse, searchResults, railwaySearchRows, tileStations, drawnStationQueries, LANGUAGES, chooseName, labelExpression, labelFields, displayName, legendRows, autoProjection, ORM, DETAIL_LEVELS, detailLevel, formatReadout, osmObject, createPlatformLengths, createPlatformTileGeometry, platformLengthLabel, formatPlatformLength, readSettings, formatSpeed, stationRank, decodeLifecycleTile, isNeutralRailReference} from './map-model.mjs?v=20261128-control-parity-3';
 
-import {Drawing, Measure, readDrawing, lengthKm, formatLength, formatClimb, climb} from './draw.mjs?v=20261127-board-event-1';
-import {createElevation, createSurfaceElevation, alongLine, profileStats, profileSegments} from './elevation.mjs?v=20261127-board-event-1';
-import {stationDepartures, plannerLink, TRANSITOUS_SOURCES} from './departures.mjs?v=20261127-board-event-1';
-import {departureItem} from './departures-ui.mjs?v=20261127-board-event-1';
-import {installGlobeDrag, allowPolarCentres, readoutZoom, viewHash, parseViewHash} from './globe-drag.mjs?v=20261127-board-event-1';
-import {installBathymetry, shareArchiveRequests, seabedContourOpacity} from './bathymetry.mjs?v=20261127-board-event-1';
-import {installTerrain3D, syncTerrain3D, terrain3DEnabled, terrain3DSelectedForPitch, terrain3DViewTarget, terrainExaggeration, syncHighPitchTileBudget, TERRAIN_3D_MAX_PITCH, HIGH_PITCH_TILE_CACHE_LIMIT} from './terrain-3d.mjs?v=20261127-board-event-1';
-import {installKeyboardPan} from './keyboard-pan.mjs?v=20261127-board-event-1';
-import {annotateLayers, layerVisibility, shouldLocalizeLayer, installHybridRailCasings} from './layer-semantics.mjs?v=20261127-board-event-1';
-import {createPowerFacilityLoader, electricitySignalRows, POWER_FACILITY_EXPLANATION} from './power-facilities.mjs?v=20261127-board-event-1';
-import {serviceFrequencyPaint, nearestServiceFeature, frequencyAvailability, frequencyAttribution, selectedFrequencyProfile, FREQUENCY_LABELS, HOURLY_PROFILES, installFrequencyExpiry} from './service-frequency.mjs?v=20261127-board-event-1';
-import {installWatchGesture} from './watch-map.mjs?v=20261127-board-event-1';
-import {createRailProviderRecovery, createSourceFailures} from './rail-provider-recovery.mjs?v=20261127-board-event-1';
-import {createEnergyNetworkProtocol} from './energy-network.mjs?v=20261127-board-event-1';
-import {createBundleReader} from './tile-bundles.mjs?v=20261127-board-event-1';
-import {createReferenceReader} from './mainline-reference.mjs?v=20261127-board-event-1';
-import {addStationFallbackLayers, createStationFallbackState, createRailReferenceState, createReferenceRefresh, stationFallbackFilter, stationFallbackNamesEnabled, stationFallbackMarkersEnabled, shouldRefreshCuratedStationSource} from './station-fallback.mjs?v=20261127-board-event-1';
-import {installWorldStationLifecycle, prepareWorldStationOverlay, createStationViewPaint, WORLD_STATION_SOURCE, WORLD_STATION_DOTS, WORLD_STATION_SUPERSEDED_DOTS} from './station-world.mjs?v=20261127-board-event-1';
-import {loadImageryConfig, applyImageryConfig, createImageryProtocol, installImageryAttribution, PROVIDER_ATTRIBUTION} from './imagery.mjs?v=20261127-board-event-1';
-import {createSharedTileProtocols} from './shared-tile-protocols.mjs?v=20261127-board-event-1';
+import {Drawing, Measure, readDrawing, lengthKm, formatLength, formatClimb, climb} from './draw.mjs?v=20261128-control-parity-3';
+import {createElevation, createSurfaceElevation, alongLine, profileStats, profileSegments} from './elevation.mjs?v=20261128-control-parity-3';
+import {stationDepartures, plannerLink, TRANSITOUS_SOURCES} from './departures.mjs?v=20261128-control-parity-3';
+import {departureItem} from './departures-ui.mjs?v=20261128-control-parity-3';
+import {installGlobeDrag, allowPolarCentres, readoutZoom, viewHash, parseViewHash} from './globe-drag.mjs?v=20261128-control-parity-3';
+import {installBathymetry, shareArchiveRequests, seabedContourOpacity} from './bathymetry.mjs?v=20261128-control-parity-3';
+import {installTerrain3D, syncTerrain3D, terrain3DEnabled, terrain3DSelectedForPitch, terrain3DViewTarget, terrainExaggeration, syncHighPitchTileBudget, TERRAIN_3D_MAX_PITCH, HIGH_PITCH_TILE_CACHE_LIMIT} from './terrain-3d.mjs?v=20261128-control-parity-3';
+import {installKeyboardPan} from './keyboard-pan.mjs?v=20261128-control-parity-3';
+import {annotateLayers, layerVisibility, shouldLocalizeLayer, installHybridRailCasings} from './layer-semantics.mjs?v=20261128-control-parity-3';
+import {createPowerFacilityLoader, electricitySignalRows, POWER_FACILITY_EXPLANATION} from './power-facilities.mjs?v=20261128-control-parity-3';
+import {serviceFrequencyPaint, nearestServiceFeature, frequencyAvailability, frequencyAttribution, selectedFrequencyProfile, FREQUENCY_LABELS, HOURLY_PROFILES, installFrequencyExpiry} from './service-frequency.mjs?v=20261128-control-parity-3';
+import {installWatchGesture} from './watch-map.mjs?v=20261128-control-parity-3';
+import {createRailProviderRecovery, createSourceFailures} from './rail-provider-recovery.mjs?v=20261128-control-parity-3';
+import {createEnergyNetworkProtocol} from './energy-network.mjs?v=20261128-control-parity-3';
+import {createBundleReader} from './tile-bundles.mjs?v=20261128-control-parity-3';
+import {createReferenceReader} from './mainline-reference.mjs?v=20261128-control-parity-3';
+import {addStationFallbackLayers, createStationFallbackState, createRailReferenceState, createReferenceRefresh, stationFallbackFilter, stationFallbackNamesEnabled, stationFallbackMarkersEnabled, shouldRefreshCuratedStationSource} from './station-fallback.mjs?v=20261128-control-parity-3';
+import {installWorldStationLifecycle, prepareWorldStationOverlay, createStationViewPaint, WORLD_STATION_SOURCE, WORLD_STATION_DOTS, WORLD_STATION_SUPERSEDED_DOTS} from './station-world.mjs?v=20261128-control-parity-3';
+import {loadImageryConfig, applyImageryConfig, createImageryProtocol, installImageryAttribution, PROVIDER_ATTRIBUTION} from './imagery.mjs?v=20261128-control-parity-3';
+import {createSharedTileProtocols} from './shared-tile-protocols.mjs?v=20261128-control-parity-3';
 
 const $ = id => document.getElementById(id);
 $('help-power').textContent = POWER_FACILITY_EXPLANATION;
@@ -103,7 +103,7 @@ let railRecovery, stationFailures, railReferenceFailures, wakeRailRecovery = () 
 let stationWorldActive = false, stationWorldLifecycle;
 const stationViewPaint = createStationViewPaint();
 let map, ready = false, currentFeature, searchController, searchPausedUntil = 0, dem, scale, styleLanguage, pendingView, clickable = [], hoverFrame, drawing, measuring;
-const assetVersion = new URL(import.meta.url).searchParams.get('v') || '20261127-board-event-1';
+const assetVersion = new URL(import.meta.url).searchParams.get('v') || '20261128-control-parity-3';
 // An old active worker can save this new page before its replacement has
 // installed. If that update is interrupted, only old first-party/CDN copies
 // may be available offline. Read exact saved responses without contacting the
@@ -875,7 +875,7 @@ function applySettings() {
   if (ready) wakeRailRecovery();
 }
 let attribution, flatCredits, attributionStateCleanup, controlLayout, servedBuild;
-function codeAttribution() {
+function codeAttributionNode() {
   const span=document.createElement('span');span.className='atlas-build';
   span.append(`Build ${assetVersion} · `);
   if (servedBuild?.version && servedBuild.version !== assetVersion) span.append(`Label build ${servedBuild.version} · `);
@@ -885,11 +885,11 @@ function codeAttribution() {
     link.textContent=`Code ${servedBuild.commit.slice(0,10)}`;link.title=servedBuild.commit;
     link.target='_blank';link.rel='noopener';span.append(link);
   } else span.append('Development build');
-  return span.outerHTML;
+  return span;
 }
 function updateAttribution() {
   if (!map || attribution) return;
-  attribution = new maplibregl.AttributionControl({compact: true, customAttribution: codeAttribution()});
+  attribution = new maplibregl.AttributionControl({compact: true, customAttribution: codeAttributionNode().outerHTML});
   map.addControl(attribution, 'bottom-right');
   attributionStateCleanup = rememberAttribution(
     $('map').querySelector('.maplibregl-ctrl-bottom-right .maplibregl-ctrl-attrib'),
@@ -2097,33 +2097,48 @@ async function initialize() {
     // Include asynchronous WebGL asset and constructor fallbacks in the reset.
     applyDetail();
     applyInitialVisibility(style,true);
-    const {mountFlatMap,connectFlatLocation,appendFlatCredits,canvasMapStatus}=await import(`./vendor/flat-browser.js?v=${assetVersion}`);
+    const {FLAT_MIN_ZOOM,FLAT_MAX_ZOOM,mountFlatMap,connectFlatLocation,appendFlatCredits,canvasMapStatus}=await import(`./vendor/flat-browser.js?v=${assetVersion}`);
     const requestedView={
       center:linked?linkedView.center:validCenter?start.c:[15,23],
       zoom:linked ? startZoom-settings.detail : logicalSavedZoom??startZoom,
       bearing:linked?linkedView.bearing:Number.isFinite(start.b)?start.b:0,
     };
-    const compass=textNode('button','','atlas-flat-compass');
-    compass.type='button';
-    compass.title='Reset map to north';
-    compass.setAttribute('aria-label',compass.title);
-    const needle=textNode('span','↑');
-    needle.setAttribute('aria-hidden','true');
-    compass.append(needle);
+    // Use the standard control DOM and its exact, separately packaged CSS.
+    // Only the event handlers depend on the renderer.
+    const flatControls=textNode('div','','maplibregl-control-container atlas-flat-control-container');
+    const toolButtons=textNode('div','','maplibregl-ctrl-top-right atlas-flat-tool-buttons');
+    function navigationButton(classes,label) {
+      const button=textNode('button','',classes);
+      button.type='button';
+      button.title=label;
+      button.setAttribute('aria-label',label);
+      const icon=textNode('span','','maplibregl-ctrl-icon');
+      icon.setAttribute('aria-hidden','true');
+      button.append(icon);
+      return button;
+    }
+    const compass=navigationButton('maplibregl-ctrl-compass atlas-flat-compass','Reset map to north');
+    const needle=compass.firstElementChild;
+    const zoomIn=navigationButton('maplibregl-ctrl-zoom-in atlas-flat-zoom-button','Zoom in');
+    const zoomOut=navigationButton('maplibregl-ctrl-zoom-out atlas-flat-zoom-button','Zoom out');
+    const locateButton=navigationButton('maplibregl-ctrl-geolocate atlas-flat-location','My location');
     let flatLocation, refreshFlatPower, flatStationOverlay;
     const stationsLifetime=new AbortController();
     addEventListener('pagehide',event=>{if(!event.persisted)stationsLifetime.abort();});
-    const creditsBox=textNode('details','','atlas-flat-credit-box');
-    creditsBox.open=settings.attributionOpen;
-    creditsBox.addEventListener('toggle',()=>{
-      if(settings.attributionOpen===creditsBox.open)return;
-      settings.attributionOpen=creditsBox.open;
-      saveSettings();
-    });
-    const creditSummary=textNode('summary','Map credits');
-    flatCredits=textNode('div','','atlas-flat-credit-content');
+    const creditCorner=textNode('div','','maplibregl-ctrl-bottom-right');
+    const creditsBox=textNode('details','','maplibregl-ctrl maplibregl-ctrl-attrib maplibregl-compact atlas-flat-credit-box');
+    const creditSummary=textNode('summary','','maplibregl-ctrl-attrib-button');
+    creditSummary.setAttribute('aria-label','Toggle attribution');
+    creditSummary.title='Toggle attribution';
+    const creditLabel=textNode('span','Map credits','sr-only');
+    creditSummary.append(creditLabel);
+    flatCredits=textNode('div','','maplibregl-ctrl-attrib-inner atlas-flat-credit-content');
     creditsBox.append(creditSummary,flatCredits);
-    const buildCredit=codeAttribution();
+    creditCorner.append(creditsBox);
+    attributionStateCleanup=rememberAttribution(creditsBox,{
+      open:settings.attributionOpen,changed:open=>{settings.attributionOpen=open;saveSettings();}
+    });
+    const buildCredit=codeAttributionNode();
     let creditSignature;
     const requestedMongolian=new Set();
     const getMongolianFont=(text,size)=>{
@@ -2269,13 +2284,18 @@ async function initialize() {
         const signature=JSON.stringify(credits);
         if(signature===creditSignature)return;
         creditSignature=signature;
-        appendFlatCredits(flatCredits,[...credits,buildCredit],location.href);
-        creditSummary.textContent=flatCredits.querySelector('a[href="https://www.openstreetmap.org/copyright"]')
+        // Provider credit HTML is untrusted and deliberately loses attributes.
+        // Keep our own build label and code link as a separately created node.
+        appendFlatCredits(flatCredits,credits,location.href);
+        flatCredits.append(buildCredit);
+        creditLabel.textContent=flatCredits.querySelector('a[href="https://www.openstreetmap.org/copyright"]')
           ? '© OpenStreetMap · Map credits' : 'Map credits';
       },
       onCamera({center,zoom,bearing}) {
         flatCurrentView={c:center,z:zoom,b:bearing,p:0,g:false,t:false};
         needle.style.transform=`rotate(${-bearing}deg)`;
+        zoomIn.disabled=zoom>=FLAT_MAX_ZOOM;
+        zoomOut.disabled=zoom<=FLAT_MIN_ZOOM;
         updateFlatScale();
         refreshFlatPower?.();
         adminController?.onViewportChange();
@@ -2357,15 +2377,16 @@ async function initialize() {
       flatNavigation({center:view.center,zoom,bearing:view.bearing,reason:'link'});
     });
     flatSourceContext=flat;
-    const corner = textNode('div', '', 'atlas-flat-map-tools');
+    const corner = textNode('div', '', 'maplibregl-ctrl-bottom-left atlas-flat-map-tools');
     readout.classList.add('atlas-flat-readout');
-    flatScale = textNode('div', '', 'atlas-flat-scale');
+    flatScale = textNode('div', '', 'maplibregl-ctrl maplibregl-ctrl-scale atlas-flat-scale');
     const scaleLabel = textNode('span', 'Map scale', 'sr-only');
     scaleLabel.id = 'flat-scale-label';
     flatScale.setAttribute('role', 'group');
     flatScale.setAttribute('aria-labelledby', scaleLabel.id);
     corner.append(scaleLabel, flatScale, readout);
-    $('map').append(corner,creditsBox);
+    flatControls.append(toolButtons,corner,creditCorner);
+    $('map').append(flatControls);
     updateReadout();
     updateFlatScale();
     controlLayout = installControlLayout({frame: $('map-frame'), mapElement: $('map'), corner,
@@ -2385,30 +2406,26 @@ async function initialize() {
     drawing.install();
     flat.connectDrawing(drawing);
     flat.connectMeasure(measuring);
-    const toolButtons=document.createElement('div');
-    toolButtons.className='atlas-flat-tool-buttons';
     drawButton.setAttribute('aria-label','Drawing tools');
     compass.addEventListener('click',flat.resetNorth);
-    toolButtons.append(drawButton,measureButton,compass,detailButton);
-    for (const [symbol,label,delta] of [['+','Zoom in',1],['−','Zoom out',-1]]) {
-      const button=textNode('button',symbol,'atlas-flat-zoom-button');
-      button.type='button';
-      button.title=label;
-      button.setAttribute('aria-label',label);
-      button.addEventListener('click',()=>flat.zoomBy(delta));
-      toolButtons.append(button);
-    }
-    const locateButton=textNode('button','⌾','atlas-flat-location');
-    locateButton.type='button';
-    locateButton.setAttribute('aria-label','My location');
+    zoomIn.addEventListener('click',()=>flat.zoomBy(1));
+    zoomOut.addEventListener('click',()=>flat.zoomBy(-1));
     const locationStatus=textNode('div','','atlas-flat-location-status');
     locationStatus.setAttribute('role','status');
     flatLocation=connectFlatLocation({
       button:locateButton,status:locationStatus,window,geolocation:navigator.geolocation,
       showFix:flat.showLocation,followFix:flat.followLocation,
+      onState:state=>{
+        locateButton.classList.toggle('maplibregl-ctrl-geolocate-waiting',state==='waiting');
+        locateButton.classList.toggle('maplibregl-ctrl-geolocate-active',state==='following');
+        locateButton.classList.toggle('maplibregl-ctrl-geolocate-background',state==='paused');
+      },
     });
-    toolButtons.append(locateButton,locationStatus);
-    $('map').append(toolButtons);
+    // Match the standard top-right groups and order. The two WebGL-only
+    // controls (terrain mesh and globe) are omitted, not replaced or moved.
+    for(const buttons of [[compass],[zoomIn,zoomOut],[locateButton],[detailButton,drawButton,measureButton]])
+      toolButtons.append(new ButtonControl(buttons).onAdd());
+    toolButtons.append(locationStatus);
     restoreRendererWork(flat.inspectionAt);
     const action=pendingDraw;pendingDraw=undefined;action?.();
     updateDrawing();

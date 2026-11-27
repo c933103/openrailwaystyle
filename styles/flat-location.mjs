@@ -10,7 +10,7 @@ export function paintFlatHeading(context,x,y,heading,bearing) {
 
 // Location is requested only on a user action. The application stores no
 // location history; the renderer uses the positions only for the live marker/view.
-export function connectFlatLocation({button,status,geolocation,window,showFix,followFix}) {
+export function connectFlatLocation({button,status,geolocation,window,showFix,followFix,onState=()=>{}}) {
   let watch=null, generation=0, state='off', fix=null;
   function showState(next,message='') {
     state=next;
@@ -19,6 +19,7 @@ export function connectFlatLocation({button,status,geolocation,window,showFix,fo
     button.title={off:'Follow my location',waiting:'Cancel finding my location',
       following:'Stop following my location',paused:'Recenter and follow my location'}[state];
     status.textContent=message;
+    onState(state);
   }
   function stop(message='') {
     generation++;

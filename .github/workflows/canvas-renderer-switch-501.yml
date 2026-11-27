@@ -2,10 +2,20 @@ name: Verify staged Railway Atlas renderer switch
 on:
   push:
     branches: [work/canvas-entry-501]
+  pull_request:
+    branches: [main]
+    paths:
+      - 'styles/**'
+      - 'scripts/build-browser.mjs'
+      - 'scripts/check-flat-*.mjs'
+      - 'scripts/check-build-browser.mjs'
+      - 'package*.json'
+      - '.github/workflows/canvas-renderer-switch-501.yml'
 permissions:
   contents: read
 jobs:
   renderer-switch:
+    if: github.event_name == 'push'
     runs-on: ubuntu-latest
     timeout-minutes: 12
     steps:
@@ -43,6 +53,7 @@ jobs:
           if-no-files-found: warn
 
   canvas-platforms:
+    if: github.event_name == 'push'
     runs-on: ubuntu-latest
     timeout-minutes: 12
     steps:
@@ -100,3 +111,55 @@ jobs:
         run: timeout 90s node scripts/check-flat-entry-firefox.mjs --watch-focus
       - name: Verify fixed-camera reconnect, rail inspection and scoped auxiliary status
         run: timeout 150s node scripts/check-flat-recovery-firefox.mjs
+
+  # The staged-branch suite remains unchanged. Exercise its renderer-switch
+  # and real offline acceptance on ordinary PRs, independently of site data.
+  pr-control-parity:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        engine: [chromium, firefox]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '26'
+          check-latest: true
+      - name: Verify Node 26 security baseline
+        run: node -e 'const [major,minor,patch]=process.versions.node.split(".").map(Number); if (major !== 26 || minor < 12 || (minor === 12 && patch < 1)) throw new Error("CI requires patched Node 26.12.1+"); console.log(process.version)'
+      - run: npm ci --ignore-scripts --no-audit --no-fund
+      - run: npm run build
+      - run: npx playwright install --with-deps ${{ matrix.engine }}
+      - name: Preserve standard controls and unfinished work across renderer switches
+        if: matrix.engine == 'chromium'
+        run: timeout 240s node scripts/check-flat-entry-firefox.mjs --chromium-switch
+      - name: Preserve detail coordinates, toolbar clearance and Watch gestures in WebGL
+        if: matrix.engine == 'chromium'
+        run: |
+          timeout 100s node scripts/check-flat-entry-firefox.mjs --chromium-switch --detail-state
+          timeout 90s node scripts/check-flat-entry-firefox.mjs --chromium-switch --toolbar-clearance
+          timeout 90s node scripts/check-flat-entry-firefox.mjs --chromium-switch --watch-focus
+          timeout 90s node scripts/check-flat-entry-firefox.mjs --chromium-switch --watch-double-tap
+      - name: Install and reload the Canvas PWA offline without requesting WebGL assets
+        if: matrix.engine == 'firefox'
+        run: timeout 100s node scripts/check-flat-offline-firefox.mjs
+      - name: Verify Canvas native controls, Watch gestures and automatic fallback
+        if: matrix.engine == 'firefox'
+        run: |
+          timeout 100s node scripts/check-flat-entry-firefox.mjs --canvas-desktop-parity
+          timeout 90s node scripts/check-flat-entry-firefox.mjs --startup-fallback
+          timeout 90s node scripts/check-flat-entry-firefox.mjs --toolbar-clearance
+          timeout 90s node scripts/check-flat-entry-firefox.mjs --detail-state
+          timeout 90s node scripts/check-flat-entry-firefox.mjs --watch-focus
+      - name: Verify public Canvas basemaps and Hybrid rail contrast
+        if: matrix.engine == 'firefox'
+        run: timeout 100s node scripts/check-flat-basemaps-firefox.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: pr-canvas-parity-${{ matrix.engine }}
+          path: browser-review/
+          if-no-files-found: warn

@@ -1,3 +1,5 @@
+import {FLAT_MIN_ZOOM, FLAT_MAX_ZOOM} from './flat-camera.mjs';
+
 // All gesture coordinates are CSS pixels in the map viewport.
 const RAD_TO_DEG=180/Math.PI;
 const wrapBearing=value=>((value+180)%360+360)%360-180;
@@ -38,7 +40,7 @@ export function createFlatGesture({preview, commit, inspect}) {
         // A nearly coincident initial pair must not cause a large zoom jump.
         if(span<3){if(nextSpan>=3)reanchor(); return;}
         const from=mid(before), to=mid(next);
-        const zoom=Math.max(-0.5,Math.min(22,segment.camera.zoom+Math.log2(Math.max(3,nextSpan)/span)));
+        const zoom=Math.max(FLAT_MIN_ZOOM,Math.min(FLAT_MAX_ZOOM,segment.camera.zoom+Math.log2(Math.max(3,nextSpan)/span)));
         // Ignore small changes in angle during a normal pinch. Once the twist
         // is deliberate, the same geographic point follows the finger midpoint.
         const twist=nextSpan>=3?deltaAngle(before,next):0;

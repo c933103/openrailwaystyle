@@ -5,6 +5,7 @@ import {existsSync} from 'node:fs';
 import {mkdir,copyFile,readFile,writeFile,rm} from 'node:fs/promises';
 import {createHash,webcrypto} from 'node:crypto';
 import assert from 'node:assert/strict';
+import {JSDOM} from 'jsdom';
 import {BROWSER_LIBRARIES} from './browser-libraries.mjs';
 import {backportMapLibre524} from '../styles/map-controls.mjs';
 import {verifyMapLibreBackportSource} from './maplibre-backport.mjs';
@@ -38,6 +39,30 @@ for (const library of BROWSER_LIBRARIES) {
   assert.equal(createHash('sha256').update(bytes).digest('hex'), library.sha256);
   await writeFile(`styles/${library.target}`, bytes);
 }
+// Package only the pinned DOM control rules (including the original embedded
+// SVG artwork and forced-color rules) for the Canvas shell. The full MapLibre
+// stylesheet and executable remain optional and are never requested in Canvas.
+const controlDocument=new JSDOM('<!doctype html><html><head></head></html>');
+try {
+  const element=controlDocument.window.document.createElement('style');
+  element.textContent=await readFile('styles/vendor/maplibre-gl-5.24.0.css','utf8');
+  controlDocument.window.document.head.append(element);
+  function controlRules(rules) {
+    return Array.from(rules).flatMap(rule=>{
+      if(rule.selectorText?.includes('.maplibregl-ctrl') || rule.name==='maplibregl-spin')
+        return [rule.cssText];
+      if(rule.cssRules){
+        const nested=controlRules(rule.cssRules);
+        if(nested.length)return [rule.cssText.slice(0,rule.cssText.indexOf('{'))+'{'+nested.join('\n')+'}'];
+      }
+      return [];
+    });
+  }
+  const rules=controlRules(element.sheet.cssRules).join('\n');
+  for(const selector of ['.maplibregl-ctrl-group','.maplibregl-ctrl-compass','.maplibregl-ctrl-zoom-in','.maplibregl-ctrl-geolocate','.maplibregl-ctrl-attrib-button','.maplibregl-ctrl-scale'])
+    assert.ok(rules.includes(selector),'Missing pinned control CSS: '+selector);
+  await writeFile('styles/vendor/flat-controls.css','/* MapLibre GL JS 5.24.0, BSD-3-Clause; see maplibre-gl-5.24.0-LICENSE.txt. */\n'+rules+'\n');
+} finally {controlDocument.window.close();}
 await copyFile('node_modules/maplibre-gl/LICENSE.txt','styles/vendor/maplibre-gl-5.24.0-LICENSE.txt');
 await copyFile('scripts/licenses/pmtiles-4.2.1-LICENSE.txt','styles/vendor/pmtiles-4.2.1-LICENSE.txt');
 await copyFile('scripts/licenses/fflate-0.8.2-LICENSE.txt','styles/vendor/fflate-0.8.2-LICENSE.txt');

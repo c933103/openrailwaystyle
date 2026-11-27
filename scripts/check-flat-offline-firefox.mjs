@@ -71,7 +71,7 @@ try {
     }
     return [...keys];
   });
-  for(const path of ['app.mjs','vendor/flat-browser.js','world.style.json','vendor/pmtiles-4.2.1.js'])
+  for(const path of ['app.mjs','vendor/flat-browser.js','vendor/flat-controls.css','world.style.json','vendor/pmtiles-4.2.1.js'])
     assert.ok(cached.includes('/'+path+'?v='+version),path+' has its exact version in Cache Storage');
   assert.ok(!cached.some(path=>assetPattern.test(path.split('?')[0])));
   assert.ok(!requests.some(path=>assetPattern.test(path)),'a Canvas page and its real worker must not request either available WebGL asset');
@@ -98,6 +98,20 @@ try {
   await canvas.waitFor();
   assert.equal(await page.evaluate(()=>window.glAttempts),0);
   assert.equal(await page.evaluate(()=>Boolean(navigator.serviceWorker.controller)),true);
+  const info=page.locator('.maplibregl-ctrl-attrib');
+  const infoButton=info.locator('summary[aria-label="Toggle attribution"]');
+  const build=info.locator('.atlas-build');
+  assert.equal(await infoButton.getAttribute('aria-expanded'),'false');
+  await infoButton.click();
+  await build.waitFor({timeout:10000});
+  assert.ok((await build.textContent()).startsWith('Build '+version+' · '));
+  await page.reload({waitUntil:'domcontentloaded'});
+  await canvas.waitFor();
+  assert.equal(await infoButton.getAttribute('aria-expanded'),'true');
+  await build.waitFor({timeout:10000});
+  await infoButton.press('Escape');
+  assert.equal(await infoButton.getAttribute('aria-expanded'),'false');
+  assert.equal(await build.isHidden(),true);
   const painted=await canvas.evaluate(node=>[...node.getContext('2d').getImageData(10,10,1,1).data]);
   assert.deepEqual(painted,[16,42,53,255]);
   await page.getByRole('button',{name:'Drawing tools',exact:true}).click();
@@ -108,8 +122,28 @@ try {
   if(!(await page.locator('#settings-open').isVisible()))await page.locator('#controls-open').click();
   await page.locator('#settings-open').click();
   assert.equal(await page.locator('#disable-webgl').isChecked(),true);
-  assert.equal(requests.length,before,'offline reopen, preference and drawing did not reach HTTPS server');
-  console.log('Firefox HTTPS: automatic no-WebGL fallback, real Disable WebGL setting, exact cached shell, offline preference and new drawing passed.');
+  await page.locator('#settings-close').click();
+  const zoomIn=page.getByRole('button',{name:'Zoom in',exact:true});
+  const zoomOut=page.getByRole('button',{name:'Zoom out',exact:true});
+  const savedZoom=()=>page.evaluate(()=>JSON.parse(localStorage.getItem('atlas_view')).z);
+  // Start at the standard renderer's limits to catch accidental reuse of its
+  // bounds. Exercise the real toolbar after an origin-free reload.
+  for(const [initial,button,other,steps] of [
+    [1,zoomOut,zoomIn,[0,-0.5]],
+    [20,zoomIn,zoomOut,[21,22]],
+  ]){
+    await page.evaluate(z=>localStorage.setItem('atlas_view',JSON.stringify({c:[0,0],z})),initial);
+    await page.reload({waitUntil:'domcontentloaded'});
+    await canvas.waitFor();
+    for(const zoom of steps){
+      await button.click();
+      assert.equal(await savedZoom(),zoom);
+    }
+    assert.equal(await button.isDisabled(),true);
+    assert.equal(await other.isEnabled(),true);
+  }
+  assert.equal(requests.length,before,'offline reopen, preference, drawing and zoom did not reach HTTPS server');
+  console.log('Firefox HTTPS: automatic no-WebGL fallback, real Disable WebGL setting, exact cached shell, offline preference, drawing and Canvas zoom bounds passed.');
 } finally {
   await browser?.close();
   if(server)await new Promise(done=>server.close(done));
