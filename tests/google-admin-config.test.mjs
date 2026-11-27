@@ -78,3 +78,51 @@ test('Google attribution follows the newest viewport and ignores responses after
   await respond(2,'After leaving Google');
   assert.equal(copy.textContent,'New attribution');
 });
+
+for (const obsolete of ['503','401','success','network failure','direct fallback']) {
+  test(`A stale Google init (${obsolete}) cannot change a newer Satellite session`, async()=>{
+    const stored={
+      atlas_admin_session:{login:'fixture-owner',token:'fixture-token',expiresAt:Date.now()+60000},
+      atlas_admin_prefs:{mapSource:'google'},
+    };
+    let background='map';
+    const requests=[], states=[];
+    const controller=createAdminController({
+      window:{addEventListener(){},sessionStorage:{
+        getItem:k=>JSON.stringify(stored[k]),setItem:(k,v)=>{stored[k]=JSON.parse(v);},
+        removeItem:k=>{delete stored[k];},
+      }},
+      getSettings:()=>({background,language:'en'}),
+      onStateChange:state=>states.push(state),
+      deploymentConfig:{googleMapsKey:'fixture-browser-key'},
+      fetcher:(url,options)=>{
+        const u=new URL(url,'https://fixture.invalid');
+        if(u.pathname.endsWith('/viewport')) return Promise.resolve(Response.json({}));
+        return new Promise((resolve,reject)=>requests.push({resolve,reject,body:JSON.parse(options.body)}));
+      },
+    });
+    const map=controller.ensureGoogleSourceReady();
+    if(obsolete==='direct fallback'){
+      requests[0].resolve(Response.json({}, {status:404}));
+      await new Promise(resolve=>setImmediate(resolve));
+      assert.equal(requests.length,2,'the still-current Map request began direct initialization');
+    }
+    background='satellite';
+    const satellite=controller.ensureGoogleSourceReady();
+    assert.equal(requests.at(-1).body.variant,'satellite');
+    requests.at(-1).resolve(Response.json({unlocked:true,mode:'tiles'}));
+    await satellite;
+    assert.equal(controller.googleMode,'tiles');
+    if(obsolete==='network failure') requests[0].reject(new Error('obsolete'));
+    else if(obsolete==='success') requests[0].resolve(Response.json({unlocked:true,mode:'js-fallback',apiKey:'obsolete'}));
+    else if(obsolete==='direct fallback') requests[1].resolve(Response.json({}, {status:503}));
+    else requests[0].resolve(Response.json({error:'obsolete'},{status:Number(obsolete)}));
+    await map;
+    assert.equal(requests.length,obsolete==='direct fallback'?3:2);
+    assert.equal(controller.isUnlocked,true);
+    assert.equal(controller.mapSource,'google');
+    assert.equal(controller.googleMode,'tiles');
+    assert.equal(stored.atlas_admin_prefs.mapSource,'google');
+    assert.equal(states.length,1);
+  });
+}

@@ -321,6 +321,8 @@ export function createAdminController({
   let viewportTimer = null;
   let viewportRequestId = 0;
   let activeSessionInitKey = null;
+  let sessionInitGeneration = 0;
+  let activeInitSession = null;
   let activeSessionPromise = null;
 
   const $ = id => doc?.getElementById?.(id) ?? null;
@@ -424,7 +426,7 @@ export function createAdminController({
     emitStateChange();
   }
 
-  async function ensureJsFallbackMap() {
+  async function ensureJsFallbackMap(isCurrent) {
     const underlay = $('gmaps-underlay');
     if (!underlay || !fallbackApiKey) return null;
     if (!mapsClassPromise) {
@@ -445,6 +447,7 @@ export function createAdminController({
       });
     }
     const { Map: GoogleMap } = await mapsClassPromise;
+    if (!isCurrent()) return null;
     const camera = getCamera?.() || { center: { lat: 23, lng: 15 }, zoom: 2.8 };
     const settings = getSettings?.() || { background: 'map', googleTheme: prefs.googleTheme };
     const { mapTypeId, styles } = googleMapOptionsForSettings(settings);
@@ -530,8 +533,9 @@ export function createAdminController({
     return { ok: true, session: parsed.session, apiKey };
   }
 
-  async function initDirectGoogleSource(variant, language) {
+  async function initDirectGoogleSource(variant, language, isCurrent) {
     const direct = await ensureDirectBrowserTileSession(variant, language);
+    if (!isCurrent()) return;
     if (direct.ok) {
       usingDirectGoogleTiles = true;
       googleMode = 'tiles';
@@ -549,12 +553,14 @@ export function createAdminController({
         false,
       );
       emitStateChange();
-      await ensureJsFallbackMap();
-      syncCamera();
+      await ensureJsFallbackMap(isCurrent);
+      if (isCurrent()) syncCamera();
       return;
     }
     activeSessionInitKey = null;
     activeSessionPromise = null;
+    googleMode = null;
+    usingDirectGoogleTiles = false;
     prefs = { ...prefs, mapSource: 'standard' };
     writeStoredAdminPrefs(storage, prefs);
     setStatus(direct.error || 'Could not initialize Google Maps session.', true);
@@ -564,20 +570,33 @@ export function createAdminController({
   async function ensureGoogleSourceReady() {
     const settings = getSettings?.() || { background: 'map', language: 'local' };
     if (!isGoogleActiveForBackground(settings.background)) {
+      sessionInitGeneration++;
+      activeSessionInitKey = null;
+      activeSessionPromise = null;
       syncUI();
       return;
     }
     const variant = googleVariantForSettings({ ...settings, googleTheme: prefs.googleTheme });
     const language = settings.language || 'local';
+    const requestedSession = session;
     const initKey = `${session.login || 'admin'}:${session.staticDirect ? 'direct' : 'api'}:${variant}:${language}`;
-    if (activeSessionInitKey === initKey && activeSessionPromise) {
+    if (activeSessionInitKey === initKey && activeInitSession === session && activeSessionPromise) {
       return activeSessionPromise;
     }
     activeSessionInitKey = initKey;
+    activeInitSession = requestedSession;
+    const generation = ++sessionInitGeneration;
+    const isCurrent = () => {
+      const current = getSettings?.() || { background: 'map', language: 'local' };
+      return sessionInitGeneration === generation && activeSessionInitKey === initKey
+        && session === requestedSession && isGoogleActiveForBackground(current.background)
+        && (current.language || 'local') === language
+        && googleVariantForSettings({ ...current, googleTheme: prefs.googleTheme }) === variant;
+    };
     activeSessionPromise = (async () => {
       try {
         if (session.staticDirect) {
-          await initDirectGoogleSource(variant, language);
+          await initDirectGoogleSource(variant, language, isCurrent);
           return;
         }
         const response = await fetcher(apiUrl('/api/gmaps/session'), {
@@ -586,12 +605,14 @@ export function createAdminController({
           body: JSON.stringify({ variant, language }),
           cache: 'no-store',
         });
+        if (!isCurrent()) return;
         if ((response.status === 404 || response.status === 405) && effectiveDirectGoogleKey()) {
-          await initDirectGoogleSource(variant, language);
+          await initDirectGoogleSource(variant, language, isCurrent);
           return;
         }
         await checkGmpQuotaResponse(response, win);
         const data = await response.json().catch(() => ({}));
+        if (!isCurrent()) return;
         if (response.status === 401) {
           clearExpiredOrRevokedSession(data.error || 'Admin session expired. Sign in with GitHub again.');
           return;
@@ -621,8 +642,8 @@ export function createAdminController({
           fallbackApiKey = data.apiKey || null;
           setStatus(data.note || 'Using Google Maps JS fallback.', false);
           emitStateChange();
-          await ensureJsFallbackMap();
-          syncCamera();
+          await ensureJsFallbackMap(isCurrent);
+          if (isCurrent()) syncCamera();
           return;
         }
         usingDirectGoogleTiles = false;
@@ -631,9 +652,15 @@ export function createAdminController({
         emitStateChange();
         onViewportChange(true);
       } catch (err) {
+        if (!isCurrent()) return;
         if (effectiveDirectGoogleKey()) {
-          await initDirectGoogleSource(variant, language);
-          return;
+          try {
+            await initDirectGoogleSource(variant, language, isCurrent);
+            return;
+          } catch (directError) {
+            if (!isCurrent()) return;
+            err = directError;
+          }
         }
         activeSessionInitKey = null;
         activeSessionPromise = null;
