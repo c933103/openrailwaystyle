@@ -1072,9 +1072,39 @@ try {
     const saved=()=>page.evaluate(()=>JSON.parse(localStorage.getItem('openrailwayatlas-drawing')||'{"features":[]}'));
     const incoming=()=>page.evaluate(()=>JSON.parse(window.atlasTestIncomingWork));
     const consumed=()=>page.evaluate(()=>sessionStorage.getItem('atlas_renderer_work_v1')===null);
+    // Compare actual computed browser geometry and artwork, not just the
+    // availability of equivalent commands. The standard renderer is the
+    // reference; only the two genuinely WebGL-only buttons are excluded.
+    const controlGeometry=async()=>{
+      await page.waitForFunction(()=>document.querySelectorAll('.maplibregl-ctrl-top-right .maplibregl-ctrl-group button:not(#terrain-toggle):not(#globe-toggle)').length===7 &&
+        document.querySelector('.maplibregl-ctrl-attrib-button'));
+      return page.evaluate(()=>{
+        const signature=(el)=>{const r=el.getBoundingClientRect(),s=getComputedStyle(el);return {
+          x:Math.round(r.x),y:Math.round(r.y),width:Math.round(r.width),height:Math.round(r.height),
+          background:s.backgroundColor,border:s.borderTopWidth,radius:s.borderRadius,
+          font:s.fontSize,icon:el.querySelector('.maplibregl-ctrl-icon')?
+            getComputedStyle(el.querySelector('.maplibregl-ctrl-icon')).backgroundImage:null,
+          label:el.querySelector('.maplibregl-ctrl-icon')?null:el.textContent,
+        };};
+        const groups=Array.from(document.querySelectorAll('.maplibregl-ctrl-top-right .maplibregl-ctrl-group'),g=>{
+          const s=getComputedStyle(g);
+          return {background:s.backgroundColor,radius:s.borderRadius,shadow:s.boxShadow,
+            buttons:Array.from(g.querySelectorAll('button:not(#terrain-toggle):not(#globe-toggle)'),signature)};
+        });
+        const info=document.querySelector('.maplibregl-ctrl-attrib-button');
+        const credit=signature(info);
+        // The summary's hidden accessible name is not visual content.
+        credit.label=null;credit.icon=getComputedStyle(info).backgroundImage;
+        return {groups,credit};
+      });
+    };
     try {
+      await context.grantPermissions(['geolocation'],{origin});
       await page.goto(origin);
       await painted('webgl','before');
+      const standardControls=await controlGeometry();
+      assert.deepEqual(standardControls.groups.map(g=>g.buttons.length),[1,2,1,3]);
+      for(const group of standardControls.groups.slice(0,3))for(const button of group.buttons)assert.notEqual(button.icon,'none');
       const stationLink=id=>page.locator(`#detail-content a[href="https://www.openstreetmap.org/node/${id}"]`);
       const stationPoint=await page.waitForFunction(async()=>{
         const {map}=await import(document.querySelector('script[type=module]').src);
@@ -1090,6 +1120,9 @@ try {
       await stationLink(7).waitFor({timeout:7000}).catch(async e=>{console.error('Initial station inspector',await page.locator('#detail-content').textContent(),await page.locator('#detail-content a').evaluateAll(links=>links.map(a=>a.href)));throw e;});
       await switchMode(true);
       await painted('canvas','selection-canvas');
+      assert.deepEqual(await controlGeometry(),standardControls,'Canvas controls match standard mode position, size, grouping, style and icons');
+      assert.equal(await page.locator('#terrain-toggle,#globe-toggle').count(),0);
+      console.log('PASS: Canvas and standard control layout and artwork match; only globe and 3D terrain are unavailable.');
       await stationLink(7).waitFor({timeout:7000});
       assert.equal(await stationLink(8).count(),0);
       assert.equal(await consumed(),true);
