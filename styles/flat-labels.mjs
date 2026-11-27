@@ -218,8 +218,11 @@ function flatVisibleSegment(paths,project,extent,camera){
 }
 
 // Canvas measures the actual point-label font before placing the label.
-// Break only at ordinary spaces/tabs: no arbitrary splitting of names,
-// nonbreaking spaces, or shaped script. Line labels need one visible path.
+// Break ordinary words at spaces/tabs, and uninterrupted Han text between
+// ideographs (keeping variation selectors with their base). Names that need
+// punctuation-aware breaking keep the existing behavior. Line labels need
+// one visible path.
+const hanGraphic=/\p{Unified_Ideograph}[\uFE00-\uFE0F\u{E0100}-\u{E01EF}]?/gu;
 function flatMeasuredLines(context,text,maxWidth) {
   const lines=[],widths=[];
   const measure=line=>context.measureText(line).width;
@@ -227,8 +230,30 @@ function flatMeasuredLines(context,text,maxWidth) {
   for(const line of text.split(/\r?\n/)){
     if(!line)continue;
     const width=measure(line);
-    if(!(maxWidth>0)||width<=maxWidth||!/[ \t]/.test(line)){
+    if(!(maxWidth>0)||width<=maxWidth){
       push(line,width);
+      continue;
+    }
+    const ideographs=[...line.matchAll(hanGraphic)];
+    if(ideographs.length>1&&ideographs.map(match=>match[0]).join('')===line){
+      // Balance an unspaced name rather than putting a single trailing
+      // character on the last line. Prefer the later break on a tie.
+      let i=0, remaining=width;
+      while(i<ideographs.length-1&&remaining>maxWidth){
+        const start=ideographs[i].index;
+        const target=remaining/Math.ceil(remaining/maxWidth);
+        let end=i+1, lineWidth=measure(line.slice(start,ideographs[end].index));
+        while(end<ideographs.length-1){
+          const nextWidth=measure(line.slice(start,ideographs[end+1].index));
+          if(nextWidth>maxWidth||Math.abs(nextWidth-target)>Math.abs(lineWidth-target))break;
+          end++;
+          lineWidth=nextWidth;
+        }
+        push(line.slice(start,ideographs[end].index),lineWidth);
+        i=end;
+        remaining=measure(line.slice(ideographs[i].index));
+      }
+      push(line.slice(ideographs[i].index),remaining);
       continue;
     }
     let start=0, boundary=0, resume=0;

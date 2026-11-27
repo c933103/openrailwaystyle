@@ -244,3 +244,22 @@ test('horizontal auto-wrap preserves hard names, nonbreaking spaces and single-l
     'A long railway name','Centre\u00a0City','Main Street','Station','東口',
   ]);
 });
+
+
+test('width-limited all-Han point labels wrap without breaking variation sequences or changing rail-line text',()=>{
+  const ctx=context(), selector='\u{E0100}', rare='𨋢'+selector;
+  ctx.measureText=text=>({width:[...text].filter(c=>c!==selector).length*10});
+  const label='香港'+rare+'醫院國際醫療中心';
+  const point={color:'black',halo:'white',haloWidth:0,size:10,anchor:'center',
+    maxWidth:6,opacity:1,padding:0,px:128};
+  const points=[
+    {...point,label,py:40},
+    {...point,label:'香港（港島）站',maxWidth:3,py:95},
+    {...point,label:'甲乙\u00a0丙丁',maxWidth:3,py:145},
+    {...point,label,py:195,angle:0,length:256},
+  ];
+  const counts=drawFlatTextLabels(ctx,camera,[{id:'labels',candidates:points}]);
+  assert.equal(counts.get('labels'),4);
+  assert.deepEqual(ctx.draws.filter(a=>a[0]==='fill').map(a=>a[1]),
+    [label,'甲乙\u00a0丙丁','香港（港島）站','香港'+rare+'醫院國','際醫療中心']);
+});
