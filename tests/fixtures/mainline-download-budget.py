@@ -81,8 +81,8 @@ class DownloadBudgetTest(unittest.TestCase):
                     processing.assert_called_once()
                     self.assertEqual((output / 'source.osm.pbf').read_bytes(), b'abc')
             self.assertEqual([method for method, _ in calls], ['HEAD', 'GET', 'GET'])
-            self.assertTrue(calls[1][1].endswith('.osm.pbf.md5'))
-            self.assertEqual(calls[0][1], calls[2][1])
+            dated = 'https://download.geofabrik.de/asia/asia-261101.osm.pbf'
+            self.assertEqual([url for _, url in calls], [dated, dated + '.md5', dated])
             self.assertTrue(all(response.closed for response in responses))
 
     def test_byte_budget_reports_exact_observation_and_removes_partial(self):
