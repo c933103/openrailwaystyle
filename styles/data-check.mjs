@@ -1,4 +1,4 @@
-import {SEARCH_API} from './map-model.mjs?v=20261127-flat-point-wrap-1';
+import {SEARCH_API} from './map-model.mjs?v=20261127-board-event-1';
 const button = document.getElementById('check');
 button.addEventListener('click', async () => {
   button.disabled = true;
