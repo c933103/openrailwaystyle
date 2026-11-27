@@ -44,6 +44,13 @@
     }
   </script>
   <link rel="modulepreload" href="vendor/tile-labels.js?v=20261127-mongolian-label-picker-1">
+  <!-- Warm the tile-metadata and glyph hosts (issue #447, stage 4) so their
+       TLS/connection setup overlaps the library and style downloads instead
+       of starting only when MapLibre first requests TileJSON or glyphs.
+       TileJSON and glyph requests are CORS fetches, hence crossorigin. -->
+  <link rel="preconnect" href="https://openrailwaymap.app" crossorigin="anonymous">
+  <link rel="preconnect" href="https://tuiles.enliberte.fr" crossorigin="anonymous">
+  <link rel="preconnect" href="https://papers.reearth.land" crossorigin="anonymous">
   <link id="maplibre-css" data-href="vendor/maplibre-gl-5.24.0.css" rel="stylesheet">
   <link href="app.css?v=20261127-mongolian-label-picker-1" rel="stylesheet">
 </head>
