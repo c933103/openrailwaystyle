@@ -234,22 +234,7 @@ function writeStoredAdminPrefs(storage, prefs) {
 }
 
 export function isAllowedMessageOrigin(origin, currentOrigin, authBackendOrigin = '') {
-  if (!origin) return false;
-  if (currentOrigin && origin === currentOrigin) return true;
-  if (authBackendOrigin && origin === authBackendOrigin) return true;
-  try {
-    const parsed = new URL(origin);
-    if (['localhost', '127.0.0.1', '[::1]'].includes(parsed.hostname)) return true;
-    if (
-      parsed.protocol === 'https:' &&
-      (parsed.hostname === '10671435.xyz' ||
-        parsed.hostname === 'c933103.github.io' ||
-        parsed.hostname.endsWith('.run.app'))
-    ) {
-      return true;
-    }
-  } catch {}
-  return false;
+  return Boolean(origin && (origin === currentOrigin || origin === authBackendOrigin));
 }
 
 function buildDirectSessionBody(variant, safeLang, includeStyles = true) {
@@ -280,6 +265,8 @@ export function createAdminController({
   assetVersion = '20261121-supplied-atlas-rebase-1',
   deploymentConfig: initialDeploymentConfig = {},
   loadMapsLibrary,
+  allowStaticTokenFallback = true,
+  allowJsFallback = () => true,
   getCamera,
   getViewportBounds,
   getSettings,
@@ -307,6 +294,10 @@ export function createAdminController({
   };
 
   let session = readStoredAdminSession(storage);
+  if (!allowStaticTokenFallback && session?.staticDirect) {
+    session = null;
+    writeStoredAdminSession(storage,null);
+  }
   let prefs = session ? readStoredAdminPrefs(storage) : { mapSource: 'standard', googleTheme: 'roadmap' };
   let googleMode = null; // 'tiles' | 'js-fallback' | null
   let usingDirectGoogleTiles = false;
@@ -388,7 +379,7 @@ export function createAdminController({
     }
 
     if (doc?.body) {
-      if (googleActive) doc.body.dataset.gmapsActive = 'true';
+      if (usingTiles || usingJsFallback) doc.body.dataset.gmapsActive = 'true';
       else delete doc.body.dataset.gmapsActive;
     }
 
@@ -538,7 +529,7 @@ export function createAdminController({
       onViewportChange(true);
       return;
     }
-    if (direct.serviceDisabled && direct.apiKey) {
+    if (direct.serviceDisabled && direct.apiKey && allowJsFallback()) {
       usingDirectGoogleTiles = false;
       googleMode = 'js-fallback';
       fallbackApiKey = direct.apiKey;
@@ -597,9 +588,19 @@ export function createAdminController({
         if (!response.ok || !data.unlocked) {
           activeSessionInitKey = null;
           activeSessionPromise = null;
+          googleMode = null;
           prefs = { ...prefs, mapSource: 'standard' };
           writeStoredAdminPrefs(storage, prefs);
           setStatus(data.error || `Google Maps could not start (${response.status}).`, true);
+          emitStateChange();
+          return;
+        }
+        if (!session || prefs.mapSource !== 'google') return;
+        if (data.mode === 'js-fallback' && (!allowJsFallback() || !data.apiKey)) {
+          googleMode = null;
+          prefs = {...prefs,mapSource:'standard'};
+          writeStoredAdminPrefs(storage,prefs);
+          setStatus('Google 2D Map Tiles are unavailable; the standard background remains active.',true);
           emitStateChange();
           return;
         }
@@ -625,14 +626,19 @@ export function createAdminController({
         }
         activeSessionInitKey = null;
         activeSessionPromise = null;
+        googleMode = null;
+        prefs = {...prefs,mapSource:'standard'};
+        writeStoredAdminPrefs(storage,prefs);
         setStatus(err?.message || 'Could not initialize Google Maps session.', true);
+        emitStateChange();
       }
     })();
     return activeSessionPromise;
   }
 
   async function fetchTile(params, abortController) {
-    if (!session) throw new Error('Google Maps requires admin sign-in.');
+    if (session && session.expiresAt <= Date.now()) clearExpiredOrRevokedSession('Admin session expired.');
+    if (!session || prefs.mapSource !== 'google' || googleMode !== 'tiles') throw new Error('Google Maps requires an active admin tile session.');
     const raw = String(params?.url || '').slice(`${GOOGLE_PROTOCOL}://`.length);
     const [pathPart, queryPart = ''] = raw.split('?');
     const match = /^(satellite|roadmap|terrain)\/(\d+)\/(\d+)\/(\d+)$/.exec(pathPart);
@@ -682,8 +688,9 @@ export function createAdminController({
       if (!cached?.session) return null;
       return `https://tile.googleapis.com/v1/2dtiles/${z}/${x}/${y}?session=${encodeURIComponent(cached.session)}&key=${encodeURIComponent(apiKey)}`;
     }
-    if (!session.token) return null;
-    return apiUrl(`/api/gmaps/tiles/${safeVariant}/${z}/${x}/${y}?lang=${encodeURIComponent(lang)}&token=${encodeURIComponent(session.token)}`);
+    // The current Canvas renderer uses fetchTile and an Authorization header.
+    // Never place a backend bearer session in a URL.
+    return null;
   }
 
   function onViewportChange(immediate = false) {
@@ -798,6 +805,10 @@ export function createAdminController({
   }
 
   function revealStaticTokenFallback() {
+    if (!allowStaticTokenFallback) {
+      setStatus('The administrator authentication backend is unavailable.',true);
+      return;
+    }
     staticTokenModeRevealed = true;
     syncUI();
     setStatus(
@@ -808,6 +819,7 @@ export function createAdminController({
   }
 
   async function verifyWithGitHubToken(rawToken) {
+    if (!allowStaticTokenFallback) return false;
     const pat = String(rawToken || '').trim();
     if (!pat) {
       setStatus('Paste a GitHub personal access token to verify repository admin access.', true);
@@ -840,22 +852,8 @@ export function createAdminController({
         return false;
       }
 
-      let isAdmin = false;
-      if (repoRes.ok) {
-        const repoData = await repoRes.json().catch(() => ({}));
-        isAdmin = repoData?.permissions?.admin === true;
-      }
-      if (!isAdmin) {
-        const permRes = await fetcher(
-          `https://api.github.com/repos/${targetRepo}/collaborators/${encodeURIComponent(login)}/permission`,
-          { headers: ghHeaders, cache: 'no-store' },
-        ).catch(() => null);
-        if (permRes?.ok) {
-          const permData = await permRes.json().catch(() => ({}));
-          isAdmin = permData?.permission === 'admin';
-        }
-      }
-
+      const repoData = repoRes.ok ? await repoRes.json().catch(()=>({})) : {};
+      const isAdmin = Number.isSafeInteger(userData.id) && userData.id === repoData.owner?.id;
       if (!isAdmin) {
         setStatus(
           `@${login} does not have admin permission on ${targetRepo} (ensure the token includes public_repo / Metadata read access).`,
@@ -975,7 +973,7 @@ export function createAdminController({
     writeStoredAdminPrefs(storage, null);
     setStatus('Signed out of admin session.', false);
     if (!wasStatic) {
-      fetcher(apiUrl('/api/auth/logout'), { method: 'POST', cache: 'no-store' }).catch(() => {});
+      fetcher(apiUrl('/api/auth/logout'), { method: 'POST', cache: 'no-store', credentials:'include' }).catch(() => {});
     }
     emitStateChange();
   }
@@ -1056,9 +1054,9 @@ export function createAdminController({
       if (!session) return;
       const nextSource = event.currentTarget.value === 'google' ? 'google' : 'standard';
       prefs = { ...prefs, mapSource: nextSource };
-      if (nextSource === 'google' && !googleMode) {
-        googleMode = 'tiles';
-      }
+      googleMode = null;
+      activeSessionInitKey = null;
+      activeSessionPromise = null;
       writeStoredAdminPrefs(storage, prefs);
       emitStateChange();
       if (nextSource === 'google') {
@@ -1078,9 +1076,6 @@ export function createAdminController({
       }
     });
 
-    if (session && prefs.mapSource === 'google') {
-      googleMode = 'tiles';
-    }
     emitStateChange();
     if (session) {
       void checkSessionIfNeeded();

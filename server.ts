@@ -65,6 +65,7 @@ export interface AdminSessionClaims {
 
 interface SignedStateClaims {
   redirectUri: string;
+  frontendOrigin: string;
   exp: number;
   n: string;
 }
@@ -166,7 +167,7 @@ function isAllowedOrigin(candidate: string, configuredAppUrl: string): boolean {
     }
     const host = url.hostname.toLowerCase();
     if (['localhost', '127.0.0.1', '[::1]'].includes(host)) return true;
-    if (url.protocol === 'https:' && (host === '10671435.xyz' || host === 'c933103.github.io' || host.endsWith('.run.app'))) return true;
+    if (url.protocol === 'https:' && (host === '10671435.xyz' || host === 'c933103.github.io')) return true;
     if (configuredAppUrl) {
       try {
         if (new URL(configuredAppUrl).origin === url.origin) return true;
@@ -202,7 +203,7 @@ function resolveRequestOrigin(req: Request, configuredAppUrl: string): string | 
   return isAllowedOrigin(derived, configuredAppUrl) ? derived : null;
 }
 
-function renderPopupPostMessageHtml(payload: Record<string, unknown>, heading: string, detail: string): string {
+function renderPopupPostMessageHtml(payload: Record<string, unknown>, heading: string, detail: string, targetOrigin?: string): string {
   const safeJson = JSON.stringify(payload).replace(/</g, '\\u003c');
   const escapeHtml = (s: string) =>
     s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
@@ -226,9 +227,10 @@ function renderPopupPostMessageHtml(payload: Record<string, unknown>, heading: s
   <script>
     (function() {
       var message = ${safeJson};
+      var targetOrigin = ${JSON.stringify(targetOrigin || '').replace(/</g,'\\u003c')};
       try {
-        if (window.opener && !window.opener.closed) {
-          window.opener.postMessage(message, '*');
+        if (targetOrigin && window.opener && !window.opener.closed) {
+          window.opener.postMessage(message, targetOrigin);
         }
       } catch (e) {}
       setTimeout(function() { window.close(); }, 250);
@@ -288,6 +290,7 @@ export interface ServerOptions {
   root?: string;
   runtimeStorePath?: string | null;
   getApiKey?: () => string;
+  getBrowserApiKey?: () => string;
   getGitHubConfig?: () => {
     clientId: string;
     clientSecret: string;
@@ -305,7 +308,7 @@ export function createServerApp(options: ServerOptions = {}) {
   const root = resolve(options.root ?? 'styles');
   const runtimeStorePath =
     options.runtimeStorePath === undefined
-      ? (options.getGitHubConfig ? null : RUNTIME_GITHUB_CONFIG_PATH)
+      ? (process.env.ATLAS_ALLOW_GITHUB_APP_BOOTSTRAP === '1' ? RUNTIME_GITHUB_CONFIG_PATH : null)
       : options.runtimeStorePath;
   let runtimeStore: RuntimeGitHubAppStore = runtimeStorePath ? loadRuntimeStore(runtimeStorePath) : {};
 
@@ -330,9 +333,10 @@ export function createServerApp(options: ServerOptions = {}) {
       (
         process.env.GOOGLE_MAPS_PLATFORM_API_KEY ||
         process.env.GOOGLE_MAPS_API_KEY ||
-        process.env.VITE_GOOGLE_MAPS_API_KEY ||
         ''
       ).trim());
+
+  const getBrowserApiKey = options.getBrowserApiKey ?? (() => (process.env.GOOGLE_MAPS_BROWSER_API_KEY || '').trim());
 
   const getGitHubConfig =
     options.getGitHubConfig ??
@@ -359,9 +363,8 @@ export function createServerApp(options: ServerOptions = {}) {
     const { adminRepo } = getGitHubConfig();
     const auth = req.headers.authorization || '';
     const bearer = /^Bearer\s+([A-Za-z0-9._-]+)$/.exec(auth)?.[1];
-    const queryToken = typeof req.query.token === 'string' ? req.query.token : undefined;
     const cookieToken = parseCookieHeader(req.headers.cookie, ADMIN_COOKIE_NAME);
-    for (const candidate of [bearer, queryToken, cookieToken]) {
+    for (const candidate of [bearer, cookieToken]) {
       const verified = verifyAdminSession(candidate, adminRepo, sessionSecret);
       if (verified) return verified;
     }
@@ -520,9 +523,17 @@ export function createServerApp(options: ServerOptions = {}) {
       res.status(400).json({ error: 'Invalid or disallowed callback origin.' });
       return;
     }
-    const redirectUri = `${origin}/auth/callback`;
+    // APP_URL identifies the backend, not the Pages frontend. GitHub must
+    // return the OAuth code to the server that can exchange it.
+    let callbackOrigin = origin;
+    if (gh.appUrl) {
+      try { callbackOrigin = new URL(gh.appUrl).origin; }
+      catch { res.status(503).json({error:'Invalid backend APP_URL.'}); return; }
+    }
+    const redirectUri = `${callbackOrigin}/auth/callback`;
     const stateClaims: SignedStateClaims = {
       redirectUri,
+      frontendOrigin:origin,
       exp: Date.now() + OAUTH_STATE_TTL_MS,
       n: crypto.randomBytes(12).toString('base64url'),
     };
@@ -541,8 +552,8 @@ export function createServerApp(options: ServerOptions = {}) {
       const manifest = {
         name: `Railway Atlas Admin ${suffix}`,
         url: origin,
-        redirect_url: `${origin}/auth/manifest-callback`,
-        callback_urls: pairedRunAppCallbackUrls(origin),
+        redirect_url: `${callbackOrigin}/auth/manifest-callback`,
+        callback_urls: pairedRunAppCallbackUrls(callbackOrigin),
         public: false,
         request_oauth_on_install: true,
         default_permissions: {
@@ -626,6 +637,7 @@ export function createServerApp(options: ServerOptions = {}) {
       const nextState = signPayload(
         {
           redirectUri: stateClaims.redirectUri,
+          frontendOrigin:stateClaims.frontendOrigin,
           exp: Date.now() + OAUTH_STATE_TTL_MS,
           n: crypto.randomBytes(12).toString('base64url'),
         } satisfies SignedStateClaims,
@@ -673,7 +685,7 @@ export function createServerApp(options: ServerOptions = {}) {
     const stateClaims =
       verifySignedPayload<SignedStateClaims>(queryState, sessionSecret) ||
       verifySignedPayload<SignedStateClaims>(cookieState, sessionSecret);
-    if (!code || !stateClaims || typeof stateClaims.redirectUri !== 'string') {
+    if (!code || !stateClaims || typeof stateClaims.redirectUri !== 'string' || !isAllowedOrigin(stateClaims.frontendOrigin,gh.appUrl)) {
       res
         .status(400)
         .type('html')
@@ -753,7 +765,7 @@ export function createServerApp(options: ServerOptions = {}) {
         return;
       }
 
-      const userData = (await userRes.json()) as { login?: string };
+      const userData = (await userRes.json()) as { login?: string; id?: number };
       const login = (userData.login || '').trim();
       if (!login) {
         res
@@ -769,29 +781,17 @@ export function createServerApp(options: ServerOptions = {}) {
         return;
       }
 
-      let isAdmin = false;
-      if (repoRes.ok) {
-        const repoData = (await repoRes.json()) as { permissions?: { admin?: boolean } };
-        isAdmin = repoData.permissions?.admin === true;
-      }
-      if (!isAdmin) {
-        const permRes = await fetcher(
-          `https://api.github.com/repos/${gh.adminRepo}/collaborators/${encodeURIComponent(login)}/permission`,
-          { headers: ghHeaders, signal: AbortSignal.timeout(10000) },
-        ).catch(() => null);
-        if (permRes?.ok) {
-          const permData = (await permRes.json()) as { permission?: string };
-          isAdmin = permData.permission === 'admin';
-        }
-      }
+      const repoData = repoRes.ok ? await repoRes.json() as {owner?: {id?: number}} : {};
+      // The site owner, not every collaborator with repository admin rights.
+      const isAdmin = Number.isSafeInteger(userData.id) && userData.id === repoData.owner?.id;
 
       if (!isAdmin) {
         clearAdminCookie(req, res);
-        const deniedMsg = `@${login} does not have admin permission on ${gh.adminRepo}.`;
+        const deniedMsg = `@${login} does not own ${gh.adminRepo}; administrator access denied.`;
         res
           .status(403)
           .type('html')
-          .send(renderPopupPostMessageHtml({ type: 'OAUTH_AUTH_ERROR', error: deniedMsg }, 'Admin access required', deniedMsg));
+          .send(renderPopupPostMessageHtml({ type: 'OAUTH_AUTH_ERROR', error: deniedMsg }, 'Admin access required', deniedMsg,stateClaims.frontendOrigin));
         return;
       }
 
@@ -805,6 +805,7 @@ export function createServerApp(options: ServerOptions = {}) {
             { type: 'OAUTH_AUTH_SUCCESS', session },
             'Admin verified',
             `Signed in as @${login}. This window will close automatically.`,
+            stateClaims.frontendOrigin,
           ),
         );
     } catch {
@@ -860,12 +861,13 @@ export function createServerApp(options: ServerOptions = {}) {
         res.status(429).json({ error: 'RESOURCE_EXHAUSTED: Google Map Tiles quota exceeded.' });
         return;
       }
-      if (tileSession.serviceDisabled) {
+      const browserKey = getBrowserApiKey();
+      if (tileSession.serviceDisabled && browserKey) {
         res.status(200).json({
           unlocked: true,
           mode: 'js-fallback',
           variant,
-          apiKey,
+          apiKey:browserKey,
           note: 'Map Tiles API is not enabled on this API key; using Maps JavaScript API fallback in flat 2D view. Enable Map Tiles API in Google Cloud Console to drape Google tiles on 3D terrain and the 3D globe.',
         });
         return;
@@ -973,7 +975,10 @@ export function createServerApp(options: ServerOptions = {}) {
       res.status(503).json({ error: 'Google Maps API key is not configured on this server.' });
       return;
     }
-    res.status(200).json({ unlocked: true, apiKey });
+    // A separately configured, referrer-restricted browser key is public by design.
+    // Never return the server-side Map Tiles API credential.
+    const browserKey = getBrowserApiKey();
+    res.status(200).json({ unlocked: true, ...(browserKey ? {apiKey:browserKey} : {}) });
   });
 
   app.use(async (req: Request, res: Response) => {
