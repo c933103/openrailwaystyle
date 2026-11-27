@@ -1,4 +1,7 @@
 import {build} from 'esbuild';
+import {execFileSync} from 'node:child_process';
+import {resolve} from 'node:path';
+import {existsSync} from 'node:fs';
 import {mkdir,copyFile,readFile,writeFile,rm} from 'node:fs/promises';
 import {createHash,webcrypto} from 'node:crypto';
 import assert from 'node:assert/strict';
@@ -45,7 +48,20 @@ await build({entryPoints:['styles/terrain-3d-worker.mjs'],outfile:'styles/vendor
 await build({entryPoints:['styles/dem-worker.mjs'],outfile:'styles/vendor/dem-worker.js',bundle:true,format:'iife',platform:'browser',target:'es2022',minify:true,legalComments:'eof'});
 await build({entryPoints:['styles/polar-layer.mjs'],outfile:'styles/vendor/polar-layer.js',bundle:true,format:'esm',platform:'browser',target:'es2022',minify:true,legalComments:'eof'});
 await build({entryPoints:['styles/flat-browser.mjs'],outfile:'styles/vendor/flat-browser.js',bundle:true,format:'esm',platform:'browser',target:'es2022',minify:true,legalComments:'eof'});
-await build({entryPoints:['scripts/google-maps-loader-entry.mjs'],outfile:'styles/vendor/google-maps-loader.js',bundle:true,format:'esm',platform:'browser',target:'es2022',minify:true,legalComments:'eof'});
+// Keep optional Google/Auth dependencies outside the railway-data npm lock.
+// The checked-in secondary lock is installed only for the optional browser bundle/server.
+const adminModules=resolve('admin-backend/node_modules');
+const adminLock=await readFile('admin-backend/package-lock.json');
+const adminStamp=resolve('admin-backend/node_modules/.atlas-lock-sha256');
+const expectedAdminHash=createHash('sha256').update(adminLock).digest('hex');
+if (!existsSync(resolve(adminModules,'@googlemaps/js-api-loader/package.json')) ||
+    !existsSync(resolve(adminModules,'express/package.json')) ||
+    !existsSync(adminStamp) || (await readFile(adminStamp,'utf8'))!==expectedAdminHash) {
+  execFileSync(process.platform==='win32'?'npm.cmd':'npm',
+    ['ci','--prefix','admin-backend','--omit=dev','--ignore-scripts','--no-audit','--no-fund'],{stdio:'inherit'});
+  await writeFile(adminStamp,expectedAdminHash);
+}
+await build({entryPoints:['scripts/google-maps-loader-entry.mjs'],nodePaths:[adminModules],outfile:'styles/vendor/google-maps-loader.js',bundle:true,format:'esm',platform:'browser',target:'es2022',minify:true,legalComments:'eof'});
 await copyFile('node_modules/@maplibre/maplibre-gl-style-spec/LICENSE.txt','styles/vendor/maplibre-gl-style-spec-LICENSE.txt');
 await copyFile('node_modules/geojson-vt/LICENSE','styles/vendor/geojson-vt-LICENSE.txt');
 await copyFile('node_modules/earcut/LICENSE','styles/vendor/earcut-LICENSE.txt');

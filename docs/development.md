@@ -480,3 +480,7 @@ do not put a server key there. It must be restricted to the intended API and
 website. Leaving all credentials blank is supported. No backend is provisioned
 by GitHub Pages itself. Deploy the optional server independently, or implement
 the same authenticated routes on a different backend.
+
+### Optional admin dependencies
+
+The reference-data generator retains its original root `package.json` and lock. The optional supplied Google/Auth server has its own pinned lock under `admin-backend/`. The normal browser build installs the pinned production dependencies when required and bundles the Google JS loader even when no credentials are present. For direct server use from the repository root: `npm ci --prefix admin-backend --omit=dev --ignore-scripts` and `node server.ts`. No actual OAuth or Google credentials are needed for fixture tests.

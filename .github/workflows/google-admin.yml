@@ -1,0 +1,29 @@
+name: Google administrator integration
+on:
+  pull_request:
+    paths:
+      - 'admin-backend/**'
+      - 'server.ts'
+      - 'styles/**'
+      - 'scripts/configure-imagery.mjs'
+      - 'scripts/build-browser.mjs'
+      - 'scripts/google-maps-loader-entry.mjs'
+      - 'tests/admin-github-sso.test.mjs'
+      - 'tests/administrator-settings.test.mjs'
+      - 'tests/google-admin-config.test.mjs'
+      - '.github/workflows/google-admin.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '26'
+          check-latest: true
+      - run: npm ci --ignore-scripts --no-audit --no-fund
+      - run: npm run build
+      - run: node --experimental-vm-modules --test tests/admin-github-sso.test.mjs tests/google-admin-config.test.mjs tests/administrator-settings.test.mjs
