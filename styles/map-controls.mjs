@@ -54,7 +54,7 @@ export function installControlLayout({frame, mapElement, panel, status, readout,
     // The ruler and readout stay in the bottom-left corner; the menu above
     // them is shortened instead of pushing them into the middle of the map.
     const x = left + Math.max(10, sl);
-    const creditDock = visible(mapElement.querySelector('.atlas-flat-credit-box'));
+    const creditDock = visible(mapElement.querySelector('.atlas-flat-credit-box:not(.maplibregl-ctrl-attrib)'));
     const available = Math.max(1, right - Math.max(10, sr) - x - (creditDock ? creditDock.width + gap : 42));
     set('--map-control-left', x - f.left);
     set('--map-control-width', available);
