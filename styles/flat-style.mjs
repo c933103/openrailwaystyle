@@ -18,12 +18,16 @@ export function compileFlatGeometryStyle(layer) {
     const spec = latest[kind + '_' + type][name];
     return [key,normalizePropertyExpression(layer[kind]?.[name] ?? spec.default,spec)];
   });
+  const sortSpec = latest.layout_line['line-sort-key'];
+  const sortValue = type === 'line' ? layer.layout?.['line-sort-key'] : null;
+  const sort = sortValue == null ? null : normalizePropertyExpression(sortValue,sortSpec);
   const {filter,needGeometry} = featureFilter(layer.filter);
   return {
     id: layer.id,
     source: layer.source,
     sourceLayer: layer['source-layer'],
     needGeometry,
+    sort,
     visibleAt(zoom) {
       return layer.layout?.visibility !== 'none' &&
         zoom >= (layer.minzoom ?? -Infinity) && zoom < (layer.maxzoom ?? Infinity);
@@ -40,4 +44,16 @@ export function compileFlatGeometryStyle(layer) {
       return paint;
     },
   };
+}
+
+// Keep unsorted styles on the existing hot path. A sort key controls
+// per-tile paint order; queries walk that same order from the top down.
+export function flatGeometryOrder(style,features,global,canonical,topFirst=false) {
+  if(!style.sort)return features;
+  const ranked=features.map(feature=>{
+    const key=style.sort.evaluate(global,feature,{},canonical);
+    return {feature,key:Number.isFinite(key)?key:0};
+  }).sort((a,b)=>a.key-b.key);
+  if(topFirst)ranked.reverse();
+  return ranked.map(({feature})=>feature);
 }
