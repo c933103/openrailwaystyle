@@ -1,8 +1,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {browserImageryConfig} from '../scripts/configure-imagery.mjs';
-import {createAdminController,createGoogleTileSourceSpec,createGoogleTileLayerSpec,googleViewportHasProvenZoomLimit,googleLongitudeBounds} from '../styles/google-maps.mjs';
+import {createAdminController,createGoogleTileSourceSpec,createGoogleTileLayerSpec,googleViewportHasProvenZoomLimit,googleWebGLTileZoom,googleLongitudeBounds} from '../styles/google-maps.mjs';
 import {createFlatSourceLoader} from '../styles/flat-source-loader.mjs';
+import {flatCamera} from '../styles/flat-camera.mjs';
+import {planFlatSourceTiles} from '../styles/flat-source-plan.mjs';
 import {layerVisibility} from '../styles/layer-semantics.mjs';
 
 test('Credential-free Pages build and public-only configuration',()=>{
@@ -142,7 +144,12 @@ test('Google regional limit requires affirmative whole-view coverage, including 
 
 test('Unavailable Google zoom restores the standard basemap and retries coverage without changing the chosen provider',async()=>{
   const stored={atlas_admin_session:{token:'fixture-token',expiresAt:Date.now()+60000},atlas_admin_prefs:{mapSource:'google'}};
-  let bounds={zoom:22,north:1,south:-1,west:170,east:-170};
+  const source=createGoogleTileSourceSpec();
+  const camera=flatCamera({zoom:20,center:[179,0],width:750,height:500});
+  const requestedZoom=detail=>planFlatSourceTiles(camera,source,512,detail)[0].canonical.z;
+  assert.equal(requestedZoom(0),21);
+  assert.equal(requestedZoom(2),22);
+  let bounds={zoom:requestedZoom(2),north:1,south:-1,west:170,east:-170};
   const body={dataset:{}}, copy={textContent:''}, attribution={hidden:true};
   const viewportRequests=[], tileRequests=[];
   const settings={background:'satellite',language:'en'};
@@ -165,7 +172,7 @@ test('Unavailable Google zoom restores the standard basemap and retries coverage
   const tile={url:'atlasgmaps://satellite/22/4136059/2097152?lang=en'};
   const settle=()=>new Promise(resolve=>setImmediate(resolve));
   await controller.ensureGoogleSourceReady();
-  viewportRequests[0](Response.json({copyright:'Limited',maxZoomRects:[{...bounds,maxZoom:9}]}));
+  viewportRequests[0](Response.json({copyright:'Limited',maxZoomRects:[{...bounds,maxZoom:21}]}));
   await settle();
   assert.equal(controller.googleMode,null);
   assert.equal(controller.mapSource,'google');
@@ -174,7 +181,7 @@ test('Unavailable Google zoom restores the standard basemap and retries coverage
   assert.equal(attribution.hidden,true);
   await assert.rejects(controller.fetchTile(tile),/not available for this viewport/);
   assert.equal(tileRequests.length,0);
-  bounds={...bounds,zoom:21};
+  bounds={...bounds,zoom:requestedZoom(0)};
   controller.onViewportChange(true);
   assert.equal(viewportRequests.length,2,'coverage probes continue while fallback is visible');
   viewportRequests[1](Response.json({copyright:'Available',maxZoomRects:[{...bounds,maxZoom:22}]}));
@@ -186,4 +193,14 @@ test('Unavailable Google zoom restores the standard basemap and retries coverage
   assert.equal(copy.textContent,'Available');
   await controller.fetchTile(tile);
   assert.deepEqual(tileRequests,['/api/gmaps/tiles/satellite/22/4136059/2097152']);
+});
+
+test('WebGL coverage uses the canonical tile level, not overscaled zoom',()=>{
+  const terrain={id:'fixture-terrain'};
+  const map={terrain,coveringTiles:options=>{
+    assert.deepEqual(options,{tileSize:256,minzoom:0,maxzoom:22,roundZoom:true,terrain});
+    return [{canonical:{z:20}},{canonical:{z:22},overscaledZ:23}];
+  }};
+  assert.equal(googleWebGLTileZoom(map),22);
+  assert.equal(googleWebGLTileZoom({coveringTiles:()=>[]}),undefined);
 });

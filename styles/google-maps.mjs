@@ -113,6 +113,13 @@ export function createGoogleTileSourceSpec(variant = 'satellite', language = 'lo
   };
 }
 
+// Use source canonical zoom, not UI zoom or the overscaled display zoom.
+export function googleWebGLTileZoom(map, source = createGoogleTileSourceSpec()) {
+  const {tileSize,minzoom,maxzoom} = source;
+  const covering = map.coveringTiles({tileSize,minzoom,maxzoom,roundZoom:true,terrain:map.terrain});
+  return covering.length ? covering.reduce((zoom,tile)=>Math.max(zoom,tile.canonical.z),0) : undefined;
+}
+
 export function createGoogleTileLayerSpec() {
   return {
     id: GOOGLE_TILE_LAYER_ID,
@@ -780,14 +787,14 @@ export function createAdminController({
     const run = async () => {
       viewportTimer = null;
       if (!isCurrent()) return;
-      const bounds = getViewportBounds?.();
-      if (!bounds) return;
-      const zoom = String(Math.max(0, Math.min(22, Math.round(bounds.zoom ?? 2))));
-      const north = String(Math.max(bounds.north ?? 85, bounds.south ?? -85));
-      const south = String(Math.min(bounds.north ?? 85, bounds.south ?? -85));
-      const east = String(bounds.east ?? 180);
-      const west = String(bounds.west ?? -180);
       try {
+        const bounds = getViewportBounds?.();
+        if (!bounds || !Number.isFinite(bounds.zoom)) return;
+        const zoom = String(Math.max(0, Math.min(22, Math.round(bounds.zoom))));
+        const north = String(Math.max(bounds.north ?? 85, bounds.south ?? -85));
+        const south = String(Math.min(bounds.north ?? 85, bounds.south ?? -85));
+        const east = String(bounds.east ?? 180);
+        const west = String(bounds.west ?? -180);
         let res;
         if (usingDirectGoogleTiles || session.staticDirect) {
           const direct = await ensureDirectBrowserTileSession(variant, language);
