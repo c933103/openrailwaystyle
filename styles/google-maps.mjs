@@ -82,6 +82,27 @@ export function googleLongitudeBounds(west, east) {
   return { west: wrap(west), east: wrap(east) };
 }
 
+// Only declare a viewport unsupported when the response positively covers
+// it with a lower limit and no overlapping rectangle advertises this zoom.
+export function googleViewportHasProvenZoomLimit(rects, bounds, zoom) {
+  if (!Array.isArray(rects) || !rects.length ||
+      ![bounds.north,bounds.south,bounds.west,bounds.east,zoom].every(Number.isFinite)) return false;
+  const intervals = ({west,east}) => west <= east ? [[west,east]] : [[west,180],[-180,east]];
+  const viewport = intervals(bounds);
+  const valid = rects.filter(rect => rect &&
+    [rect.north,rect.south,rect.west,rect.east,rect.maxZoom].every(Number.isFinite) &&
+    rect.north > rect.south && rect.north <= 90 && rect.south >= -90 &&
+    Math.abs(rect.west) <= 180 && Math.abs(rect.east) <= 180 &&
+    rect.maxZoom >= 0 && rect.maxZoom <= 22);
+  const overlaps = (a,b) => a[0] < b[1] && a[1] > b[0];
+  const contains = (a,b) => a[0] <= b[0] && a[1] >= b[1];
+  const intersects = rect => rect.south < bounds.north && rect.north > bounds.south &&
+    viewport.some(span => intervals(rect).some(part => overlaps(part,span)));
+  if (valid.some(rect => rect.maxZoom >= zoom && intersects(rect))) return false;
+  return valid.some(rect => rect.maxZoom < zoom && rect.south <= bounds.south &&
+    rect.north >= bounds.north && viewport.every(span => intervals(rect).some(part => contains(part,span))));
+}
+
 export function createGoogleTileSourceSpec(variant = 'satellite', language = 'local') {
   return {
     type: 'raster',
@@ -310,6 +331,8 @@ export function createAdminController({
   }
   let prefs = session ? readStoredAdminPrefs(storage) : { mapSource: 'standard', googleTheme: 'roadmap' };
   let googleMode = null; // 'tiles' | 'js-fallback' | null
+  let regionalTileLimit = false;
+  const regionalLimitNotice = 'Google imagery is unavailable at this zoom in this area. Showing the standard background.';
   let usingDirectGoogleTiles = false;
   let staticTokenModeRevealed = Boolean(session?.staticDirect);
   const directTileSessions = new Map();
@@ -360,7 +383,7 @@ export function createAdminController({
     const unlocked = Boolean(session);
     const settings = getSettings?.() || { background: 'map' };
     const googleActive = isGoogleActiveForBackground(settings.background);
-    const usingTiles = googleActive && googleMode === 'tiles';
+    const usingTiles = googleActive && googleMode === 'tiles' && !regionalTileLimit;
     const usingJsFallback = googleActive && googleMode === 'js-fallback';
 
     const signinBtn = $('admin-github-signin');
@@ -409,7 +432,7 @@ export function createAdminController({
       unlocked: Boolean(session),
       mapSource: session ? prefs.mapSource : 'standard',
       googleTheme: prefs.googleTheme,
-      googleMode: session && prefs.mapSource === 'google' ? googleMode : null,
+      googleMode: session && prefs.mapSource === 'google' && !regionalTileLimit ? googleMode : null,
     });
   }
 
@@ -417,6 +440,7 @@ export function createAdminController({
     session = null;
     prefs = { mapSource: 'standard', googleTheme: 'roadmap' };
     googleMode = null;
+    regionalTileLimit = false;
     usingDirectGoogleTiles = false;
     fallbackApiKey = null;
     activeSessionInitKey = null;
@@ -538,6 +562,7 @@ export function createAdminController({
     if (!isCurrent()) return;
     if (direct.ok) {
       usingDirectGoogleTiles = true;
+      regionalTileLimit = false;
       googleMode = 'tiles';
       setStatus('', false);
       emitStateChange();
@@ -546,6 +571,7 @@ export function createAdminController({
     }
     if (direct.serviceDisabled && direct.apiKey && allowJsFallback()) {
       usingDirectGoogleTiles = false;
+      regionalTileLimit = false;
       googleMode = 'js-fallback';
       fallbackApiKey = direct.apiKey;
       setStatus(
@@ -560,6 +586,7 @@ export function createAdminController({
     activeSessionInitKey = null;
     activeSessionPromise = null;
     googleMode = null;
+    regionalTileLimit = false;
     usingDirectGoogleTiles = false;
     prefs = { ...prefs, mapSource: 'standard' };
     writeStoredAdminPrefs(storage, prefs);
@@ -638,6 +665,7 @@ export function createAdminController({
         }
         if (data.mode === 'js-fallback') {
           usingDirectGoogleTiles = false;
+          regionalTileLimit = false;
           googleMode = 'js-fallback';
           fallbackApiKey = data.apiKey || null;
           setStatus(data.note || 'Using Google Maps JS fallback.', false);
@@ -647,6 +675,7 @@ export function createAdminController({
           return;
         }
         usingDirectGoogleTiles = false;
+        regionalTileLimit = false;
         googleMode = 'tiles';
         setStatus('', false);
         emitStateChange();
@@ -677,6 +706,8 @@ export function createAdminController({
   async function fetchTile(params, abortController) {
     if (session && session.expiresAt <= Date.now()) clearExpiredOrRevokedSession('Admin session expired.');
     if (!session || prefs.mapSource !== 'google' || googleMode !== 'tiles') throw new Error('Google Maps requires an active admin tile session.');
+    if (regionalTileLimit) throw new Error('Google tiles are not available for this viewport.');
+    const requestSession = session;
     const raw = String(params?.url || '').slice(`${GOOGLE_PROTOCOL}://`.length);
     const [pathPart, queryPart = ''] = raw.split('?');
     const match = /^(satellite|roadmap|terrain)\/(\d+)\/(\d+)\/(\d+)$/.exec(pathPart);
@@ -704,7 +735,7 @@ export function createAdminController({
       },
     );
     await checkGmpQuotaResponse(response, win);
-    if (response.status === 401) {
+    if (response.status === 401 && session === requestSession) {
       clearExpiredOrRevokedSession('Admin session expired. Sign in with GitHub again.');
       throw new Error('Admin session expired.');
     }
@@ -794,6 +825,13 @@ export function createAdminController({
           copyEl.textContent = typeof data.copyright === 'string' && data.copyright
             ? data.copyright
             : 'Map data © Google';
+        }
+        const limited = googleViewportHasProvenZoomLimit(data.maxZoomRects,
+          {north:Number(north),south:Number(south),east:Number(east),west:Number(west)}, Number(zoom));
+        if (limited !== regionalTileLimit) {
+          regionalTileLimit = limited;
+          setStatus(limited ? regionalLimitNotice : '');
+          emitStateChange();
         }
       } catch {}
     };
@@ -1014,6 +1052,7 @@ export function createAdminController({
     session = null;
     prefs = { mapSource: 'standard', googleTheme: 'roadmap' };
     googleMode = null;
+    regionalTileLimit = false;
     usingDirectGoogleTiles = false;
     fallbackApiKey = null;
     activeSessionInitKey = null;
@@ -1105,6 +1144,8 @@ export function createAdminController({
       const nextSource = event.currentTarget.value === 'google' ? 'google' : 'standard';
       prefs = { ...prefs, mapSource: nextSource };
       googleMode = null;
+      if (regionalTileLimit) setStatus('');
+      regionalTileLimit = false;
       activeSessionInitKey = null;
       activeSessionPromise = null;
       writeStoredAdminPrefs(storage, prefs);
@@ -1146,7 +1187,7 @@ export function createAdminController({
       return prefs.googleTheme;
     },
     get googleMode() {
-      return session && prefs.mapSource === 'google' ? googleMode : null;
+      return session && prefs.mapSource === 'google' && !regionalTileLimit ? googleMode : null;
     },
     setDeploymentConfig,
     verifyWithGitHubToken,

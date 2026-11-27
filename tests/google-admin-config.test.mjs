@@ -1,8 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {browserImageryConfig} from '../scripts/configure-imagery.mjs';
-import {createAdminController,createGoogleTileSourceSpec,createGoogleTileLayerSpec,googleLongitudeBounds} from '../styles/google-maps.mjs';
+import {createAdminController,createGoogleTileSourceSpec,createGoogleTileLayerSpec,googleViewportHasProvenZoomLimit,googleLongitudeBounds} from '../styles/google-maps.mjs';
 import {createFlatSourceLoader} from '../styles/flat-source-loader.mjs';
+import {layerVisibility} from '../styles/layer-semantics.mjs';
 
 test('Credential-free Pages build and public-only configuration',()=>{
   assert.deepEqual(browserImageryConfig({}),{});
@@ -126,3 +127,63 @@ for (const obsolete of ['503','401','success','network failure','direct fallback
     assert.equal(states.length,1);
   });
 }
+
+test('Google regional limit requires affirmative whole-view coverage, including the dateline',()=>{
+  const viewport={north:1,south:-1,west:170,east:-170};
+  const onlyLow={...viewport,maxZoom:9};
+  assert.equal(googleViewportHasProvenZoomLimit([onlyLow],viewport,22),true);
+  assert.equal(googleViewportHasProvenZoomLimit([onlyLow],viewport,9),false);
+  assert.equal(googleViewportHasProvenZoomLimit([onlyLow,{...viewport,west:-180,maxZoom:22}],viewport,22),false);
+  assert.equal(googleViewportHasProvenZoomLimit([{...onlyLow,west:179}],viewport,22),false);
+  assert.equal(googleViewportHasProvenZoomLimit([{...onlyLow,maxZoom:null}],viewport,22),false);
+  assert.equal(googleViewportHasProvenZoomLimit([{...onlyLow,maxZoom:22},{...onlyLow,west:-180,east:180}],viewport,22),false);
+  assert.equal(googleViewportHasProvenZoomLimit([{...onlyLow,west:-180,east:180}],viewport,22),true);
+});
+
+test('Unavailable Google zoom restores the standard basemap and retries coverage without changing the chosen provider',async()=>{
+  const stored={atlas_admin_session:{token:'fixture-token',expiresAt:Date.now()+60000},atlas_admin_prefs:{mapSource:'google'}};
+  let bounds={zoom:22,north:1,south:-1,west:170,east:-170};
+  const body={dataset:{}}, copy={textContent:''}, attribution={hidden:true};
+  const viewportRequests=[], tileRequests=[];
+  const settings={background:'satellite',language:'en'};
+  const googleLayer=createGoogleTileLayerSpec();
+  const standardSatellite={id:'satellite-test',type:'raster',metadata:{'atlas:semantics-version':1,'atlas:background':'satellite'}};
+  const controller=createAdminController({
+    window:{addEventListener(){},sessionStorage:{getItem:k=>JSON.stringify(stored[k])}},
+    document:{body,getElementById:id=>({'gmaps-copyright':copy,'gmaps-attribution':attribution})[id]??null},
+    getSettings:()=>settings,
+    getViewportBounds:()=>bounds,
+    onStateChange:state=>Object.assign(settings,state),
+    fetcher:async url=>{
+      const u=new URL(url,'https://fixture.invalid');
+      if(u.pathname.endsWith('/session'))return Response.json({unlocked:true,mode:'tiles'});
+      if(u.pathname.endsWith('/viewport'))return await new Promise(resolve=>viewportRequests.push(resolve));
+      tileRequests.push(u.pathname);
+      return new Response(new Uint8Array([1,2,3]));
+    },
+  });
+  const tile={url:'atlasgmaps://satellite/22/4136059/2097152?lang=en'};
+  const settle=()=>new Promise(resolve=>setImmediate(resolve));
+  await controller.ensureGoogleSourceReady();
+  viewportRequests[0](Response.json({copyright:'Limited',maxZoomRects:[{...bounds,maxZoom:9}]}));
+  await settle();
+  assert.equal(controller.googleMode,null);
+  assert.equal(controller.mapSource,'google');
+  assert.equal(layerVisibility(googleLayer,settings),false);
+  assert.equal(layerVisibility(standardSatellite,settings),true);
+  assert.equal(attribution.hidden,true);
+  await assert.rejects(controller.fetchTile(tile),/not available for this viewport/);
+  assert.equal(tileRequests.length,0);
+  bounds={...bounds,zoom:21};
+  controller.onViewportChange(true);
+  assert.equal(viewportRequests.length,2,'coverage probes continue while fallback is visible');
+  viewportRequests[1](Response.json({copyright:'Available',maxZoomRects:[{...bounds,maxZoom:22}]}));
+  await settle();
+  assert.equal(controller.googleMode,'tiles');
+  assert.equal(layerVisibility(googleLayer,settings),true);
+  assert.equal(layerVisibility(standardSatellite,settings),false);
+  assert.equal(attribution.hidden,false);
+  assert.equal(copy.textContent,'Available');
+  await controller.fetchTile(tile);
+  assert.deepEqual(tileRequests,['/api/gmaps/tiles/satellite/22/4136059/2097152']);
+});

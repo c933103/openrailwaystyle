@@ -204,6 +204,13 @@ test('GitHub OAuth callback rejects non-admin users and proxies 2D Google Map Ti
       });
     }
     if (url.startsWith('https://tile.googleapis.com/tile/v1/viewport')) {
+      const query = new URL(url).searchParams;
+      if (query.get('zoom') === '7') {
+        assert.equal(query.get('north'), '0');
+        assert.equal(query.get('east'), '0');
+        assert.equal(query.get('south'), '-2');
+        assert.equal(query.get('west'), '-2');
+      }
       return new Response(JSON.stringify({ copyright: 'Map data ©2026 Google, GeoBasis-DE/BKG' }), {
         status: 200,
         headers: { 'Content-Type': 'application/json' },
@@ -301,6 +308,12 @@ test('GitHub OAuth callback rejects non-admin users and proxies 2D Google Map Ti
       );
       assert.equal(vpRes.status, 200);
       assert.deepEqual(await vpRes.json(), { copyright: 'Map data ©2026 Google, GeoBasis-DE/BKG' });
+      const zeroEdges = await fetch(
+        `${baseUrl}/api/gmaps/viewport?zoom=7&north=0&south=-2&east=0&west=-2`,
+        { headers: { Authorization: `Bearer ${token}` } },
+      );
+      assert.equal(zeroEdges.status, 200);
+      assert.deepEqual(await zeroEdges.json(), { copyright: 'Map data ©2026 Google, GeoBasis-DE/BKG' });
     },
   );
 });

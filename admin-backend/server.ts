@@ -938,10 +938,14 @@ export function createServerApp(options: ServerOptions = {}) {
     const variant: GoogleTileVariant =
       rawVariant === 'roadmap' || rawVariant === 'terrain' ? rawVariant : 'satellite';
     const zoom = Math.max(0, Math.min(22, Math.round(Number(req.query.zoom) || 0)));
-    const north = Math.max(-90, Math.min(90, Number(req.query.north) || 85));
-    const south = Math.max(-90, Math.min(90, Number(req.query.south) || -85));
-    const east = Math.max(-180, Math.min(180, Number(req.query.east) || 180));
-    const west = Math.max(-180, Math.min(180, Number(req.query.west) || -180));
+    const coordinate = (value: unknown, fallback: number, limit: number) => {
+      const parsed = typeof value === 'string' && value.trim() ? Number(value) : NaN;
+      return Number.isFinite(parsed) ? Math.max(-limit, Math.min(limit, parsed)) : fallback;
+    };
+    const north = coordinate(req.query.north, 85, 89.9999);
+    const south = coordinate(req.query.south, -85, 89.9999);
+    const east = coordinate(req.query.east, 180, 180);
+    const west = coordinate(req.query.west, -180, 180);
     const language = typeof req.query.lang === 'string' && req.query.lang !== 'local' ? req.query.lang : 'en-US';
     const apiKey = getApiKey();
     if (!apiKey) {
