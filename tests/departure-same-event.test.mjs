@@ -90,3 +90,45 @@ test('same-list boarding stops and event types remain distinguishable',()=>{
  for(const place of [{...a.place,stopId:'other_stop'},{...a.place,scheduledDeparture:undefined,scheduledArrival:at}])
   assert.equal(departureRows([[a,{...a,place}]],{now}).length,2);
 });
+
+const rankedArrival={...a,realTime:true,headsign:'Central',place:{
+  stopId:'feed_stop',arrival:'2099-01-01T12:14:00Z',scheduledArrival:at,track:'9',tz:'UTC'
+}};
+test('simultaneous arrival and departure keep separate trip links and platform state across boards',()=>{
+  for (const tripId of [a.tripId,'20990101_11:00_other_trip',undefined]) {
+    const arrival={...rankedArrival,tripId,cancelled:true};
+    for (const [left,right] of [[a,arrival],[arrival,a]]) {
+      const result=rows(left,right);
+      assert.equal(result.length,2);
+      assert.equal(result[0].departure,Date.parse(at));
+      assert.equal(result[0].tripEvent,'departure');
+      assert.equal(result[0].cancelled,false);
+      assert.equal(result[0].track,'');
+      assert.equal(result[1].departure,Date.parse(rankedArrival.place.arrival));
+      assert.equal(result[1].cancelled,true);
+      assert.equal(result[1].track,'9');
+      assert.equal(result[1].tripEvent,tripId?'arrival':undefined);
+    }
+  }
+});
+test('a cancelled earlier arrival cannot cross expiry onto a separate delayed departure',()=>{
+  const departure={...b,headsign:a.headsign,tripId:'20990101_11:00_other_departure'};
+  const expired={...rankedArrival,cancelled:true,place:{...rankedArrival.place,arrival:at}};
+  for(const [left,right] of [[departure,expired],[expired,departure]]) {
+    const result=rows(left,right,{now:Date.parse('2099-01-01T12:10:00Z')});
+    assert.equal(result.length,1);
+    assert.equal(result[0].tripId,departure.tripId);assert.equal(result[0].cancelled,false);
+  }
+});
+test('a competing arrival keeps legitimate cross-feed departures ambiguous rather than unlocking a merge',()=>{
+  const duplicate={...b,headsign:a.headsign,tripId:'20990101_11:00_other_departure'};
+  const arrival={...rankedArrival,tripId:'20990101_11:00_other_arrival'};
+  for(const lists of [[[a],[duplicate,arrival]],[[duplicate,arrival],[a]],[[arrival,duplicate],[a]]])
+    assert.equal(departureRows(lists,{now}).length,3);
+});
+test('same-event arrival-only observations still merge and retain an arrival trip link',()=>{
+  const observation={...rankedArrival,tripId:'20990101_11:00_other_arrival',realTime:false};
+  const result=rows(rankedArrival,observation);
+  assert.equal(result.length,1);assert.equal(result[0].tripEvent,'arrival');
+  assert.equal(result[0].delay,14);assert.equal(result[0].track,'9');
+});

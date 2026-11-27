@@ -259,7 +259,8 @@ function validateDepartureTime(time) {
 // never holds two rows of one list; anything ambiguous stays separate, so the
 // result does not depend on the order of the lists or rows. A candidate group
 // merges only if every row has the same finite scheduled instant, including
-// seconds. Keep the minute-level candidates for ambiguity checks: narrowing
+// seconds and event type (arrival or departure). Keep the minute-level
+// candidates for ambiguity checks: narrowing
 // those first could remove a competing train and unlock a previously unsafe
 // merge. Conflicting numeric destination components also reject the whole
 // group at this final stage, as do different complete destinations after
@@ -292,20 +293,21 @@ function parseDepartureList(times, list) {
       .filter(name => !opaqueName(name, time.routeId))
       .find(name => name && (hasLongName || !numericName(name))) || '';
     const headsign = time.headsign || time.tripTo?.name || '';
+    const event = place.scheduledDeparture != null ? 'departure' : place.scheduledArrival != null ? 'arrival' : place.departure != null ? 'departure' : 'arrival';
     // JSON tuples preserve field boundaries even when IDs/names contain '|'.
     // Missing IDs are equal only to missing IDs, never a wildcard. If the
     // schedule is invalid, differing actual times must remain distinguishable.
     const key = JSON.stringify([list, time.tripId ?? null, time.routeId ?? null,
-      time.directionId == null ? null : String(time.directionId), place.stopId ?? null, place.scheduledDeparture != null ? 'departure' : place.scheduledArrival != null ? 'arrival' : place.departure != null ? 'departure' : 'arrival',
+      time.directionId == null ? null : String(time.directionId), place.stopId ?? null, event,
       time.displayName || '', time.routeShortName || '', time.tripShortName || '', time.routeLongName || '',
       modeFamily(time.mode), headsign, Number.isFinite(scheduled) ? scheduled :
         [place.scheduledDeparture ?? null, place.scheduledArrival ?? null, departure]]);
     const row = {
-      departure, scheduled, tz: place.tz, line, matchingLine, headsign,
+      departure, scheduled, event, tz: place.tz, line, matchingLine, headsign,
       routeId: time.routeId || '', directionId: time.directionId == null ? null : String(time.directionId),
       tripId: typeof time.tripId === 'string' ? time.tripId : '',
       stopId: typeof place.stopId === 'string' ? place.stopId : '',
-      ...(typeof time.tripId==='string'&&time.tripId?{tripScheduled:scheduled,tripEvent:place.scheduledDeparture!=null?'departure':place.scheduledArrival!=null?'arrival':place.departure!=null?'departure':'arrival'}:{}),
+      ...(typeof time.tripId==='string'&&time.tripId?{tripScheduled:scheduled,tripEvent:event}:{}),
       color: /^[0-9a-f]{6}$/i.test(time.routeColor || '') ? `#${time.routeColor}` : null,
       textColor: /^[0-9a-f]{6}$/i.test(time.routeTextColor || '') ? `#${time.routeTextColor}` : null,
       track: place.track || place.scheduledTrack || '', live: time.realTime === true,
@@ -350,7 +352,7 @@ function mergeDepartureRows(observations, {now = Date.now(), count = 10} = {}) {
     }
     return row;
   });
-  return out.sort((a, b) => a.departure - b.departure || compareRows(a, b)).slice(0, count).map(({list, to, minute, liveTrack, matchingLine, routeId, directionId, ...row}) => row);
+  return out.sort((a, b) => a.departure - b.departure || compareRows(a, b)).slice(0, count).map(({list, to, minute, liveTrack, matchingLine, routeId, directionId, event, ...row}) => row);
 }
 
 function departureGroups(rows, {allCandidates = false} = {}) {
@@ -365,7 +367,7 @@ function departureGroups(rows, {allCandidates = false} = {}) {
   const out = [];
   for (const group of groups.values()) {
     if (new Set(group.map(r => r.list)).size < group.length ||
-        !Number.isFinite(group[0].scheduled) || !group.every(row => row.scheduled === group[0].scheduled) ||
+        !Number.isFinite(group[0].scheduled) || !group.every(row => row.scheduled === group[0].scheduled && row.event === group[0].event) ||
         (!sameEventGroup(group) && (!group.every(row => destinationNumbers(row.to) === destinationNumbers(group[0].to)) ||
           conflictingDestinationText(group))) || conflictingSourceTrips(group) || conflictingDirections(group)) {
       out.push(...group.map(row => [row])); continue;
