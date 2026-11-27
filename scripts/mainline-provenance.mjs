@@ -18,6 +18,7 @@ export const REFERENCE_INPUTS=Object.freeze([
  'scripts/verify-mainline-snapshot.mjs','scripts/check-mainline-reference-browser.mjs',
  'scripts/browser-renderer-fixture.mjs','scripts/browser.mjs',
  'scripts/browser-libraries.mjs','scripts/build-browser.mjs','scripts/maplibre-backport.mjs',
+ 'scripts/google-maps-loader-entry.mjs','admin-backend/package.json','admin-backend/package-lock.json',
  'scripts/browser-network-guard.mjs','scripts/browser-policy.mjs',
  'styles/map-controls.mjs','styles/vector-tile-validation.mjs','styles/pbf-utf8.mjs',
  'styles/mainline-reference.mjs','styles/world.style.json','styles/app.mjs','styles/index.html','styles/app.css',

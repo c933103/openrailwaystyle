@@ -3,18 +3,18 @@ import assert from 'node:assert/strict';
 import {readFile,mkdtemp,writeFile,mkdir,rm,cp,access} from 'node:fs/promises';
 import {join,dirname} from 'node:path';
 import {tmpdir} from 'node:os';
-import {REFERENCE_INPUTS,referenceInputDigest} from '../scripts/mainline-provenance.mjs';
+import {REFERENCE_INPUTS,referenceInputDigest,referenceDataInputDigest} from '../scripts/mainline-provenance.mjs';
 
 test('every native browser bundle entry and its imports affect accepted reference inputs',async()=>{
  const root=await mkdtemp(join(tmpdir(),'atlas-reference-provenance-'));
  try{
-  for(const path of ['scripts','styles','.github','package.json','package-lock.json'])await cp(path,join(root,path),{recursive:true});
+  for(const path of ['scripts','styles','.github','package.json','package-lock.json','admin-backend/package.json','admin-backend/package-lock.json'])await cp(path,join(root,path),{recursive:true});
   await mkdir(join(root,'tests/fixtures'),{recursive:true});
   await cp('tests/fixtures/browser-glyphs',join(root,'tests/fixtures/browser-glyphs'),{recursive:true});
   const build=await readFile('scripts/build-browser.mjs','utf8');
   const entries=[...build.matchAll(/entryPoints:\s*\[\s*['"]([^'"]+)['"]\s*\]/g)].map(match=>match[1]);
-  assert.equal(entries.length,7,'cover every current esbuild entry, including both renderer paths');
-  for(const entry of ['styles/terrain-3d-worker.mjs','styles/flat-browser.mjs']) assert.ok(entries.includes(entry),entry);
+  assert.equal(entries.length,8,'cover every current esbuild entry, including both renderer paths');
+  for(const entry of ['styles/terrain-3d-worker.mjs','styles/flat-browser.mjs','scripts/google-maps-loader-entry.mjs']) assert.ok(entries.includes(entry),entry);
   entries.sort((a,b)=>Number(b.endsWith('/tile-labels.mjs'))-Number(a.endsWith('/tile-labels.mjs')));
   assert.ok(REFERENCE_INPUTS.includes('package-lock.json'));
   const dem=await readFile(join(root,'styles/dem-worker.mjs'),'utf8');
@@ -44,6 +44,12 @@ test('every native browser bundle entry and its imports affect accepted referenc
   await writeFile(lock,Buffer.concat([originalLock,Buffer.from('\n')]));
   assert.notEqual(await referenceInputDigest(root),baseline,'package sources are covered by the lockfile without node_modules');
   await writeFile(lock,originalLock);
+  const generator=await referenceDataInputDigest(root);
+  const optionalLock=join(root,'admin-backend/package-lock.json'),originalOptionalLock=await readFile(optionalLock);
+  await writeFile(optionalLock,Buffer.concat([originalOptionalLock,Buffer.from('\n')]));
+  assert.notEqual(await referenceInputDigest(root),baseline,'Google loader lock is a browser acceptance input');
+  assert.equal(await referenceDataInputDigest(root),generator,'optional provider dependencies do not regenerate railway data');
+  await writeFile(optionalLock,originalOptionalLock);
   await mkdir(join(root,'docs'),{recursive:true});await writeFile(join(root,'docs/note.md'),'Documentation only.\n');
   assert.equal(await referenceInputDigest(root),baseline,'documentation can reuse accepted inputs');
  }finally{await rm(root,{recursive:true,force:true})}
@@ -57,7 +63,7 @@ test('source acceptance commands, build drivers and direct station input affect 
  for(const path of new Set(commands))assert.ok(REFERENCE_INPUTS.includes(path),`explicit acceptance driver ${path}`);
  const root=await mkdtemp(join(tmpdir(),'atlas-reference-drivers-'));
  try{
-  for(const path of ['scripts','styles','.github','tests/fixtures/browser-glyphs','package.json','package-lock.json'])await cp(path,join(root,path),{recursive:true});
+  for(const path of ['scripts','styles','.github','tests/fixtures/browser-glyphs','package.json','package-lock.json','admin-backend/package.json','admin-backend/package-lock.json'])await cp(path,join(root,path),{recursive:true});
   const baseline=await referenceInputDigest(root);
   for(const path of ['scripts/serve.mjs','scripts/build-style.mjs','styles/data-src/major-stations.json']){
    const file=join(root,path),bytes=await readFile(file);

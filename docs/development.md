@@ -484,3 +484,5 @@ the same authenticated routes on a different backend.
 ### Optional admin dependencies
 
 The reference-data generator retains its original root `package.json` and lock. The optional supplied Google/Auth server has its own pinned lock under `admin-backend/`. The normal browser build installs the pinned production dependencies when required and bundles the Google JS loader even when no credentials are present. For direct server use from the repository root: `npm ci --prefix admin-backend --omit=dev --ignore-scripts` and `node server.ts`. No actual OAuth or Google credentials are needed for fixture tests.
+
+When updating the optional dependency lock, include the corresponding loader/build entry change under `scripts/` so the existing reference acceptance workflow runs for the new browser provenance. The optional lock changes browser acceptance, not generator provenance.
