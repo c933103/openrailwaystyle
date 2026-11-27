@@ -1,4 +1,4 @@
-import {SEARCH_API} from './map-model.mjs?v=20261127-google-admin-integration-2';
+import {SEARCH_API} from './map-model.mjs?v=20261127-mongolian-line-2';
 const button = document.getElementById('check');
 button.addEventListener('click', async () => {
   button.disabled = true;
