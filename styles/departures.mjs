@@ -374,10 +374,14 @@ function departureGroups(rows, {allCandidates = false} = {}) {
   const compatiblePresentation = (a, b) => modeFamily(a.mode) === modeFamily(b.mode) &&
     a.minute === b.minute && a.to && b.to && (a.to.includes(b.to) || b.to.includes(a.to)) &&
     (!a.matchingLine || !b.matchingLine || a.matchingLine === b.matchingLine);
-  const compatible = (a, b) => a.list !== b.list && (sameEvent(a, b) ||
-    (a.presentations ? a.presentations.some(left => matchesPresentation(left, b)) : matchesPresentation(a, b)));
-  const matchesPresentation = (a, b) => b.presentations
-    ? b.presentations.some(right => compatiblePresentation(a, right)) : compatiblePresentation(a, b);
+  // A directionless constituent can have a strong edge which the condensed
+  // row no longer has. Keep it for ambiguity counting, then apply the known
+  // consolidated directions (and actual same-event identity) to merging.
+  const constituentEdge = (a, b) => sameEvent(a, b) || compatiblePresentation(a, b);
+  const edgesTo = (a, b) => b.presentations
+    ? b.presentations.some(right => constituentEdge(a, right)) : constituentEdge(a, b);
+  const compatible = (a, b) => a.list !== b.list &&
+    (a.presentations ? a.presentations.some(left => edgesTo(left, b)) : edgesTo(a, b));
   const only = (a, list) => rows.filter(r => r.list === list && compatible(a, r)).length === 1;
   const parent = rows.map((_, i) => i), find = i => parent[i] === i ? i : (parent[i] = find(parent[i]));
   for (let i = 0; i < rows.length; i++) for (let j = i + 1; j < rows.length; j++)

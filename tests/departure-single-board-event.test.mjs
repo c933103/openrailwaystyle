@@ -83,3 +83,23 @@ test('a coalesced event keeps its alternate presentation as a competing edge', (
     }
   }
 });
+
+test('an alternate strong-event edge cannot disappear before ambiguity checks', () => {
+  const base = observation(at,late);
+  const known = {...base, directionId:0};
+  const alternate = {...base, displayName:'R2'};
+  const competing = {...base, displayName:'R3', directionId:1, tripId:'20990101_11:00_other_competing'};
+  for (const expired of [false,true]) {
+    const original = {...base, displayName:'R3', directionId:1, cancelled:true,
+      place:{...base.place, departure:expired?at:late}};
+    const expectedCount = expired ? 2 : 3;
+    for (const entries of [[known,alternate,competing],[alternate,competing,known],[competing,known,alternate]]) {
+      for (const inputs of order(entries,[original])) {
+        const result = departureRows(inputs,{now});
+        assert.equal(result.length,expectedCount);
+        assert.equal(result.find(r=>r.tripId===competing.tripId)?.cancelled,false);
+        assert.equal(result.filter(r=>r.cancelled).length,expired?0:1);
+      }
+    }
+  }
+});
