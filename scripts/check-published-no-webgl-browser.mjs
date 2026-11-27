@@ -52,6 +52,13 @@ try {
   assert.ok(blockedContexts.length > 0 && blockedContexts.every(probe => !probe.created),
     'Firefox must actually reject every WebGL context and automatically show Canvas');
   assert.equal(await page.evaluate(() => localStorage.getItem('atlas_disable_webgl')), null);
+  const language = page.getByRole('combobox', {name: 'Preferred language'});
+  assert.equal(await language.locator('option[value="mn-Mong"]').textContent(), 'Mongolian (traditional script)');
+  await language.selectOption('mn-Mong');
+  await page.reload({waitUntil: 'domcontentloaded'});
+  await readyCanvas();
+  assert.equal(await language.inputValue(), 'mn-Mong', 'selected label language survives reload');
+  await language.selectOption('en');
   const original = await center();
   assert.ok(original);
   await canvas.press('ArrowRight');
