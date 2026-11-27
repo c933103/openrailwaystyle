@@ -1,4 +1,4 @@
-import {hasTraditionalMongolian, markMongolianTextFields, MONGOLIAN_LABEL_FIELDS, mongolianAnchorLayer, mongolianRouteAnchor} from './mongolian-line-labels.mjs';
+import {hasTraditionalMongolian, markMongolianTextFields, MONGOLIAN_LABEL_FIELDS, mongolianAnchorLayer, mongolianRouteAnchor, withMongolianVectorLayers} from './mongolian-line-labels.mjs';
 export {createBasemapSourceFactory, warmInitialBasemapArchive} from './basemap-range-source.mjs';
 export {createGlyphFallback, emptyGlyphRangePbf} from './glyph-fallback.mjs';
 import {waitForViewport} from './viewport-settle.mjs';
@@ -287,7 +287,7 @@ export function installLabelProtocols(maplibregl, pmtilesProtocol, fetcher = fet
     const url = params.url.slice(`${scheme}://`.length);
     if (params.type === 'json') {
       const data = await get(url,controller.signal,true);
-      return {data:{...data,tiles:data.tiles.map(t=>`${scheme}://${t}`)}};
+      return {data:withMongolianVectorLayers({...data,tiles:data.tiles.map(t=>`${scheme}://${t}`)})};
     }
     // MapLibre transfers this buffer to its worker, detaching it. Keep the
     // cache's original for language changes, return visits and track counts.
@@ -395,7 +395,7 @@ export function installLabelProtocols(maplibregl, pmtilesProtocol, fetcher = fet
         await providerRetryDelay(basemapRetries[attempt], controller.signal);
       }
     }
-    if (params.type === 'json') return {...result,data:{...result.data,tiles:result.data.tiles.map(t=>t.replace('pmtiles://',`atlasbase://${lang}/`))}};
+    if (params.type === 'json') return {...result,data:withMongolianVectorLayers({...result.data,tiles:result.data.tiles.map(t=>t.replace('pmtiles://',`atlasbase://${lang}/`))})};
     const found = new Set();
     return {...result,data:await withGlyphs(localizeTile(result.data,lang,tileCoordinates(url),found),found)};
   });

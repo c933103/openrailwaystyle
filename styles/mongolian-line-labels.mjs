@@ -7,6 +7,22 @@ const BASE='atlas:mongolian-base-filter', CLONE='atlas:mongolian-line-clone';
 const layerId=id=>id+'-mongolian-anchor';
 export const mongolianAnchorLayer=name=>name+'__atlas_mongolian_anchors';
 
+// Vector sources with TileJSON reject style layers that are not in their
+// advertised schema, even if the provider tiles were decorated correctly.
+export function withMongolianVectorLayers(metadata) {
+  if(!Array.isArray(metadata.vector_layers))return metadata;
+  const ids=new Set(metadata.vector_layers.map(layer=>layer.id));
+  const companions=metadata.vector_layers.flatMap(layer=>{
+    if(typeof layer.id!=='string'||layer.id.endsWith('__atlas_mongolian_anchors'))return [];
+    const id=mongolianAnchorLayer(layer.id);
+    if(ids.has(id))return [];
+    ids.add(id);
+    return [{...layer,id,fields:{...layer.fields,[MONGOLIAN_LABEL_FIELDS]:'String'}}];
+  });
+  return companions.length?{...metadata,vector_layers:[...metadata.vector_layers,...companions]}:metadata;
+}
+
+
 export const hasTraditionalMongolian=value=>typeof value==='string'&&LETTERS.test(value);
 
 // Record exact property names, not just whether the feature has any

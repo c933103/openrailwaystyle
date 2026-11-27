@@ -1,8 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {markMongolianTextFields,mongolianFieldFilter,splitMongolianLineLabels,isMongolianLineLabelOf,mongolianRouteAnchor} from '../styles/mongolian-line-labels.mjs';
+import {markMongolianTextFields,mongolianFieldFilter,splitMongolianLineLabels,isMongolianLineLabelOf,mongolianRouteAnchor,withMongolianVectorLayers} from '../styles/mongolian-line-labels.mjs';
 import encode from 'vt-pbf';
-import {markStoredMongolianLines,localizeTile,readTile} from '../styles/tile-labels.mjs';
+import {markStoredMongolianLines,localizeTile,readTile,installLabelProtocols} from '../styles/tile-labels.mjs';
 import {createExpression} from '@maplibre/maplibre-gl-style-spec';
 const keys=['atlas_name','name:en','name','ref'];
 const mongolian='ᠤᠯᠠᠭᠠᠨᠪᠠᠭᠠᠲᠤᠷ';
@@ -77,4 +77,24 @@ test('original railway geometry and properties survive companion-anchor encoding
   }
   const ordinary=encode.fromGeojsonVt({railway_line_high:{features:[rows[1]]}},{version:2,extent:4096});
   assert.equal(markStoredMongolianLines(ordinary),ordinary,'ordinary tiles pass through without encoding');
+});
+
+test('TileJSON advertises companion layers without mutating the provider schema',async()=>{
+  const source={tiles:['https://fixture.invalid/rail/{z}/{x}/{y}'],vector_layers:[{id:'x',minzoom:4,fields:{name:'String'}}]};
+  const out=withMongolianVectorLayers(source);
+  assert.deepEqual(out.vector_layers,[source.vector_layers[0],{id:'x__atlas_mongolian_anchors',minzoom:4,
+    fields:{name:'String',atlas_mongolian_label_fields:'String'}}]);
+  assert.equal(source.vector_layers.length,1);
+  assert.equal(withMongolianVectorLayers(out),out);
+  const withoutSchema={tiles:source.tiles};assert.equal(withMongolianVectorLayers(withoutSchema),withoutSchema);
+  const protocols={};
+  const registry={addProtocol:(scheme,handler)=>{protocols[scheme]=handler;}};
+  const installed=installLabelProtocols(registry,{},async()=>new Response(JSON.stringify(source)));
+  try{
+    for(const scheme of ['atlasrail','atlastext']){
+      const res=await protocols[scheme]({url:scheme+'://https://fixture.invalid/rail.json',type:'json'},new AbortController());
+      assert.deepEqual(res.data.vector_layers,out.vector_layers);
+      assert.equal(res.data.tiles[0],scheme+'://'+source.tiles[0]);
+    }
+  }finally{installed.dispose();}
 });

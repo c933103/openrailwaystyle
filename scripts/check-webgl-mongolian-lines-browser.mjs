@@ -36,8 +36,12 @@ const server=createServer((req,res)=>{
   const path=new URL(req.url,'http://localhost').pathname;
   if(path==='/')return res.writeHead(200,{'content-type':'text/html'}).end(html);
   if(path==='/world.style.json')return res.writeHead(200,{'content-type':'application/json'}).end(JSON.stringify({
-    ...base,sources:{...base.sources,routeFixture:{type:'vector',tiles:[origin+'/route_fixture/{z}/{x}/{y}'],minzoom:10,maxzoom:10}},
+    ...base,sources:{...base.sources,routeFixture:{type:'vector',url:origin+'/route_fixture.json'}},
     layers:[...base.layers,...allRecords.map(layer)],
+  }));
+  if(path==='/route_fixture.json')return res.writeHead(200,{'content-type':'application/json'}).end(JSON.stringify({
+    tilejson:'3.0.0',tiles:[origin+'/route_fixture/{z}/{x}/{y}'],minzoom:10,maxzoom:10,
+    vector_layers:[{id:'route_fixture',fields:{name:'String',role:'String'}}],
   }));
   if(path.startsWith('/route_fixture/')){
     const t=ormVectorFixture(path,{route_fixture:index});
@@ -81,6 +85,9 @@ try{
   await installEmptyMapProviders(context,origin+'/',{firstParty:'network'});
   const page=await context.newPage(),errors=[],observed=[];
   page.on('pageerror',error=>errors.push(error.message));
+  page.on('console',message=>{
+    if(message.type()==='error'&&message.text().includes('__atlas_mongolian_anchors'))errors.push(message.text());
+  });
   await mkdir('browser-review',{recursive:true});
   for(const bearing of [0,32]){
     const font=page.waitForResponse(response=>response.url().endsWith('/mongolian-400-018.woff2'));

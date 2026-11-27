@@ -1,4 +1,4 @@
-import {clock, trainSchedule} from './departures.mjs?v=20261127-mongolian-line-1';
+import {clock, trainSchedule} from './departures.mjs?v=20261127-mongolian-line-2';
 
 const node = (document, tag, text = '', className = '') => {
   const element = document.createElement(tag);
