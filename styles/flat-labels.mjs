@@ -217,6 +217,39 @@ function flatVisibleSegment(paths,project,extent,camera){
   return best;
 }
 
+// Canvas measures the actual point-label font before placing the label.
+// Break only at ordinary spaces/tabs: no arbitrary splitting of names,
+// nonbreaking spaces, or shaped script. Line labels need one visible path.
+function flatMeasuredLines(context,text,maxWidth) {
+  const lines=[],widths=[];
+  const measure=line=>context.measureText(line).width;
+  const push=(line,width=measure(line))=>{lines.push(line);widths.push(width);};
+  for(const line of text.split(/\r?\n/)){
+    if(!line)continue;
+    const width=measure(line);
+    if(!(maxWidth>0)||width<=maxWidth||!/[ \t]/.test(line)){
+      push(line,width);
+      continue;
+    }
+    let start=0, boundary=0, resume=0;
+    for(const match of line.matchAll(/[ \t]+/g)){
+      if(match.index===0)continue;
+      if(boundary&&measure(line.slice(start,match.index))>maxWidth){
+        push(line.slice(start,boundary));
+        start=resume;
+      }
+      boundary=match.index;
+      resume=match.index+match[0].length;
+    }
+    if(boundary&&measure(line.slice(start))>maxWidth){
+      push(line.slice(start,boundary));
+      start=resume;
+    }
+    if(start<line.length)push(line.slice(start),start===0?width:undefined);
+  }
+  return {lines,widths};
+}
+
 export function drawFlatTextLabels(context,camera,groups,{getIcon=()=>null,onSymbol=()=>{},getMongolianFont=()=>null,getCjkFont=()=>null}={}) {
   const cell=64,buckets=new Map(), counts=new Map(),drawn=[];
   const visit=(rect,fn)=>{
@@ -298,7 +331,8 @@ export function drawFlatTextLabels(context,camera,groups,{getIcon=()=>null,onSym
         // Don't flash a horizontally rendered Mongolian label while its
         // font loads. Icons and non-Mongolian labels need not wait.
         if(mongolian&&!layout){if(icon){pushIcon();count++;}continue;}
-        const lines=layout?[]:text.split(/\n/).filter(Boolean), widths=lines.map(line=>context.measureText(line).width);
+        const {lines,widths}=layout?{lines:[],widths:[]}:
+          flatMeasuredLines(context,text,label.angle===undefined?label.maxWidth*size:0);
         const width=layout?.width??Math.max(...widths), lineHeight=size*1.2,height=layout?.height??lines.length*lineHeight;
         if(!Number.isFinite(width)||!width){
           if(icon){pushIcon();count++;}

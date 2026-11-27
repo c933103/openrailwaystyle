@@ -1,4 +1,4 @@
-import {clock, trainSchedule} from './departures.mjs?v=20261127-flat-reference-order-1';
+import {clock, trainSchedule} from './departures.mjs?v=20261127-flat-point-wrap-1';
 
 const node = (document, tag, text = '', className = '') => {
   const element = document.createElement(tag);

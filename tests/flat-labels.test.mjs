@@ -208,3 +208,39 @@ test('CJK label measurement and painting use the supplied font fallback without 
   assert.ok(measurements.some(([text,font])=>text==='𨋢駅'&&font===`10px ${family}`));
   assert.deepEqual(paint,[['Latin','10px sans-serif'],['𨋢駅',`10px ${family}`]]);
 });
+
+test('Canvas point labels wrap using the generated hospital style width and preserve the icon hit', async()=>{
+  const {readFile}=await import('node:fs/promises');
+  const world=JSON.parse(await readFile(new URL('../styles/world.style.json',import.meta.url),'utf8'));
+  const hospital=world.layers.find(l=>l.id==='context-destinations-hospital-label');
+  const compiled=compileFlatTextLabel(hospital);
+  const feature={id:51,type:1,properties:{class:'hospital',name:'General Infirmary East Campus'}};
+  const p=compiled.resolve({zoom:16},feature,{x:0,y:0,z:0});
+  assert.equal(p.label,feature.properties.name);
+  assert.equal(p.maxWidth,9);
+  const ctx=context(), points=[];
+  const result=drawFlatTextLabels(ctx,camera,[{id:hospital.id,candidates:[{...p,anchor:'left',variable:[],
+    px:85,py:120,feature}]}],{getIcon:()=>({width:48,height:48}),onSymbol:(id,el,rects)=>points.push(rects)});
+  const painted=ctx.draws.filter(l=>l[0]==='fill');
+  assert.equal(result.get(hospital.id),1);
+  assert.equal(painted.length,2);
+  assert.equal(painted.map(l=>l[1]).join(' '),feature.properties.name);
+  assert.ok(painted.every(l=>l[1].length*5<=p.maxWidth*p.size));
+  assert.equal(points[0].length,2,'the icon remains selectable beside the wrapped text');
+});
+
+test('horizontal auto-wrap preserves hard names, nonbreaking spaces and single-line rail placement',()=>{
+  const base={color:'black',halo:'white',haloWidth:0,font:['Test Bold'],size:10,anchor:'center',maxWidth:8,
+    opacity:1,padding:0,px:128};
+  const names=[
+    {...base,label:'Main Street Station\n東口',py:65},
+    {...base,label:'Centre\u00a0City',py:135,maxWidth:3},
+    {...base,label:'A long railway name',py:210,angle:0,length:256,maxWidth:6},
+  ];
+  const ctx=context();
+  const counts=drawFlatTextLabels(ctx,camera,[{id:'labels',candidates:names}]);
+  assert.equal(counts.get('labels'),3);
+  assert.deepEqual(ctx.draws.filter(a=>a[0]==='fill').map(a=>a[1]),[
+    'A long railway name','Centre\u00a0City','Main Street','Station','東口',
+  ]);
+});
