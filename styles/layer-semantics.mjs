@@ -1,4 +1,4 @@
-import { MODES, railwayTrackWidth } from './map-model.mjs?v=20261126-canvas-basemap-sync-1';
+import { MODES, railwayTrackWidth } from './map-model.mjs?v=20261127-google-admin-integration-2';
 
 const VERSION = 1;
 const VALUE_LABELS = /^(speed|electrification|control|gauge|loading|axle|owner)-labels$/;

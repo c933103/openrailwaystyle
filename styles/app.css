@@ -266,5 +266,7 @@ body[data-gmaps-active="true"] .maplibregl-ctrl-bottom-left { bottom: max(var(--
 
 
 
+/* Keep the Google underlay and map in a stacking context below the app controls. */
+body[data-gmaps-active="true"] #map-frame{isolation:isolate}
 body[data-gmaps-active="true"] #map{z-index:1;background:transparent}
 #admin-settings[hidden],#gmaps-underlay[hidden],#gmaps-attribution[hidden],#gmp-quota-banner[hidden],#admin-static-token-row[hidden],#admin-controls[hidden],#admin-google-theme-row[hidden]{display:none!important}

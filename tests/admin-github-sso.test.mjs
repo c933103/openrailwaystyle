@@ -232,6 +232,15 @@ test('GitHub OAuth callback rejects non-admin users and proxies 2D Google Map Ti
       const urlRes1 = await fetch(`${baseUrl}/api/auth/github/url?origin=${encodeURIComponent(baseUrl)}`);
       const { url: authUrl1 } = await urlRes1.json();
       const state1 = new URL(authUrl1).searchParams.get('state');
+      const cancelUrl = `${baseUrl}/auth/callback?error=access_denied&state=`;
+      const cancelRes = await fetch(cancelUrl+encodeURIComponent(state1));
+      assert.equal(cancelRes.status,400);
+      const cancelled = await cancelRes.text();
+      assert.match(cancelled,/GitHub sign-in cancelled/);
+      assert.ok(cancelled.includes(JSON.stringify(baseUrl)), 'signed state delivers the cancellation to the initiating frontend');
+      const invalid = await (await fetch(cancelUrl+'invalid')).text();
+      assert.ok(!invalid.includes(JSON.stringify(baseUrl)), 'invalid state must not supply a message target');
+
       const deniedRes = await fetch(`${baseUrl}/auth/callback?code=code1&state=${encodeURIComponent(state1)}`);
       assert.equal(deniedRes.status, 403);
       const deniedHtml = await deniedRes.text();

@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {browserImageryConfig} from '../scripts/configure-imagery.mjs';
-import {createGoogleTileSourceSpec} from '../styles/google-maps.mjs';
+import {createGoogleTileSourceSpec,createGoogleTileLayerSpec} from '../styles/google-maps.mjs';
 import {createFlatSourceLoader} from '../styles/flat-source-loader.mjs';
 
 test('Credential-free Pages build and public-only configuration',()=>{
@@ -26,4 +26,9 @@ test('Current Canvas raster loader accepts the same Google tile protocol as WebG
   const source=await loader.resolve(createGoogleTileSourceSpec('roadmap','en'),{baseURL:'https://10671435.xyz/world.style.json',controller});
   await loader.load(source,{z:3,x:2,y:4},{controller,pixelRatio:1});
   assert.equal(requests.length,1);
+});
+
+test('Google imagery remains eligible at the highest map zoom, retaining the upstream source ceiling',()=>{
+  assert.equal(createGoogleTileSourceSpec().maxzoom,22);
+  assert.ok(createGoogleTileLayerSpec().maxzoom>22,'layer maxzoom is exclusive');
 });

@@ -441,3 +441,36 @@ test('other labelled provider sources keep their tiles behind the rare Han scan'
   const {data}=await protocols.atlastext({url:'atlastext://https://example.org/railway_signals',type:'json'},new AbortController());
   assert.deepEqual(data.tiles,['atlastext://https://example.org/railway_signals/{z}/{x}/{y}']);
 });
+
+test('traditional Mongolian prefers recorded traditional script without relabelling Cyrillic',()=>{
+  const ulaan='ᠤᠯᠠᠭᠠᠨᠪᠠᠭᠠᠲᠤᠷ', name='Улаанбаатар', en='Ulaanbaatar';
+  assert.equal(readSettings('?language=mn-Mong').language,'mn-Mong');
+  const place={name,'name:mn':name,'name:en':en,'name:mn-Mong':ulaan};
+  assert.equal(chooseName(place,'mn-Mong'),ulaan);
+  assert.equal(chooseName({...place,'name:mn-Mong':'','name:mn':ulaan},'mn-Mong'),ulaan);
+  assert.equal(chooseName({...place,'name:mn-Mong':'','name:mn':'᠑ ᠒'},'mn-Mong'),en);
+  assert.equal(chooseName({...place,'name:mn-Mong':'','name:mn':name},'mn-Mong'),en);
+  assert.equal(chooseName({...place,name:name+' '+ulaan,'name:mn-Mong':''},'mn-Mong'),name+' '+ulaan);
+  assert.equal(chooseName(place,'local'),name);
+  const result=readTile(localizeTile(tile(place),'mn-Mong',{z:7,x:103,y:44})).layers.stations.feature(0).properties;
+  assert.equal(result.atlas_name,ulaan);
+  assert.equal(result.atlas_language,'mn-Mong');
+});
+test('traditional Mongolian station fallback preserves local geometry if the script-tag request errors',async()=>{
+  const ulaan='ᠤᠯᠠᠭᠠᠨᠪᠠᠭᠠᠲᠤᠷ', name='Улаанбаатар';
+  for (const legacy of [ulaan,name]) {
+    const protocols={}, requests=[];
+    const adapter=installLabelProtocols({addProtocol:(id,fn)=>protocols[id]=fn},{},async address=>{
+      const lang=new URL(address).searchParams.get('lang'); requests.push(lang);
+      if(lang==='mn-Mong') return {ok:false,status:400};
+      return {ok:true,status:200,arrayBuffer:async()=>tile({name,localized_name:lang==='mn'?legacy:lang==='en'?'Ulaanbaatar':name})};
+    });
+    try {
+      const result=await protocols.atlasstation({url:'atlasstation://mn-Mong/https://example.org/stations/7/103/44'},new AbortController());
+      const feature=readTile(result.data).layers.stations.feature(0);
+      assert.equal(feature.properties.atlas_name,legacy===ulaan?ulaan:'Ulaanbaatar');
+      assert.deepEqual(feature.loadGeometry(),readTile(tile({name})).layers.stations.feature(0).loadGeometry());
+      assert.deepEqual(requests,legacy===ulaan?[null,'mn-Mong','mn']:[null,'mn-Mong','mn','en']);
+    } finally { adapter.dispose(); }
+  }
+});

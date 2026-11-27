@@ -664,6 +664,12 @@ export function createServerApp(options: ServerOptions = {}) {
 
   app.get(['/auth/callback', '/auth/callback/'], async (req: Request, res: Response) => {
     const gh = getGitHubConfig();
+    const queryState = typeof req.query.state === 'string' ? req.query.state.trim() : '';
+    const cookieState = parseCookieHeader(req.headers.cookie, OAUTH_STATE_COOKIE) || '';
+    const stateClaims =
+      verifySignedPayload<SignedStateClaims>(queryState, sessionSecret) ||
+      verifySignedPayload<SignedStateClaims>(cookieState, sessionSecret);
+    const frontendOrigin = stateClaims && isAllowedOrigin(stateClaims.frontendOrigin,gh.appUrl) ? stateClaims.frontendOrigin : '';
     if (typeof req.query.error === 'string' && req.query.error) {
       const desc = typeof req.query.error_description === 'string' ? req.query.error_description : req.query.error;
       res
@@ -674,18 +680,14 @@ export function createServerApp(options: ServerOptions = {}) {
             { type: 'OAUTH_AUTH_ERROR', error: `GitHub sign-in cancelled: ${desc}` },
             'Sign-in cancelled',
             desc,
+            frontendOrigin,
           ),
         );
       return;
     }
 
     const code = typeof req.query.code === 'string' ? req.query.code.trim() : '';
-    const queryState = typeof req.query.state === 'string' ? req.query.state.trim() : '';
-    const cookieState = parseCookieHeader(req.headers.cookie, OAUTH_STATE_COOKIE) || '';
-    const stateClaims =
-      verifySignedPayload<SignedStateClaims>(queryState, sessionSecret) ||
-      verifySignedPayload<SignedStateClaims>(cookieState, sessionSecret);
-    if (!code || !stateClaims || typeof stateClaims.redirectUri !== 'string' || !isAllowedOrigin(stateClaims.frontendOrigin,gh.appUrl)) {
+    if (!code || !stateClaims || typeof stateClaims.redirectUri !== 'string' || !frontendOrigin) {
       res
         .status(400)
         .type('html')

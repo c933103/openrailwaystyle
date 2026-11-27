@@ -24,6 +24,8 @@ jobs:
         with:
           node-version: '26'
           check-latest: true
+      - name: Verify Node 26 security baseline
+        run: node -e 'const [major,minor,patch]=process.versions.node.split(".").map(Number); if (major !== 26 || minor < 12 || (minor === 12 && patch < 1)) throw new Error("CI requires patched Node 26.12.1+"); console.log(process.version)'
       - run: npm ci --ignore-scripts --no-audit --no-fund
       - run: npm run build
       - run: node --experimental-vm-modules --test tests/admin-github-sso.test.mjs tests/google-admin-config.test.mjs tests/administrator-settings.test.mjs

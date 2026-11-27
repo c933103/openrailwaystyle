@@ -1120,3 +1120,36 @@ for (const [release,previous,paths] of [
  assert.deepEqual([...next.stores.keys()],caches,'no shell-generation change or purge');
  assert.ok(next.requests.every(url=>new URL(url).origin===new URL(scope).origin));
 });
+
+test('traditional Mongolian picker upgrades the cached shell without evicting existing tabs', async()=>{
+  const previous='20261126-canvas-basemap-sync-1';
+  const root=new URL('../styles/',import.meta.url);
+  const html=readFileSync(new URL('index.html',root),'utf8');
+  const version=html.match(/src="app\.mjs\?v=([\w.-]+)"/)?.[1];
+  assert.ok(version);
+  assert.notEqual(version,previous,'returning browsers must request a new shell version');
+  const model='map-model.mjs',bundle='vendor/tile-labels.js';
+  const currentModel=readFileSync(new URL(model,root),'utf8');
+  const currentBundle=readFileSync(new URL(bundle,root),'utf8');
+  const oldBodies=new Map([[new URL(model,scope).pathname,'// previously cached model without the picker'],
+    [new URL(bundle,scope).pathname,'// previous generated label bundle']]);
+  const currentBodies=new Map([[new URL(model,scope).pathname,currentModel],
+    [new URL(bundle,scope).pathname,currentBundle]]);
+  assert.match(currentBundle,/mn-Mong/);
+  assert.match(currentModel,/\['mn-Mong','Mongolian \(traditional script\)'\]/);
+  const old=startWorker({version:previous,assetBodies:oldBodies,canvasEntry:true,rejectExternal:true});
+  await bounded(old.lifecycle('install'));await old.lifecycle('activate');
+  const get=async(worker,path,tag)=>await(await worker.request(path+'?v='+tag)).text();
+  const same=startWorker({version:previous,stores:old.stores,assetBodies:currentBodies,canvasEntry:true,rejectExternal:true});
+  await bounded(same.request('./',true));
+  assert.equal(await get(same,model,previous),oldBodies.get(new URL(model,scope).pathname));
+  const next=startWorker({version,stores:old.stores,assetBodies:currentBodies,canvasEntry:true,rejectExternal:true});
+  await bounded(next.request('./',true));next.setOffline();
+  for(const path of [model,bundle]){
+    const key=new URL(path,scope).pathname;
+    assert.equal(await get(next,path,version),currentBodies.get(key));
+    assert.equal(await get(next,path,previous),oldBodies.get(key));
+    assert.equal(next.requests.filter(url=>url===scope+path+'?v='+version).length,1);
+  }
+  assert.deepEqual(await next.stores.get(`atlas-shell-${generation}`).get(scope+'__versions').clone().json(),[version,previous]);
+});

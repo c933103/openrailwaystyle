@@ -1,8 +1,8 @@
-export {createPlatformLengths,createPlatformTileGeometry,platformLengthLabel,formatPlatformLength} from './platform-length.mjs?v=20261126-canvas-basemap-sync-1';
-export {referenceDetailEligible,isNeutralRailReference} from './railway-visibility.mjs?v=20261126-canvas-basemap-sync-1';
+export {createPlatformLengths,createPlatformTileGeometry,platformLengthLabel,formatPlatformLength} from './platform-length.mjs?v=20261127-google-admin-integration-2';
+export {referenceDetailEligible,isNeutralRailReference} from './railway-visibility.mjs?v=20261127-google-admin-integration-2';
 
-export {axleLoad,formatAxleLoad,axlePaint,axleLabel} from './axle-load.mjs?v=20261126-canvas-basemap-sync-1';
-import {standardServiceWidth} from './service-frequency.mjs?v=20261126-canvas-basemap-sync-1';
+export {axleLoad,formatAxleLoad,axlePaint,axleLabel} from './axle-load.mjs?v=20261127-google-admin-integration-2';
+import {standardServiceWidth} from './service-frequency.mjs?v=20261127-google-admin-integration-2';
 // The provider normalizes maxspeed to km/h; speed_label retains source units
 // and both directional values. Never infer a limit from railway class.
 export const SPEED_BANDS = [
@@ -257,7 +257,7 @@ export const MODES = ['speed', 'infrastructure', 'electrification', 'control', '
 export const LANGUAGES = [
   ['local','Local names'], ['en','English'], ['ko','한국어'], ['ja','日本語'],
   ['zh-Hant','繁體中文'], ['zh-Hans','简体中文'], ['de','Deutsch'], ['fr','Français'],
-  ['ru','Русский'], ['es','Español'], ['pt','Português'], ['it','Italiano'], ['nl','Nederlands'],
+  ['ru','Русский'], ['mn-Mong','Mongolian (traditional script)'], ['es','Español'], ['pt','Português'], ['it','Italiano'], ['nl','Nederlands'],
 ];
 const language = value => LANGUAGES.some(([code]) => code === value) ? value : 'local';
 export const INFRASTRUCTURE = [
@@ -598,7 +598,7 @@ const britishTest = (upper, code) => { const c = code.toUpperCase(); return ['an
 // made from its name, so it is the same wherever and whenever it is drawn.
 // Tiles carry it as owner_color (added in the browser, tile-labels.mjs);
 // without an owner, the unknown colour.
-export {ownerColor} from './owner-color.mjs?v=20261126-canvas-basemap-sync-1';
+export {ownerColor} from './owner-color.mjs?v=20261127-google-admin-integration-2';
 export const ownerPaint = () => ['coalesce', ['get', 'owner_color'], UNKNOWN_COLOR];
 // Aerialways and escalators are drawn in every view. Infrastructure and Power
 // show their type (thin line, ticks or arrows); every other view colours the
@@ -738,6 +738,7 @@ export function hanFallback(p, lang) {
 }
 // Select recorded names, never translate or transliterate a proper name ourselves.
 // Unicode scripts include supplementary-plane Han characters used by Nôm/Hanja.
+const traditionalMongolian = value => nonempty(value) && /(?=\p{Letter})\p{Script=Mongolian}/u.test(value);
 export function chooseName(p, lang = 'local') {
   const local = [p.name,p['name:nonlatin']].filter(nonempty);
   // The basemap can generate name:latin without knowing the source language
@@ -761,6 +762,8 @@ export function chooseName(p, lang = 'local') {
     ...selected.filter(han), ...local.filter(han), ...ideographicKeys.map(k=>p[k]).filter(han), ...recorded.filter(han),
     ...selected, ...local.filter(v=>/[\p{Script=Hiragana}\p{Script=Katakana}]/u.test(v)), ...english,
   ];
+  else if (lang === 'mn-Mong') preferred = [...selected.filter(traditionalMongolian),
+    ...[p['name:mn'], ...local].filter(traditionalMongolian), ...english];
   else if (lang === 'ru') preferred = [...selected.filter(cyrillic), ...local.filter(cyrillic), ...recorded.filter(cyrillic), ...english];
   else if (lang === 'ko') preferred = [...selected, ...local.filter(v=>/\p{Script=Hangul}/u.test(v)), ...english];
   else preferred = [...selected, ...english];
@@ -788,6 +791,9 @@ export function mergeStationTranslation(p, translated, lang) {
 const borrowLanguages = {zh:['ja','ko-Hani','vi-Hani'], ja:['ja-Hani','zh','ko-Hani','vi-Hani']};
 export function stationLanguages(lang, borrow = true) {
   if (lang === 'local') return ['local'];
+  // Start with the unlocalized station tile so an unsupported script-tag
+  // request cannot make the station disappear.
+  if (lang === 'mn-Mong') return ['local','mn-Mong','mn','en'];
   if (chinese(lang)) {
     const regional = lang === 'zh-Hans' ? ['zh-CN','zh-TW','zh-HK'] : ['zh-TW','zh-HK','zh-CN'];
     return [...new Set([lang,'zh',lang === 'zh-Hans' ? 'zh-Hant' : 'zh-Hans',...regional,...(borrow ? borrowLanguages.zh : []),'en'])];
@@ -818,6 +824,14 @@ export function stationPending(p, lang, fetched) {
       }
     }
     return nonempty(p['name:en']) ? wanted : [...wanted, ...unfetched(['en'])];
+  }
+  if (lang === 'mn-Mong') {
+    if (traditionalMongolian(p['name:mn-Mong'])) return [];
+    if (!fetched.has('mn-Mong')) return ['mn-Mong'];
+    if (traditionalMongolian(p['name:mn'])) return [];
+    if (!fetched.has('mn')) return ['mn'];
+    if (traditionalMongolian(p.name) || traditionalMongolian(p['name:nonlatin']) || nonempty(p['name:en'])) return [];
+    return unfetched(['en']);
   }
   const name = chooseName(p,lang);
   const resolved = lang === 'ja' && borrow ? han(name)

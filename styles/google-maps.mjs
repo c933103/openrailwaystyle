@@ -89,7 +89,8 @@ export function createGoogleTileLayerSpec() {
     type: 'raster',
     source: GOOGLE_TILE_SOURCE_ID,
     minzoom: 0,
-    maxzoom: 22,
+    // Layer maxzoom is exclusive; the map can reach z22 at highest detail.
+    maxzoom: 23,
     layout: { visibility: 'none' },
     paint: { 'raster-fade-duration': 0 },
     metadata: {
