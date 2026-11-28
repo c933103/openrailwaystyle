@@ -1,7 +1,7 @@
 {
   "lifecycle": "extract",
   "traction": "overpass",
-  "axle-load": "overpass",
+  "axle-load": "extract",
   "street-running": "overpass",
   "station-points": "overpass",
   "crossings": "extract",
