@@ -1284,6 +1284,24 @@ try {
     assert.ok(Math.abs(await p.evaluate(()=>JSON.parse(localStorage.getItem('atlas_view')).z)-0.025)<1e-9);
     await p.mouse.wheel(0,12);
     await p.waitForFunction(()=>Math.abs(JSON.parse(localStorage.getItem('atlas_view')).z)<1e-9);
+    // Synthetic WheelEvents do not reproduce Gecko's native compatibility
+    // flag. Model its read-order-sensitive line event at the actual listener.
+    const lineWheel=sign=>p.evaluate(sign=>{
+      const canvas=document.querySelector('canvas.atlas-flat-preview');
+      const e=new WheelEvent('wheel',{clientX:470,clientY:210,cancelable:true});
+      let modeRead=false, deltaRead=false;
+      Object.defineProperties(e,{
+        deltaMode:{get(){modeRead=true; return deltaRead?0:1;}},
+        deltaY:{get(){deltaRead=true; return sign*(modeRead?1:16);}},
+      });
+      canvas.dispatchEvent(e);
+      return e.defaultPrevented;
+    },sign);
+    assert.equal(await lineWheel(-1),true);
+    await p.waitForFunction(()=>JSON.parse(localStorage.getItem('atlas_view')).z>0);
+    assert.ok(Math.abs(await p.evaluate(()=>JSON.parse(localStorage.getItem('atlas_view')).z)-1/12)<1e-9);
+    assert.equal(await lineWheel(1),true);
+    await p.waitForFunction(()=>Math.abs(JSON.parse(localStorage.getItem('atlas_view')).z)<1e-9);
     await p.mouse.wheel(0,-120); // One full wheel notch changes the camera by 0.25 zoom.
     await p.waitForFunction(()=>parseFloat(document.querySelector('.atlas-flat-scale').style.width)>72);
     assert.equal(await scale.textContent(),'5000 km'); // Same round distance, longer bar.
