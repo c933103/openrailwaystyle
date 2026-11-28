@@ -475,9 +475,14 @@ export function mountFlatMap({mount, style, styleURL, protocols, requestedView, 
     setCamera(camera.zoomAt(zoom,anchor??[camera.width/2,camera.height/2]),true);
   }
   listen('wheel',e=>{
+    // A classic 120-pixel wheel notch keeps its quarter step; small
+    // trackpad deltas stay small. Limit individual events from fast wheels.
+    const pixels=e.deltaY*(e.deltaMode===1?40:e.deltaMode===2?camera.height:1);
+    if(!Number.isFinite(pixels)||pixels===0)return;
     e.preventDefault();
     const rect=canvas.getBoundingClientRect();
-    zoomBy(-Math.sign(e.deltaY)*0.25,[e.clientX-rect.left,e.clientY-rect.top]);
+    const delta=-Math.max(-0.25,Math.min(0.25,pixels/480));
+    zoomBy(delta,[e.clientX-rect.left,e.clientY-rect.top]);
   },{passive:false});
   const keyboardPan=flatKeyboardPan(window,{
     size:()=>Math.min(camera.width,camera.height),
