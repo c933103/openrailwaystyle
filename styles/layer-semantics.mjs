@@ -1,4 +1,4 @@
-import { MODES, railwayTrackWidth } from './map-model.mjs?v=20261128-fragment-bounds';
+import { MODES, railwayTrackWidth } from './map-model.mjs?v=20261128-canvas-keyboard';
 
 const VERSION = 1;
 const VALUE_LABELS = /^(speed|electrification|control|gauge|loading|axle|owner)-labels$/;

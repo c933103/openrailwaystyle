@@ -513,6 +513,28 @@ try {
       await current.page.waitForFunction(button=>button.disabled,await boundaryButton.elementHandle());
       assert.equal(new URL(current.page.url()).hash,hash);
     }
+    // Holding an arrow must not depend on OS key-repeat events. A live
+    // fragment replaces the held movement instead of being cleared by it.
+    await current.page.goto(origin+'/#8/22/114');
+    const keyCanvas=current.page.locator('canvas.atlas-flat-preview');
+    await keyCanvas.focus();
+    const longitude=()=>current.page.locator('#map').getAttribute('data-flat-center').then(v=>Number(v.split(',')[0]));
+    const startLongitude=await longitude();
+    await current.page.keyboard.down('ArrowRight');
+    const initial=await longitude();
+    await current.page.waitForFunction(initial=>+document.querySelector('#map').dataset.flatCenter.split(',')[0]>initial+.2,initial,{timeout:5000});
+    await current.page.keyboard.up('ArrowRight');
+    const released=await longitude();
+    assert.ok(released>startLongitude+.2);
+    assert.equal(await current.page.evaluate(()=>JSON.parse(localStorage.getItem('atlas_view')).c[0]),released);
+    await current.page.keyboard.down('ArrowLeft');
+    await current.page.waitForFunction(released=>+document.querySelector('#map').dataset.flatCenter.split(',')[0]<released-.1,released,{timeout:5000});
+    await current.page.evaluate(hash=>{location.hash=hash;},forward);
+    await assertView(forward,[114.16,22.29],10,70);
+    await current.page.keyboard.up('ArrowLeft');
+    await current.page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
+    assert.equal(new URL(current.page.url()).hash,forward);
+    assert.ok(Math.abs(await longitude()-114.16)<.000002);
     await current.context.close();
     useRollbackEntry=true;
     current=await fresh(true);
