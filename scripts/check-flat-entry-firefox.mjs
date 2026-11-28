@@ -557,6 +557,31 @@ try {
     await canvas.waitFor();
     const box=await canvas.boundingBox();
     const x=Math.round(box.x+box.width*.59), y=Math.round(box.y+box.height*.58);
+    // Synthetic WheelEvents do not reproduce Gecko's native compatibility
+    // flag. Model its read-order-sensitive line event at the actual listener.
+    const lineWheel=sign=>canvas.evaluate((canvas,{sign,x,y})=>{
+      const e=new WheelEvent('wheel',{clientX:x,clientY:y,cancelable:true});
+      let modeRead=false, deltaRead=false;
+      Object.defineProperties(e,{
+        deltaMode:{get(){modeRead=true; return deltaRead?0:1;}},
+        deltaY:{get(){deltaRead=true; return sign*(modeRead?1:16);}},
+      });
+      canvas.dispatchEvent(e);
+      return e.defaultPrevented;
+    },{sign,x,y});
+    const zoom=()=>p.evaluate(()=>JSON.parse(localStorage.getItem('atlas_view')).z);
+    const waitForZoom=expected=>p.waitForFunction(expected=>
+      Math.abs(JSON.parse(localStorage.getItem('atlas_view'))?.z-expected)<1e-9,expected);
+    assert.equal(await lineWheel(-1),true);
+    assert.ok(Math.abs(await zoom()-(9+1/12))<1e-9,'read wheel units before the value');
+    assert.equal(await lineWheel(1),true);
+    await waitForZoom(9);
+    await p.mouse.move(x,y);
+    await p.mouse.wheel(0,-12);
+    await waitForZoom(9.025);
+    await p.mouse.wheel(0,12);
+    await waitForZoom(9);
+    console.log('Canvas wheel units: modeled Gecko line steps and native Firefox pixel steps passed.');
     const view=()=>p.evaluate(()=>localStorage.getItem('atlas_view'));
     const center=()=>p.locator('#map').getAttribute('data-flat-center');
     const originalCenter=await center();
@@ -1283,24 +1308,6 @@ try {
     await p.waitForFunction(()=>JSON.parse(localStorage.getItem('atlas_view')).z>0);
     assert.ok(Math.abs(await p.evaluate(()=>JSON.parse(localStorage.getItem('atlas_view')).z)-0.025)<1e-9);
     await p.mouse.wheel(0,12);
-    await p.waitForFunction(()=>Math.abs(JSON.parse(localStorage.getItem('atlas_view')).z)<1e-9);
-    // Synthetic WheelEvents do not reproduce Gecko's native compatibility
-    // flag. Model its read-order-sensitive line event at the actual listener.
-    const lineWheel=sign=>p.evaluate(sign=>{
-      const canvas=document.querySelector('canvas.atlas-flat-preview');
-      const e=new WheelEvent('wheel',{clientX:470,clientY:210,cancelable:true});
-      let modeRead=false, deltaRead=false;
-      Object.defineProperties(e,{
-        deltaMode:{get(){modeRead=true; return deltaRead?0:1;}},
-        deltaY:{get(){deltaRead=true; return sign*(modeRead?1:16);}},
-      });
-      canvas.dispatchEvent(e);
-      return e.defaultPrevented;
-    },sign);
-    assert.equal(await lineWheel(-1),true);
-    await p.waitForFunction(()=>JSON.parse(localStorage.getItem('atlas_view')).z>0);
-    assert.ok(Math.abs(await p.evaluate(()=>JSON.parse(localStorage.getItem('atlas_view')).z)-1/12)<1e-9);
-    assert.equal(await lineWheel(1),true);
     await p.waitForFunction(()=>Math.abs(JSON.parse(localStorage.getItem('atlas_view')).z)<1e-9);
     await p.mouse.wheel(0,-120); // One full wheel notch changes the camera by 0.25 zoom.
     await p.waitForFunction(()=>parseFloat(document.querySelector('.atlas-flat-scale').style.width)>72);
