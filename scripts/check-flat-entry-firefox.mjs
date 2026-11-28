@@ -500,6 +500,19 @@ try {
     await assertView(back,[139.77,35.68],8,-25);
     await current.page.goForward();
     await assertView(forward,[114.16,22.29],10,70);
+    // Both ends of the Canvas camera range can be shared. A fragment
+    // applied in place must use the same bounds as opening it in a new tab.
+    for (const [hash,center,z,b] of [
+      ['#-0.5/0/15', [15,0], -.5, 0],
+      ['#22/22.29/114.16/70', [114.16,22.29], 22, 70],
+    ]) {
+      await current.page.evaluate(hash=>{location.hash=hash;},hash);
+      await assertView(hash,center,z,b);
+      await current.page.reload();
+      const boundaryButton=current.page.getByRole('button',{name:z<0?'Zoom out':'Zoom in',exact:true});
+      await current.page.waitForFunction(button=>button.disabled,await boundaryButton.elementHandle());
+      assert.equal(new URL(current.page.url()).hash,hash);
+    }
     await current.context.close();
     useRollbackEntry=true;
     current=await fresh(true);
