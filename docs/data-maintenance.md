@@ -61,7 +61,7 @@ The same workflow also plans which Geofabrik files the extract pipeline would do
   - An invalid plan is still written, with `valid: false` and its problems, and the job fails. Nothing may take a plan whose `valid` is not `true`.
   - Nothing is downloaded beyond the index, the land files and the HEAD requests.
 
-**Geofabrik region extracts** (`osm-extract.yml`, run by hand, steps B2 and B3 of #330) keeps one filtered extract per planned region, the working copies the extract builders will read. No dataset reads them yet.
+**Geofabrik region extracts** (`osm-extract.yml`, monthly on the 15th at 04:41 UTC and by hand, steps B2 and B3 of #330) keeps one filtered extract per planned region, the working copies the extract builders read. The site takes a dataset's extract build when `scripts/data-sources.json` selects it.
 - **Plan.** It makes the region plan as above and loads the working copies' index (below). `scripts/extract-run.mjs matrix` refuses a plan whose `valid` is not `true`, a region over the limit, more than 256 regions (one matrix), or more than 100 GiB in all, before any download.
 - **One job per region**, largest first, at most 2 at a time (`scripts/acquire-region-extract.mjs`):
   - **Requests.** To `download.geofabrik.de`, over HTTPS and never redirected: HEAD and the `.md5` sidecar, then the file. They are logged per host by the meter.
