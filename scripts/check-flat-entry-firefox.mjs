@@ -1278,7 +1278,13 @@ try {
     await p.locator('#units').selectOption('metric');
     assert.equal(await scale.textContent(),'5000 km');
     await p.mouse.move(470,210);
-    await p.mouse.wheel(0,-120); // One wheel event changes the camera by 0.25 zoom.
+    // A fine trackpad movement must not act like a full wheel notch.
+    await p.mouse.wheel(0,-12);
+    await p.waitForFunction(()=>JSON.parse(localStorage.getItem('atlas_view')).z>0);
+    assert.ok(Math.abs(await p.evaluate(()=>JSON.parse(localStorage.getItem('atlas_view')).z)-0.025)<1e-9);
+    await p.mouse.wheel(0,12);
+    await p.waitForFunction(()=>Math.abs(JSON.parse(localStorage.getItem('atlas_view')).z)<1e-9);
+    await p.mouse.wheel(0,-120); // One full wheel notch changes the camera by 0.25 zoom.
     await p.waitForFunction(()=>parseFloat(document.querySelector('.atlas-flat-scale').style.width)>72);
     assert.equal(await scale.textContent(),'5000 km'); // Same round distance, longer bar.
     for(let i=0;i<3;i++)await p.mouse.wheel(0,-120);
