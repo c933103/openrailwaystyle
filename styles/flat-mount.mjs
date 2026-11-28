@@ -477,7 +477,10 @@ export function mountFlatMap({mount, style, styleURL, protocols, requestedView, 
   listen('wheel',e=>{
     // A classic 120-pixel wheel notch keeps its quarter step; small
     // trackpad deltas stay small. Limit individual events from fast wheels.
-    const pixels=e.deltaY*(e.deltaMode===1?40:e.deltaMode===2?camera.height:1);
+    // Read the unit before the value: Gecko's compatibility path can expose
+    // a converted pixel delta when deltaY is read first.
+    const mode=e.deltaMode;
+    const pixels=e.deltaY*(mode===1?40:mode===2?camera.height:1);
     if(!Number.isFinite(pixels)||pixels===0)return;
     e.preventDefault();
     const rect=canvas.getBoundingClientRect();
