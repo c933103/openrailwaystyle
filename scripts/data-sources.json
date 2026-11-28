@@ -3,7 +3,7 @@
   "traction": "overpass",
   "axle-load": "overpass",
   "street-running": "overpass",
-  "station-points": "overpass",
+  "station-points": "extract",
   "crossings": "extract",
   "conveying": "overpass",
   "aerialways": "overpass",
