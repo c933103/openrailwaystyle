@@ -1,8 +1,8 @@
-import {displayName, aerialwayKind, formatSpeed} from './map-model.mjs?v=20261128-fragment-bounds';
-import {powerFacilityName, powerFacilityEnergyRows} from './power-facilities.mjs?v=20261128-fragment-bounds';
-import {contextDescription} from './context.mjs?v=20261128-fragment-bounds';
-import {CROSSING_TAGS} from './crossing-tags.mjs?v=20261128-fragment-bounds';
-import {trainProtection, trainProtectionShort, CONTROL_FAMILIES, CONTROL_LEVELS} from './map-model.mjs?v=20261128-fragment-bounds';
+import {displayName, aerialwayKind, formatSpeed} from './map-model.mjs?v=20261128-canvas-keyboard';
+import {powerFacilityName, powerFacilityEnergyRows} from './power-facilities.mjs?v=20261128-canvas-keyboard';
+import {contextDescription} from './context.mjs?v=20261128-canvas-keyboard';
+import {CROSSING_TAGS} from './crossing-tags.mjs?v=20261128-canvas-keyboard';
+import {trainProtection, trainProtectionShort, CONTROL_FAMILIES, CONTROL_LEVELS} from './map-model.mjs?v=20261128-canvas-keyboard';
 
 // DOM helpers shared by the feature inspector and train-protection legend.
 export function createInspectorRows(textNode) {

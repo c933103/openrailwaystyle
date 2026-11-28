@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {panSpeed, panDirection, installKeyboardPan, RAMP_MS} from '../styles/keyboard-pan.mjs';
+import {panSpeed, panDirection, installKeyboardPan, flatKeyboardPan, RAMP_MS} from '../styles/keyboard-pan.mjs';
 
 test('keyboard panning: a steady speed after a short ramp, never jumps', () => {
   assert.equal(panSpeed(0, 800), 0);
@@ -72,4 +72,40 @@ test('keyboard panning hands each step to the globe pan when it takes it', () =>
   listeners.keyup(key('ArrowLeft'));
   assert.ok(panned.length > 0 && panned.every(([dx, dy]) => dx < 0 && dy === 0));
   delete globalThis.window; delete globalThis.requestAnimationFrame; delete globalThis.cancelAnimationFrame;
+});
+
+test('Canvas arrow keys move continuously, ignore repeat, and settle only once', () => {
+  let frame, time = 0, pixels = 0, starts = 0, ends = 0;
+  const clock = {
+    requestAnimationFrame: f => (frame = f, 1),
+    cancelAnimationFrame: () => { frame = null; },
+    performance: {now: () => time},
+  };
+  const keys = flatKeyboardPan(clock, {
+    size: () => 700,
+    move([dx, dy], first) {
+      assert.equal(dy, 0);
+      pixels += dx;
+      starts += Number(first);
+    },
+    finish: () => { ends++; },
+  });
+  assert.equal(keys.down('constructor'), false);
+  assert.equal(keys.down('ArrowRight'), true);
+  for (let i = 0; i < 30; i++) frame(time += 16);
+  assert.ok(pixels > 100);
+  assert.equal(ends, 0);
+  keys.down('ArrowRight');
+  assert.equal(keys.up('ArrowRight'), true);
+  assert.deepEqual([starts,ends,frame], [1,1,null]);
+  const stopped = pixels;
+  keys.down('ArrowLeft');
+  keys.up('ArrowLeft');
+  assert.equal(pixels, stopped - 100, 'tap applies exactly the standard step');
+  assert.deepEqual([starts,ends,frame], [2,1,null]);
+  keys.down('ArrowLeft');
+  for (let i = 0; i < 4; i++) frame(time += 16);
+  keys.cancel();
+  assert.deepEqual([starts,ends,frame], [3,1,null], 'following another view drops the held movement');
+  assert.equal(keys.up('ArrowLeft'), false);
 });

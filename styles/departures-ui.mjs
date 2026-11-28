@@ -1,4 +1,4 @@
-import {clock, trainSchedule} from './departures.mjs?v=20261128-fragment-bounds';
+import {clock, trainSchedule} from './departures.mjs?v=20261128-canvas-keyboard';
 
 const node = (document, tag, text = '', className = '') => {
   const element = document.createElement(tag);

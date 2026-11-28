@@ -24,6 +24,56 @@ export function panDirection(keys) {
   return length ? [x / length, y / length] : [0, 0];
 }
 
+// Canvas uses the same motion curve and directions without MapLibre's events.
+export function flatKeyboardPan(clock, {size, move, finish}) {
+  const held = new Map();
+  let frame = 0, last = 0, moved = 0, changed = false, direction = [0, 0];
+  const shift = distance => {
+    move(direction.map(component => component * distance), moved === 0);
+    changed = moved > 0;
+    moved += distance;
+  };
+  const tick = now => {
+    if (!held.size) return;
+    const elapsed = Math.min(100, now - last);
+    last = now;
+    direction = panDirection(held.keys());
+    const distance = panSpeed(now - Math.min(...held.values()), size()) * elapsed / 1000;
+    if (distance > 0 && direction.some(Boolean)) shift(distance);
+    frame = clock.requestAnimationFrame(tick);
+  };
+  const stop = (topUp = false, commit = true) => {
+    if (!held.size) return;
+    held.clear();
+    clock.cancelAnimationFrame(frame);
+    frame = 0;
+    if (topUp && moved < STEP && direction.some(Boolean)) shift(STEP - moved);
+    if (commit && changed) finish();
+    moved = 0;
+    changed = false;
+    direction = [0, 0];
+  };
+  return {
+    down(key) {
+      if (!Object.hasOwn(DIRECTIONS, key)) return false;
+      if (held.has(key)) return true;
+      const time = clock.performance.now();
+      held.set(key, time);
+      direction = panDirection(held.keys());
+      if (!frame) { last = time; frame = clock.requestAnimationFrame(tick); }
+      return true;
+    },
+    up(key) {
+      if (!held.has(key)) return false;
+      if (held.size === 1) stop(true);
+      else { held.delete(key); direction = panDirection(held.keys()); }
+      return true;
+    },
+    stop: () => stop(),
+    cancel: () => stop(false, false),
+  };
+}
+
 // pan(dx, dy, eventData): pans the globe over the poles (globe-drag.mjs) and
 // returns true, or false to let the flat map pan.
 export function installKeyboardPan(map, {reducedMotion = () => false, pan = () => false} = {}) {

@@ -1,4 +1,4 @@
-import {SEARCH_API} from './map-model.mjs?v=20261128-fragment-bounds';
+import {SEARCH_API} from './map-model.mjs?v=20261128-canvas-keyboard';
 const button = document.getElementById('check');
 button.addEventListener('click', async () => {
   button.disabled = true;

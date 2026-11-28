@@ -1,3 +1,4 @@
+import {flatKeyboardPan} from './keyboard-pan.mjs';
 import {isNeutralRailReference} from './railway-visibility.mjs';
 import {flatRailReferenceClip} from './flat-rail-reference.mjs';
 import {FLAT_MIN_ZOOM, FLAT_MAX_ZOOM, flatCamera, flatScaleBar, fitFlatBounds, flatBoxRect, fitFlatScreenBox} from './flat-camera.mjs';
@@ -366,6 +367,7 @@ export function mountFlatMap({mount, style, styleURL, protocols, requestedView, 
     if(e.isTrusted&&e.button===2&&rightContext){e.preventDefault();e.stopPropagation();}
   });
   listen('pointerdown',e=>{
+    keyboardPan.stop();
     if(toolDrag||boxZoom||mouseRotation)return;
     rightContext=false;
     const tool=activeTool();
@@ -467,6 +469,7 @@ export function mountFlatMap({mount, style, styleURL, protocols, requestedView, 
   });
   function zoomBy(delta, anchor) {
     if (disposed || gesture.active || toolDrag || boxZoom || mouseRotation || !delta) return;
+    keyboardPan.stop();
     const zoom=Math.max(FLAT_MIN_ZOOM,Math.min(FLAT_MAX_ZOOM,camera.zoom+delta));
     if (zoom===camera.zoom) return;
     setCamera(camera.zoomAt(zoom,anchor??[camera.width/2,camera.height/2]),true);
@@ -476,7 +479,15 @@ export function mountFlatMap({mount, style, styleURL, protocols, requestedView, 
     const rect=canvas.getBoundingClientRect();
     zoomBy(-Math.sign(e.deltaY)*0.25,[e.clientX-rect.left,e.clientY-rect.top]);
   },{passive:false});
+  const keyboardPan=flatKeyboardPan(window,{
+    size:()=>Math.min(camera.width,camera.height),
+    move:(offset,first)=>setCamera(camera.panBy(offset),first),
+    finish:()=>setCamera(camera,true),
+  });
+  listen('blur',()=>keyboardPan.stop());
+  listen('keyup',e=>{if(keyboardPan.up(e.key))e.preventDefault();});
   listen('keydown',e=>{
+    if(e.shiftKey || e.altKey || e.ctrlKey || e.metaKey)keyboardPan.stop();
     if(mouseRotation){
       if(e.key==='Escape'){e.preventDefault();cancelMouseRotation();}
       return;
@@ -502,9 +513,7 @@ export function mountFlatMap({mount, style, styleURL, protocols, requestedView, 
       setCamera(flatCamera({...camera,bearing}),true);
       return;
     }
-    if (!pan || e.shiftKey) return;
-    e.preventDefault();
-    setCamera(camera.panBy(pan),true);
+    if (!e.shiftKey && keyboardPan.down(e.key)) e.preventDefault();
   });
   mount.replaceChildren(canvas,boxOverlay);
   resize();
@@ -514,6 +523,7 @@ export function mountFlatMap({mount, style, styleURL, protocols, requestedView, 
     if(disposed) return;
     cancelBoxZoom();
     cancelMouseRotation();
+    keyboardPan.stop();
     disposed=true;
     if(measure?.active)measure.setMode(measure.mode);
     lifetime.abort(); observer.disconnect();clearWake();
@@ -521,7 +531,7 @@ export function mountFlatMap({mount, style, styleURL, protocols, requestedView, 
     for(const entry of metadata.values()) entry.controller.abort();
     queue.close();canvas.remove();boxOverlay.remove();
   };
-  window.addEventListener('blur',()=>{cancelBoxZoom();cancelMouseRotation();},{signal});
+  window.addEventListener('blur',()=>{cancelBoxZoom();cancelMouseRotation();keyboardPan.stop();},{signal});
   window.addEventListener('online',()=>recover(true),{signal});
   window.addEventListener('offline',clearWake,{signal});
   document.addEventListener('visibilitychange',()=>recover(false),{signal});
@@ -529,6 +539,9 @@ export function mountFlatMap({mount, style, styleURL, protocols, requestedView, 
   window.addEventListener('pagehide',event=>{if(!event.persisted) close();},{signal});
   const moveTo=({center,zoom,bounds,bearing=camera.bearing,reason='manual'})=>{
     if(disposed) return;
+    // This view replaces the pan. Persisting the interrupted movement could
+    // also clear a newly followed link before it is applied.
+    keyboardPan.cancel();
     gesture.cancel();
     cancelBoxZoom();
     cancelMouseRotation();

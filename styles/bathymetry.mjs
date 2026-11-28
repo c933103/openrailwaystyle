@@ -1,4 +1,4 @@
-import {waitForViewport} from './viewport-settle.mjs?v=20261128-fragment-bounds';
+import {waitForViewport} from './viewport-settle.mjs?v=20261128-canvas-keyboard';
 // Colour sea elevations from the existing, repaired terrain cache. ETOPO1
 // bathymetry disappears from the provider's finer tiles, so depth requests
 // stop at zoom 10. Coastlines still use the basemap's detailed water polygons.
