@@ -5,7 +5,11 @@
 # working copies: release osm-extract, one filtered file per region and an
 # index naming them (scripts/extract-release.mjs). Regions refresh
 # independently: one checked in this run takes its new file, every other
-# region keeps its working copy. Run by hand only.
+# region keeps its working copy. Monthly on the 15th (the plan's monthly
+# extracts, #330 freshness; away from the mainline reference's Geofabrik
+# download on the 3rd), and by hand. A scheduled run has no inputs: the full
+# plan, the dated files of two days before. extract-rollout.yml then
+# assembles and publishes the extract builds once every file is current.
 #
 # Requests: the region plan as osm-gaps.yml makes it (the Geofabrik index,
 # Natural Earth land from GitHub, one HEAD per region looked at), then per
@@ -22,6 +26,8 @@
 # its working copy.
 name: Geofabrik region extracts
 on:
+  schedule:
+    - cron: '41 4 15 * *'
   workflow_dispatch:
     inputs:
       source_date:
